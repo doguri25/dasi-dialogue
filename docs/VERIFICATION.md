@@ -157,3 +157,10 @@
 - Node 단위·HTTP 검사 35개 통과. 효과음의 최대 이득·발음 순서, 즉시 도착한 답변의 소리 겹침 방지, 음소거 시 예약 음 중단, 오디오·저장소 미지원 시 오류 격리 포함.
 - PC 1366×768 및 낮고 좁은 901×640, 모바일 320px의 2×2 화면 스크린샷 육안 검토. 브라우저 오디오 재생 경로는 확인했으나 실제 스피커로 청취하거나 물리 마이크·실물 휴대전화를 사용하지 않음.
 - 최종 `desktop-room.mjs`는 PC 8개 크기·일반/확대 글자·긴 AI 제목을 포함한 40개 상태 통과. `responsive.mjs`, `followups-browser.mjs`, `v02-browser.mjs`, `browser.mjs`, `intake-browser.mjs`, `sounds-browser.mjs` 통과. 제공사 응답·음성 인식은 모의 응답 사용.
+
+## v0.3.0 — 사례 분류·배경 클릭 닫기
+
+- `browser.mjs`에 주제 칩(디지털 5개)·난도(입문 1개 묶음 5개)·조건 초기화(3개 묶음 30개) 검사와, 질문 상세 창을 배경 클릭으로 닫아도 기존 선택이 유지되는지 검사 추가.
+- 상세 창 안쪽 여백 클릭과 창 안에서 시작해 바깥에서 끝난 드래그는 창을 닫지 않음을 1440px·390px에서 확인.
+- Node 단위·HTTP 검사 35개 통과. `browser.mjs`, `responsive.mjs`, `intake-browser.mjs`, `followups-browser.mjs`, `v02-browser.mjs`, `desktop-room.mjs`, `sounds-browser.mjs` 통과.
+- 사례 목록 1440·768·390px, 대화 화면 1440×1000·1024×700·390px 스크린샷 육안 검토. 실물 휴대전화는 사용하지 않음.

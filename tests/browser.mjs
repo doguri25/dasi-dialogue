@@ -19,12 +19,17 @@ try{
  await page.screenshot({path:'.test-artifacts/library-desktop.png',fullPage:false});
  await page.locator('[data-action="grade"][data-value="고등"]').click();assert.equal(await page.locator('.case-card').count(),4);
  await page.locator('[data-action="grade"][data-value="전체"]').click();
+ await page.locator('[data-action="category"][data-value="디지털"]').click();assert.equal(await page.locator('.case-card').count(),5);
+ await page.locator('[data-action="category"][data-value="전체"]').click();await page.locator('[data-action="difficulty"][data-value="입문"]').click();assert.equal(await page.locator('.level-group').count(),1);assert.equal(await page.locator('.case-card').count(),5);
+ await click('clear-filters');assert.equal(await page.locator('.case-card').count(),30);assert.equal(await page.locator('.level-group').count(),3);
  await page.locator('#search').fill('없는검색어987');assert.equal(await page.locator('.case-card').count(),0);
  await page.locator('#search').fill('');assert.equal(await page.locator('.case-card').count(),30);
  await click('quick');await page.locator('#start-form button[type="submit"]').click();await reviewApplication(page);
  assert.equal(await action('advance').isDisabled(),true);
  assert.equal(await page.locator('.choice-card').count(),4);assert.equal(await page.locator('#draft').count(),0);assert.equal(await page.locator('#compose button[type="submit"]').isDisabled(),true);
  const firstText=await pick();assert.equal(await page.locator('.message.teacher').count(),0);
+ // A backdrop click closes the detail dialog without changing the chosen sentence.
+ await page.locator('.choice-card').nth(1).click();await page.mouse.click(5,5);assert.equal(await page.locator('#modal[open]').count(),0);assert.equal(await page.locator('.choice-card.selected .choice-text').innerText(),firstText);
  await click('other-choices');assert.equal(await page.locator('input[name="question-choice"]:checked').count(),0);assert.equal(await page.locator('#compose button[type="submit"]').isDisabled(),true);assert.ok(!(await page.locator('.question-choices').textContent()).includes(firstText));
  await click('other-choices');await sendChoice();assert.match(await page.locator('.message.teacher .bubble').last().innerText(),/멈춰도 돼/);
  const editText=await pick(1);await click('edit-choice');assert.equal(await page.locator('#draft').inputValue(),editText);
