@@ -1,4 +1,4 @@
-import {reviewApplication} from './helpers.mjs';
+import {reviewApplication,chooseQuestion} from './helpers.mjs';
 import {checkQuestionControls} from './question-controls.mjs';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
@@ -19,7 +19,7 @@ try{
  await page.locator('[data-action="quick"]').click();await page.locator('#start-form button[type="submit"]').click();await reviewApplication(page);await settle();
  assert.equal(await page.locator('.mobile-room-tabs').isVisible(),false);assert.equal(await page.locator('#conversation').isVisible(),true);assert.equal(await page.locator('#facilitator-notes').isVisible(),false);
  await page.locator('.composer-wrap').scrollIntoViewIfNeeded();await screenshot('ui-desktop-questions');
- const choose=page.locator('input[name="question-choice"]').first();await choose.check();assert.match(await page.locator('.choice-card.selected').innerText(),/선택됨/);
+ await chooseQuestion(page);assert.match(await page.locator('.choice-card.selected').innerText(),/선택됨/);
  const before=await page.locator('.choice-card.selected .choice-text').innerText();await page.locator('[data-action="text-size"]').click();assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).fontSize),'21px');assert.equal(await page.locator('.choice-card.selected .choice-text').innerText(),before);
  await overflow('Desktop larger text');await page.locator('[data-action="text-size"]').click();
  // A mobile viewport has its own notes view, and switching does not discard the question.
@@ -34,8 +34,8 @@ try{
  await page.locator('#input-choices').click();
  for(const width of [320,390,768,1024,1440]){
   await page.setViewportSize({width,height:900});await settle();await overflow(`Meeting ${width}`);await checkQuestionControls(page);
-  const info=await page.evaluate(()=>({width:innerWidth,bodyFont:parseFloat(getComputedStyle(document.body).fontSize),questionFont:parseFloat(getComputedStyle(document.querySelector('.choice-text')).fontSize),sendHeight:document.querySelector('#compose button[type="submit"]').getBoundingClientRect().height,notesVisible:document.querySelector('#facilitator-notes').getBoundingClientRect().width>0,navPosition:getComputedStyle(document.querySelector('.sidebar nav')).position}));
-  assert.ok(info.questionFont>=18);assert.ok(info.sendHeight>=52);assert.equal(info.notesVisible,false);assert.equal(info.navPosition,width<=900?'fixed':'static');metrics.push(info);
+  const info=await page.evaluate(()=>({width:innerWidth,bodyFont:parseFloat(getComputedStyle(document.body).fontSize),questionFont:parseFloat(getComputedStyle(document.querySelector('.choice-label')).fontSize),sendHeight:document.querySelector('#compose button[type="submit"]').getBoundingClientRect().height,notesVisible:document.querySelector('#facilitator-notes').getBoundingClientRect().width>0,navPosition:getComputedStyle(document.querySelector('.sidebar nav')).position}));
+  assert.ok(info.questionFont>=14&&info.questionFont<=16);assert.ok(info.sendHeight>=52);assert.equal(info.notesVisible,false);assert.equal(info.navPosition,width<=900?'fixed':'static');metrics.push(info);
   await page.locator('.composer-wrap').scrollIntoViewIfNeeded();await screenshot(`ui-questions-${width}`);
   await page.locator('[data-action="text-size"]').click();await overflow(`Larger meeting ${width}`);await checkQuestionControls(page);await page.locator('[data-action="text-size"]').click();
  }

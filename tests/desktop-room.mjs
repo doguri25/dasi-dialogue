@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
-import {reviewApplication,setRoomPane} from './helpers.mjs';
+import {reviewApplication,setRoomPane,chooseQuestion} from './helpers.mjs';
 import {checkQuestionControls} from './question-controls.mjs';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
 const browser=await chromium.launch({channel:'chrome',headless:true});
@@ -29,8 +29,8 @@ try{
    if(await action('text-size').getAttribute('aria-pressed')!==String(large))await action('text-size').click();
    await fits(`${width}x${height} ${large?'large':'normal'}`);
    if(large&&(width===901||width===1024&&height===768))await page.screenshot({path:`.test-artifacts/desktop-buttons-${width}-large.png`});
-   await page.locator('input[name="question-choice"]').nth(3).check();await fits('selected');
-   assert.ok(await page.locator('.choice-grid').evaluate(el=>{const radio=el.querySelector('input:checked').getBoundingClientRect(),box=el.getBoundingClientRect();return radio.top>=box.top&&radio.bottom<=box.bottom;}),'selected choice stays in view after rendering');
+   await chooseQuestion(page,3);await fits('selected');
+   assert.ok(await page.locator('.choice-grid').evaluate(el=>{const card=el.querySelector('.selected').getBoundingClientRect(),box=el.getBoundingClientRect();return card.top>=box.top&&card.bottom<=box.bottom;}),'selected choice stays in view after rendering');
    await action('other-choices').click();await action('other-choices').click();
   }
  }
@@ -52,9 +52,10 @@ try{
  await page.locator('.topbar [data-action="settings"]').click();await page.locator('input[name="mode"][value="ai"]').check();await page.locator('#api-key').fill('dummy-desktop-test');await page.locator('#settings-form button[type="submit"]').click();
  let fail=false;const long='말하기 어려웠던 장면을 천천히 들어 주셨으면 좋겠어요. '.repeat(30);
  await page.route('**/api/reply',route=>route.fulfill(fail?{status:502,json:{error:'테스트 서비스 오류: 고른 문장은 유지됩니다.'}}:{json:{messages:[{speaker:'v',text:long}],teacherChoices:Array.from({length:4},(_,i)=>({label:`학생에게 있었던 일을 천천히 확인하는 질문 ${i+1}`,text:'어떤 도움이 필요했는지 '.repeat(20)+'말해 줄래?'})),risk:'none',observation:'가상 검사',coaching:{strength:'',nextQuestion:''}}}));
- await page.locator('input[name="question-choice"]').first().check();await send();await page.waitForFunction(()=>!document.querySelector('.thinking'));await fits('long AI response');
+ await chooseQuestion(page);await send();await page.waitForFunction(()=>!document.querySelector('.thinking'));await fits('long AI response');
+ await page.setViewportSize({width:901,height:640});await fits('long AI headings on narrow desktop');await page.setViewportSize({width:1366,height:768});
  assert.ok(await page.locator('#transcript').evaluate(el=>el.scrollHeight>el.clientHeight&&el.scrollHeight-el.scrollTop-el.clientHeight<3));
- await page.locator('input[name="question-choice"]').first().check();await fits('long selected example');fail=true;await send();await page.locator('#reply-error').waitFor();await fits('failed response');assert.equal(await page.locator('.choice-card.selected').count(),1);
+ await chooseQuestion(page);await fits('long selected example');fail=true;await send();await page.locator('#reply-error').waitFor();await fits('failed response');assert.equal(await page.locator('.choice-card.selected').count(),1);
  await action('finish').click();await page.locator('#finish-form button[type="submit"]').click();assert.equal(await page.locator('.review-header').isVisible(),true);assert.equal(await page.evaluate(()=>document.documentElement.dataset.practice),'');
  assert.deepEqual(errors,[]);await writeFile('.test-artifacts/desktop-room-results.json',JSON.stringify({passed:true,url:base,metrics,limits:'Browser viewports and mocked AI, no physical phone or live AI.'},null,2));console.log(JSON.stringify({passed:true,viewports:8,layouts:metrics.length}));
 }finally{await browser.close();}

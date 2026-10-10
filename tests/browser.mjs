@@ -1,4 +1,4 @@
-import {reviewApplication,setRoomPane} from './helpers.mjs';
+import {reviewApplication,setRoomPane,chooseQuestion} from './helpers.mjs';
 // Run with PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node tests/browser.mjs.
 import assert from 'node:assert/strict';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
@@ -12,7 +12,7 @@ const base=process.env.TEST_URL||'http://127.0.0.1:3210';
 const action=name=>page.locator(`[data-action="${name}"]`).first();
 const click=name=>action(name).click();
 const send=async text=>{await page.locator('#input-write').click();await page.locator('#draft').fill(text);await page.locator('#compose button[type="submit"]').click();await page.locator('.message.teacher').last().waitFor();};
-const pick=async(index=0)=>{await page.locator('#input-choices').click();const text=await page.locator('.choice-text').nth(index).innerText();await page.locator('input[name="question-choice"]').nth(index).check();return text;};
+const pick=async(index=0)=>{await page.locator('#input-choices').click();const text=await page.locator('.choice-text').nth(index).innerText();await chooseQuestion(page,index);return text;};
 const sendChoice=async(index=0)=>{const text=await pick(index);await page.locator('#compose button[type="submit"]').click();await page.waitForFunction(text=>Array.from(document.querySelectorAll('.message.teacher .bubble')).some(el=>el.textContent===text),text);return text;};
 try{
  await page.goto(base);await page.locator('.case-card').first().waitFor();assert.equal(await page.locator('.case-card').count(),30);
@@ -25,12 +25,12 @@ try{
  assert.equal(await action('advance').isDisabled(),true);
  assert.equal(await page.locator('.choice-card').count(),4);assert.equal(await page.locator('#draft').count(),0);assert.equal(await page.locator('#compose button[type="submit"]').isDisabled(),true);
  const firstText=await pick();assert.equal(await page.locator('.message.teacher').count(),0);
- await click('other-choices');assert.equal(await page.locator('input[name="question-choice"]:checked').count(),0);assert.equal(await page.locator('#compose button[type="submit"]').isDisabled(),true);assert.ok(!(await page.locator('.question-choices').innerText()).includes(firstText));
+ await click('other-choices');assert.equal(await page.locator('input[name="question-choice"]:checked').count(),0);assert.equal(await page.locator('#compose button[type="submit"]').isDisabled(),true);assert.ok(!(await page.locator('.question-choices').textContent()).includes(firstText));
  await click('other-choices');await sendChoice();assert.match(await page.locator('.message.teacher .bubble').last().innerText(),/멈춰도 돼/);
  const editText=await pick(1);await click('edit-choice');assert.equal(await page.locator('#draft').inputValue(),editText);
  await page.locator('#draft').fill('직접 쓰던 문장');await pick(2);await page.locator('#input-write').click();assert.equal(await page.locator('#draft').inputValue(),'직접 쓰던 문장');
  await page.locator('#input-choices').click();await page.screenshot({path:'.test-artifacts/choices-desktop.png',fullPage:true});
- await page.locator('#target').selectOption('g');assert.equal(await page.locator('input[name="question-choice"]:checked').count(),0);assert.match(await page.locator('.question-choices').innerText(),/학생이 겪은 일/);
+ await page.locator('#target').selectOption('g');assert.equal(await page.locator('input[name="question-choice"]:checked').count(),0);assert.match(await page.locator('.question-choices').textContent(),/학생이 겪은 일/);
  await page.locator('#target').selectOption('v');
  await send('원하지 않으면 멈춰도 돼. 지금 마음은 어떠니?');
  assert.match(await page.locator('#transcript').innerText(),/멈춰도 돼/);
@@ -51,7 +51,7 @@ try{
  await click('history');assert.equal(await page.locator('.history-item').count(),1);await click('resume');assert.equal(await page.locator('#reflection').inputValue(),'기다려 주기, 선택을 다시 확인하기.');
  // Independent safety pause: no pressure to advance is required.
  await click('library');await click('quick');await page.locator('input[value="unsafe"]').check();await page.locator('#start-form button[type="submit"]').click();await reviewApplication(page);
- assert.match(await page.locator('.question-choices').innerText(),/먼저 대화모임/);await sendChoice();await send('지금은 중단하고 따로 이야기해도 돼.');assert.match(await page.locator('#transcript').innerText(),/오늘은 만나지/);
+ assert.match(await page.locator('.question-choices').textContent(),/먼저 대화모임/);await sendChoice();await send('지금은 중단하고 따로 이야기해도 돼.');assert.match(await page.locator('#transcript').innerText(),/오늘은 만나지/);
  await click('finish');assert.equal(await page.locator('#outcome').inputValue(),'안전을 위한 보류·중단');await page.locator('#finish-form button[type="submit"]').click();await click('save');
  // Every provider is wired through the same UI; no real keys or paid API calls.
  const requests=[];let fail=false;

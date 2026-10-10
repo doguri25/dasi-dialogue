@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 
-// Measure rendered text, including words that wrap; a scrollable list is allowed,
-// but each individual card and button must contain all of its own text.
+// The four cards must fit in a 2x2 grid; detail text is read in the dialog.
 export async function checkQuestionControls(page){
  const result=await page.evaluate(()=>{
   const rgb=value=>value.match(/[\d.]+/g).slice(0,3).map(Number);
@@ -21,11 +20,18 @@ export async function checkQuestionControls(page){
   }
   for(const card of document.querySelectorAll('.choice-card')){
    const box=card.getBoundingClientRect();
-   for(const el of card.querySelectorAll('.choice-text,.choice-title,.choice-selected')){
+   for(const el of card.querySelectorAll('.choice-title,.choice-selected,.choice-open')){
     const range=document.createRange();range.selectNodeContents(el);const style=getComputedStyle(el);
     if([...range.getClientRects()].some(r=>!contains(box,r)))issues.push('Card text outside: '+el.className);
     if(style.webkitLineClamp!=='none'||style.textOverflow==='ellipsis'||el.scrollHeight>el.clientHeight+1||el.scrollWidth>el.clientWidth+1)issues.push('Clipped text: '+el.className);
    }
+  }
+  const grid=document.querySelector('.choice-grid');
+  if(grid){
+   const cards=[...grid.querySelectorAll('.choice-card')].map(el=>el.getBoundingClientRect()),box=grid.getBoundingClientRect();
+   if(cards.length!==4||cards.some(card=>!contains(box,card)))issues.push('All four cards must fit inside the grid');
+   if(cards.length===4&&(Math.abs(cards[0].top-cards[1].top)>1||Math.abs(cards[2].top-cards[3].top)>1||cards[2].top<=cards[0].bottom||cards[1].left<=cards[0].right))issues.push('Choices must form two rows and two columns');
+   if(grid.scrollHeight>grid.clientHeight+1)issues.push('Choice grid must not scroll');
   }
   const active=getComputedStyle(document.querySelector('.input-method.active')),inactive=getComputedStyle(document.querySelector('.input-method:not(.active)'));
   const card=document.querySelector('.choice-card:not(.selected)'),cardStyle=card&&getComputedStyle(card),panel=getComputedStyle(document.querySelector('.composer-wrap'));
