@@ -1,0 +1,9 @@
+.env*
+!.env.example
+node_modules/
+.test-artifacts/
+
+.DS_Store
+*.log
+coverage/
+docs/image-assets.local.json

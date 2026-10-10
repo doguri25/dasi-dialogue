@@ -1,0 +1,85 @@
+{
+  "mode": "built-in imagegen / generate",
+  "created": "2026-10-10",
+  "note": "Fictional character and topic illustrations. Grade portraits and category scenes are reused across scenarios. No real students or official application records.",
+  "assets": [
+    {
+      "id": "student-elementary-a",
+      "prompt": "Use case: illustration-story. Asset type: Korean school restorative dialogue practice app student portrait. Create a SINGLE fictional Korean elementary-school student aged 11, with a short black bob hairstyle, wearing a sage green sweatshirt, calm attentive expression, slight natural smile, not a real person. Warm high-quality matte clay 3D illustration, soft rounded forms, tactile paper-like finish, chunky solid shapes, gentle diffuse light, no outlines. Chest-up centered portrait, full head with generous breathing room, simple flat pale sage backdrop #e3efde, square composition. Palette dark forest green, sage, cream, subdued peach. Dignified and friendly, no tears, no villain/hero stereotypes. No text, no watermark, no borders, no other people. Deliver image only.",
+      "file": "public/assets/student-elementary-a.png",
+      "generationFile": "exec-4dbccd01-6993-414c-919b-4ae12a305af8.png"
+    },
+    {
+      "id": "student-elementary-b",
+      "prompt": "Use case: illustration-story. Asset: a SINGLE student portrait for a Korean restorative school dialogue app. Fictional person, no real identity. High-quality matte clay 3D illustration with soft rounded forms, tactile paper-like surfaces, chunky solid shapes, gentle diffuse light, no outlines. Chest-up centered portrait, full head visible with generous margin, square composition. Calm attentive neutral-friendly expression, no villain/hero stereotypes. No text, no watermark, no borders, no extra people. An 11-year-old Korean elementary school student with short slightly tousled black hair, wearing an ochre sweatshirt. Flat pale peach backdrop #ffeadb.",
+      "file": "public/assets/student-elementary-b.png",
+      "generationFile": "exec-a16376df-f80d-4548-8e44-2bcfaff744e7.png"
+    },
+    {
+      "id": "student-middle-a",
+      "prompt": "Use case: illustration-story. Asset: a SINGLE student portrait for a Korean restorative school dialogue app. Fictional person, no real identity. High-quality matte clay 3D illustration with soft rounded forms, tactile paper-like surfaces, chunky solid shapes, gentle diffuse light, no outlines. Chest-up centered portrait, full head visible with generous margin, square composition. Calm attentive neutral-friendly expression, no villain/hero stereotypes. No text, no watermark, no borders, no extra people. A 14-year-old Korean middle school student, shoulder-length black hair tied half back, casual muted sage cardigan over a cream shirt, recognizably a young teenager, flat pale sage backdrop #e3efde.",
+      "file": "public/assets/student-middle-a.png",
+      "generationFile": "exec-be9c053c-9d66-4af0-8e41-b32ad352703d.png"
+    },
+    {
+      "id": "student-middle-b",
+      "prompt": "Use case: illustration-story. Asset: a SINGLE student portrait for a Korean restorative school dialogue app. Fictional person, no real identity. High-quality matte clay 3D illustration with soft rounded forms, tactile paper-like surfaces, chunky solid shapes, gentle diffuse light, no outlines. Chest-up centered portrait, full head visible with generous margin, square composition. Calm attentive neutral-friendly expression, no villain/hero stereotypes. No text, no watermark, no borders, no extra people. A 14-year-old Korean middle school student, neatly cropped black hair, casual muted lavender hoodie, recognizably a young teenager, flat pale lavender backdrop #ece8f7.",
+      "file": "public/assets/student-middle-b.png",
+      "generationFile": "exec-621f2035-d74a-4a34-9ce1-e25035ca2cc4.png"
+    },
+    {
+      "id": "student-high-a",
+      "prompt": "Use case: illustration-story. Asset: a SINGLE student portrait for a Korean restorative school dialogue app. Fictional person, no real identity. High-quality matte clay 3D illustration with soft rounded forms, tactile paper-like surfaces, chunky solid shapes, gentle diffuse light, no outlines. Chest-up centered portrait, full head visible with generous margin, square composition. Calm attentive neutral-friendly expression, no villain/hero stereotypes. No text, no watermark, no borders, no extra people. A 17-year-old Korean high school student with a chin-length black bob, a sage cardigan over a white shirt, recognizably an older teen with age-appropriate proportions, flat pale sage backdrop #e3efde.",
+      "file": "public/assets/student-high-a.png",
+      "generationFile": "exec-aadb2484-6bf2-4e51-9de2-b647aa7794b4.png"
+    },
+    {
+      "id": "student-high-b",
+      "prompt": "Use case: illustration-story. Asset: a SINGLE student portrait for a Korean restorative school dialogue app. Fictional person, no real identity. High-quality matte clay 3D illustration with soft rounded forms, tactile paper-like surfaces, chunky solid shapes, gentle diffuse light, no outlines. Chest-up centered portrait, full head visible with generous margin, square composition. Calm attentive neutral-friendly expression, no villain/hero stereotypes. No text, no watermark, no borders, no extra people. A 17-year-old Korean high school student with short black side-parted hair, navy school-style jacket over a cream shirt without logos, recognizably an older teen with age-appropriate proportions, flat pale peach backdrop #ffeadb.",
+      "file": "public/assets/student-high-b.png",
+      "generationFile": "exec-60c8bec5-2ac5-4144-8398-4b32b78da28d.png"
+    },
+    {
+      "id": "scene-boundaries",
+      "prompt": "Use case: illustration-story. Create ONE landscape 3:2 situation illustration for a Korean restorative school conversation training app. All people fictional Korean characters, age appropriate, ordinary modest clothing. High-quality matte clay 3D animation illustration, soft rounded forms, tactile surfaces, chunky solid colored shapes, gentle diffuse light, no black outlines. Harmonious sage green, lavender, peach and warm cream palette. Carefully composed airy scene, medium-wide view, clean simple setting, full heads visible, useful negative space, not a collage. Faces empathetic and restrained, not exaggerated distressed or smiling at harm. No real identities, no readable text, no logos, no watermark, no border. Topic illustration, not an official record. A calm elementary classroom after art time. One child looks thoughtfully at a drawing with an unexpected crayon mark, another stands nearby holding a crayon looking uncertain. The page is abstract color only. Show the personal belongings and respectful distance. No angry confrontation.",
+      "file": "public/assets/scene-boundaries.png",
+      "generationFile": "exec-081acf30-a576-464f-b40e-9ee436e95bcb.png"
+    },
+    {
+      "id": "scene-words",
+      "prompt": "Use case: illustration-story. Create ONE landscape 3:2 situation illustration for a Korean restorative school conversation training app. All people fictional Korean characters, age appropriate, ordinary modest clothing. High-quality matte clay 3D animation illustration, soft rounded forms, tactile surfaces, chunky solid colored shapes, gentle diffuse light, no black outlines. Harmonious sage green, lavender, peach and warm cream palette. Carefully composed airy scene, medium-wide view, clean simple setting, full heads visible, useful negative space, not a collage. Faces empathetic and restrained, not exaggerated distressed or smiling at harm. No real identities, no readable text, no logos, no watermark, no border. Topic illustration, not an official record. A middle school hallway. One student quietly stands apart looking uncomfortable, while two classmates behind them pause their conversation and look uncertain. A subtle sense that careless words have hurt feelings, without cruel faces or explicit bullying. No speech text.",
+      "file": "public/assets/scene-words.png",
+      "generationFile": "exec-48f00b9c-5902-47f8-92db-c30525ca7809.png"
+    },
+    {
+      "id": "scene-exclusion",
+      "prompt": "Use case: illustration-story. Create ONE landscape 3:2 situation illustration for a Korean restorative school conversation training app. All people fictional Korean characters, age appropriate, ordinary modest clothing. High-quality matte clay 3D animation illustration, soft rounded forms, tactile surfaces, chunky solid colored shapes, gentle diffuse light, no black outlines. Harmonious sage green, lavender, peach and warm cream palette. Carefully composed airy scene, medium-wide view, clean simple setting, full heads visible, useful negative space, not a collage. Faces empathetic and restrained, not exaggerated distressed or smiling at harm. No real identities, no readable text, no logos, no watermark, no border. Topic illustration, not an official record. An elementary classroom group activity table with three children and a fourth nearby holding a notebook, unsure where to join. Leave an empty chair slightly pulled back. Everyone is human and thoughtful, no villain. Capture exclusion and the possibility of making space.",
+      "file": "public/assets/scene-exclusion.png",
+      "generationFile": "exec-e5007b18-b4de-4d1b-9599-a8f7627e8849.png"
+    },
+    {
+      "id": "scene-play",
+      "prompt": "Use case: illustration-story. Create ONE landscape 3:2 situation illustration for a Korean restorative school conversation training app. All people fictional Korean characters, age appropriate, ordinary modest clothing. High-quality matte clay 3D animation illustration, soft rounded forms, tactile surfaces, chunky solid colored shapes, gentle diffuse light, no black outlines. Harmonious sage green, lavender, peach and warm cream palette. Carefully composed airy scene, medium-wide view, clean simple setting, full heads visible, useful negative space, not a collage. Faces empathetic and restrained, not exaggerated distressed or smiling at harm. No real identities, no readable text, no logos, no watermark, no border. Topic illustration, not an official record. An elementary school playground just after an accidental bump in a ball game. A ball rests between two standing children, one rubbing an elbow gently, the other concerned, at a respectful distance. A bench and soft green schoolyard background. No wound, no violence, no dramatic pain.",
+      "file": "public/assets/scene-play.png",
+      "generationFile": "exec-cc4e9dea-858f-4c01-908e-aae7fc4ac8e9.png"
+    },
+    {
+      "id": "scene-digital",
+      "prompt": "Use case: illustration-story. Create ONE landscape 3:2 situation illustration for a Korean restorative school conversation training app. All people fictional Korean characters, age appropriate, ordinary modest clothing. High-quality matte clay 3D animation illustration, soft rounded forms, tactile surfaces, chunky solid colored shapes, gentle diffuse light, no black outlines. Harmonious sage green, lavender, peach and warm cream palette. Carefully composed airy scene, medium-wide view, clean simple setting, full heads visible, useful negative space, not a collage. Faces empathetic and restrained, not exaggerated distressed or smiling at harm. No real identities, no readable text, no logos, no watermark, no border. Topic illustration, not an official record. Two middle school students seated separately at a library table, one holding a phone, the other looking concerned. The phone screen contains only simple abstract geometric picture tiles, no words, no personal information. Convey tension after something was shared online, empathetic and calm.",
+      "file": "public/assets/scene-digital.png",
+      "generationFile": "exec-3bd36892-77e4-49fd-8701-0290d3e19442.png"
+    },
+    {
+      "id": "scene-teamwork",
+      "prompt": "Use case: illustration-story. Create ONE landscape 3:2 situation illustration for a Korean restorative school conversation training app. All people fictional Korean characters, age appropriate, ordinary modest clothing. High-quality matte clay 3D animation illustration, soft rounded forms, tactile surfaces, chunky solid colored shapes, gentle diffuse light, no black outlines. Harmonious sage green, lavender, peach and warm cream palette. Carefully composed airy scene, medium-wide view, clean simple setting, full heads visible, useful negative space, not a collage. Faces empathetic and restrained, not exaggerated distressed or smiling at harm. No real identities, no readable text, no logos, no watermark, no border. Topic illustration, not an official record. Two high school students at a classroom project table with a small unfinished cardboard model, blank papers and closed laptop. One is tired and uncertain, the other is ready to listen, balanced body language. Convey unequal teamwork without blaming or caricature.",
+      "file": "public/assets/scene-teamwork.png",
+      "generationFile": "exec-2456c98c-f40e-4940-ba6a-0746e8a23d23.png"
+    },
+    {
+      "id": "scene-support",
+      "prompt": "Use case: illustration-story. Create ONE landscape 3:2 situation illustration for a Korean restorative school conversation training app. All people fictional Korean characters, age appropriate, ordinary modest clothing. High-quality matte clay 3D animation illustration, soft rounded forms, tactile surfaces, chunky solid colored shapes, gentle diffuse light, no black outlines. Harmonious sage green, lavender, peach and warm cream palette. Carefully composed airy scene, medium-wide view, clean simple setting, full heads visible, useful negative space, not a collage. Faces empathetic and restrained, not exaggerated distressed or smiling at harm. No real identities, no readable text, no logos, no watermark, no border. Topic illustration, not an official record. A warm quiet school meeting room with a female teacher facilitator, one parent and a teenage student seated in a loose open circle. The adult pauses to give the student room to speak. Empty fourth chair, plant, tissue box. No forced handshake, no hugging, no text.",
+      "file": "public/assets/scene-support.png",
+      "generationFile": "exec-901c38a6-3080-4abc-8145-8f59d91750ec.png"
+    }
+  ]
+}
