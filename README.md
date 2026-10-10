@@ -8,7 +8,7 @@
 
 **[공개 앱 열기](https://dasi-dialogue.vercel.app)** — PC와 휴대전화에서 설치 없이 사용할 수 있습니다.
 
-Vercel에서 저장소를 연결하면 `vercel.json`에 따라 `public/` 화면과 Node.js API 함수가 함께 배포됩니다. Node.js 24를 사용하며 별도 빌드나 패키지 설치가 필요하지 않습니다. 사용자는 화면에서 자신의 API 키를 입력하므로 서버 환경 변수에 공용 AI 키를 등록하지 않습니다. 서버는 요청 본문이나 API 키를 로그로 남기지 않습니다.
+GitHub `main`에 푸시하면 같은 공개 주소가 자동 갱신됩니다. Vercel에서 저장소를 연결하면 `vercel.json`에 따라 `public/` 화면과 Node.js API 함수가 함께 배포됩니다. Node.js 24를 사용하며 별도 빌드나 패키지 설치가 필요하지 않습니다. 사용자는 화면에서 자신의 API 키를 입력하므로 서버 환경 변수에 공용 AI 키를 등록하지 않습니다. 서버는 요청 본문이나 API 키를 로그로 남기지 않습니다.
 
 HTTPS 주소에서 마이크 권한을 허용할 수 있습니다. 공개 주소·로컬 주소·다른 브라우저의 기록은 서로 공유되지 않습니다.
 
@@ -130,6 +130,8 @@ PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node tests/browser.mjs
 v0.2의 초안·선택 복원, 준비 상태, 전체 대화, 회고 내보내기는 `node tests/v02-browser.mjs`로 검사합니다.
 
 학생 답변별 선택지와 모바일 선택·전송·오류 후 복구는 `node tests/followups-browser.mjs`로 검사합니다.
+
+공개 배포의 HTTP 경로는 `TEST_URL=https://dasi-dialogue.vercel.app node tests/hosting-live.mjs`로 검사합니다. 유효한 API 키나 유료 호출 없이 화면·이미지·API 입력 검증을 확인합니다. 브라우저 검사에도 같은 `TEST_URL`을 지정할 수 있습니다.
 
 테스트가 만드는 `.test-artifacts/`는 개발용 스크린샷·검증 기록이며 배포 파일에 포함하지 않습니다. 브라우저 검사도 가짜 API 응답과 음성 인식 모의 객체를 사용하므로 실제 API 계정별 접근과 물리 마이크 동작을 검증한 것은 아닙니다.
 
