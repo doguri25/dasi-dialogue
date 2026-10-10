@@ -1,4 +1,4 @@
-import {reviewApplication} from './helpers.mjs';
+import {reviewApplication,setRoomPane} from './helpers.mjs';
 // Run with PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node tests/browser.mjs.
 import assert from 'node:assert/strict';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
@@ -36,10 +36,11 @@ try{
  assert.match(await page.locator('#transcript').innerText(),/멈춰도 돼/);
  await page.locator('#target').selectOption('a');assert.ok(!(await page.locator('#transcript').innerText()).includes('원하지 않으면 멈춰도 돼'));
  await send('그날 무슨 일이 있었는지 들려줄래?');await page.locator('#target').selectOption('g');await send('어떤 지원이 필요할까요?');
+ await setRoomPane(page,'notes');
  for(const k of ['v','a','g','safe'])await page.locator(`[data-check="${k}"]`).check();
- await pick();await click('advance');assert.match(await page.locator('.steps .current').innerText(),/본모임/);assert.equal(await page.locator('input[name="question-choice"]:checked').count(),0);await sendChoice();
+ await setRoomPane(page,'chat');await pick();await setRoomPane(page,'notes');await click('advance');assert.match(await page.locator('.steps .current').innerText(),/본모임/);assert.equal(await page.locator('input[name="question-choice"]:checked').count(),0);await sendChoice();
  await send('그 행동이 상대의 생활에 어떤 영향을 주었을까?');
- await page.locator('[data-check="main"]').check();assert.equal(await action('advance').isDisabled(),true);
+ await setRoomPane(page,'notes');await page.locator('[data-check="main"]').check();assert.equal(await action('advance').isDisabled(),true);
  for(const [k,v] of Object.entries({action:'상대 물건은 허락을 받고 사용하기',owner:'행동한 학생, 담임 지원',when:'오늘부터',support:'담임이 개별로 확인',review:'금요일 점심시간 담임이 개별 점검'}))await page.locator(`[data-agreement="${k}"]`).fill(v);
  await page.screenshot({path:'.test-artifacts/meeting-desktop.png',fullPage:false});
  await click('advance');assert.match(await page.locator('.steps .current').innerText(),/사후모임/);await sendChoice();
