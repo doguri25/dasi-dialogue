@@ -164,3 +164,8 @@
 - 상세 창 안쪽 여백 클릭과 창 안에서 시작해 바깥에서 끝난 드래그는 창을 닫지 않음을 1440px·390px에서 확인.
 - Node 단위·HTTP 검사 35개 통과. `browser.mjs`, `responsive.mjs`, `intake-browser.mjs`, `followups-browser.mjs`, `v02-browser.mjs`, `desktop-room.mjs`, `sounds-browser.mjs` 통과.
 - 사례 목록 1440·768·390px, 대화 화면 1440×1000·1024×700·390px 스크린샷 육안 검토. 실물 휴대전화는 사용하지 않음.
+
+## v0.3.1 — GitHub Pages 배포
+
+- `public/`을 `/dasi-dialogue/` 하위 경로로 제공하는 정적 서버에서 사례 30개, 그림 깨짐 0개, 시나리오 체험 전송·응답, 요청 오류 0건 확인. AI 연결 확인은 안내 문구로 대체됨을 확인.
+- Node 단위·HTTP 검사 35개 통과. 루트 주소의 `browser.mjs`, `responsive.mjs`, `intake-browser.mjs`, `followups-browser.mjs`, `v02-browser.mjs`, `desktop-room.mjs`, `sounds-browser.mjs` 통과.

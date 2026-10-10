@@ -14,7 +14,7 @@ test('all 120 training applications match their case, school grade and consent c
   const a=applicationFor(c,variant),s=newSession(c,variant);
   assert.equal(s.phase,'intake');assert.equal(s.messages.length,0);assert.ok(a.background.includes(c.summary));assert.equal(a.positions[0].name,c.victim.name);
   assert.equal(a.canPrepare,variant!=='unsafe'&&!(variant==='resistant'&&Number(c.id.slice(-2))%3===1));
-  assert.match(portraitFor(c,'v'),/^\/assets\/student-/);assert.notEqual(portraitFor(c,'v'),portraitFor(c,'a'));assert.match(sceneFor(c).src,/scene-/);
+  assert.match(portraitFor(c,'v'),/^assets\/student-/);assert.notEqual(portraitFor(c,'v'),portraitFor(c,'a'));assert.match(sceneFor(c).src,/scene-/);
  }
 });
 test('every application goes straight to a pre-meeting without review input or a decision',()=>{

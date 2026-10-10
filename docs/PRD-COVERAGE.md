@@ -1,4 +1,4 @@
-# PRD 적용 확인 — v0.3.0
+# PRD 적용 확인 — v0.3.1
 
 2026-10-10 현재 PRD와 코드를 대조했다. 기존의 핵심 기능은 구현되어 있었으며, v0.2에서 사용 흐름과 저장·내보내기의 완성도를 보완했다. ‘구현’과 실제 API/물리 기기 검증은 구분한다.
 
@@ -24,7 +24,7 @@
 | 질문 버튼 대비·글자 넘침 방지 | 진한 선택 탭, 흰색 카드와 경계, 작은 카드 제목·큰 글씨의 상세 창 | question-controls, desktop-room, responsive |
 | 효과음·음소거 유지 | 선택·전송·답변 도착, 브라우저 설정 저장·자동 재생 없음 | sounds, sounds-browser |
 | 모바일 선택 즉시 대화창 이동 | 구현 유지, 자동 전송 없음 | followups-browser |
-| 버전업·GitHub 저장소 | v0.3.0, 버전 일치 검사·CI 추가 | workspace, GitHub Actions |
+| 버전업·GitHub 저장소 | v0.3.1, 버전 일치 검사·CI 추가 | workspace, GitHub Actions |
 | 공개 웹 접속과 AI 중계 | HTTPS 화면 + Vercel Node.js 함수, GitHub main 자동 배포 | hosting, hosting-live |
 | 웹 첫 로딩 | WebP 13장, 합계 약 95% 용량 절감 | HTTP MIME·브라우저 화면 검사 |
 
