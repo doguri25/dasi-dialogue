@@ -5,7 +5,7 @@ import path from 'node:path';
 import {callAI,AppError} from './lib/providers.mjs';
 import {createAPIHandler,setSecurityHeaders,sendError} from './lib/http-api.mjs';
 const root=path.resolve(fileURLToPath(new URL('./public/',import.meta.url)));
-const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.png':'image/png'};
+const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp'};
 export function createApp(ai=callAI) {
  const api=createAPIHandler(ai,{protocol:'http'});
  return http.createServer(async(req,res)=>{

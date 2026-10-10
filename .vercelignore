@@ -1,0 +1,10 @@
+.test-artifacts/
+docs/
+tests/
+.github/
+.env*
+.vercel/
+node_modules/
+coverage/
+*.log
+.DS_Store

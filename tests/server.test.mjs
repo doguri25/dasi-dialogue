@@ -13,6 +13,7 @@ test('HTTP app serves assets, protects API origin, validates roles, and preserve
  for(const file of ['/app.js','/style.css','/scenarios.js','/engine.js','/mark.svg','/application.js','/application-view.js','/artwork.js','/followups.js','/workspace.js','/experience.js','/experience.css','/version.js','/assets/student-elementary-a.png','/assets/scene-support.png'])assert.equal((await fetch(base+file)).status,200);
  assert.equal((await fetch(base+'/server.mjs')).status,404);
  assert.equal((await fetch(base+'/assets/scene-support.png')).headers.get('content-type'),'image/png');
+ assert.equal((await fetch(base+'/assets/scene-support.webp')).headers.get('content-type'),'image/webp');
  const payload={provider:'anthropic',model:'claude-sonnet-4-6',apiKey:'dummy-secret-test'};
  const post=(endpoint,data,origin=base)=>fetch(base+endpoint,{method:'POST',headers:{'Content-Type':'application/json',Origin:origin},body:JSON.stringify(data)});
  assert.equal((await post('/api/check',payload,'https://other.example')).status,403);assert.equal(captured.length,0);
