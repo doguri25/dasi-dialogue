@@ -1,4 +1,5 @@
 import {reviewApplication} from './helpers.mjs';
+import {checkQuestionControls} from './question-controls.mjs';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
@@ -32,11 +33,11 @@ try{
  await pane('notes').click();await page.locator('[data-check="main"]').check();await page.locator('[data-agreement="action"]').fill('합의하지 못한 부분은 따로 확인');await page.locator('[data-agreement="review"]').fill('다음 주 교사가 개별 안전 점검');await page.locator('[data-action="advance"]').click();assert.match(await page.locator('.steps .current').innerText(),/사후모임/);
  await page.locator('#input-choices').click();
  for(const width of [320,390,768,1024,1440]){
-  await page.setViewportSize({width,height:900});await settle();await overflow(`Meeting ${width}`);
+  await page.setViewportSize({width,height:900});await settle();await overflow(`Meeting ${width}`);await checkQuestionControls(page);
   const info=await page.evaluate(()=>({width:innerWidth,bodyFont:parseFloat(getComputedStyle(document.body).fontSize),questionFont:parseFloat(getComputedStyle(document.querySelector('.choice-text')).fontSize),sendHeight:document.querySelector('#compose button[type="submit"]').getBoundingClientRect().height,notesVisible:document.querySelector('#facilitator-notes').getBoundingClientRect().width>0,navPosition:getComputedStyle(document.querySelector('.sidebar nav')).position}));
   assert.ok(info.questionFont>=18);assert.ok(info.sendHeight>=52);assert.equal(info.notesVisible,false);assert.equal(info.navPosition,width<=900?'fixed':'static');metrics.push(info);
   await page.locator('.composer-wrap').scrollIntoViewIfNeeded();await screenshot(`ui-questions-${width}`);
-  await page.locator('[data-action="text-size"]').click();await overflow(`Larger meeting ${width}`);await page.locator('[data-action="text-size"]').click();
+  await page.locator('[data-action="text-size"]').click();await overflow(`Larger meeting ${width}`);await checkQuestionControls(page);await page.locator('[data-action="text-size"]').click();
  }
  // Preference survives reload; no low-motion animation runs even on screen transitions/dialogs.
  await page.setViewportSize({width:390,height:844});await page.locator('[data-action="save"]').first().click();await page.locator('[data-action="text-size"]').click();await page.reload();await settle();assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).fontSize),'21px');await overflow('Mobile large library');await screenshot('ui-mobile-library-large');

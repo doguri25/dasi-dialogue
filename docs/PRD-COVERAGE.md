@@ -1,4 +1,4 @@
-# PRD 적용 확인 — v0.2.2
+# PRD 적용 확인 — v0.2.3
 
 2026-10-10 현재 PRD와 코드를 대조했다. 기존의 핵심 기능은 구현되어 있었으며, v0.2에서 사용 흐름과 저장·내보내기의 완성도를 보완했다. ‘구현’과 실제 API/물리 기기 검증은 구분한다.
 
@@ -20,9 +20,10 @@
 | 기록 저장·재개·삭제·내려받기 | 구현. 작성 중인 문장·발문 방식·선택 문장 복원, 내보내기에 회고 포함 | workspace, browser, v02-browser |
 | 코치와 회고 | 구현. 실제 질문 참고 장면 추가. 점수·공식 판정 없음 | core, workspace, v02-browser |
 | PC·모바일 구분, 큰 글자·부드러운 움직임 | 구현. 시작/진행/회고 화면 다듬기 | responsive, followups-browser, v02-browser |
-| PC 대화·예시를 한 화면에 표시 | 창 높이 고정, 선택 문장 전체 보기, 오른쪽 진행 노트 전환 | desktop-room, browser, responsive |
+| PC 대화·예시를 한 화면에 표시 | 창 높이 고정, 예시 전체 문장과 내부 스크롤, 오른쪽 진행 노트 전환 | desktop-room, browser, responsive |
+| 질문 버튼 대비·글자 넘침 방지 | 진한 선택 탭, 흰색 카드와 명확한 경계, 자연스러운 줄바꿈·카드 높이 | question-controls, desktop-room, responsive |
 | 모바일 선택 즉시 대화창 이동 | 구현 유지, 자동 전송 없음 | followups-browser |
-| 버전업·GitHub 저장소 | v0.2.2, 버전 일치 검사·CI 추가 | workspace, GitHub Actions |
+| 버전업·GitHub 저장소 | v0.2.3, 버전 일치 검사·CI 추가 | workspace, GitHub Actions |
 | 공개 웹 접속과 AI 중계 | HTTPS 화면 + Vercel Node.js 함수, GitHub main 자동 배포 | hosting, hosting-live |
 | 웹 첫 로딩 | WebP 13장, 합계 약 95% 용량 절감 | HTTP MIME·브라우저 화면 검사 |
 
