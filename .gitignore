@@ -7,3 +7,5 @@ node_modules/
 *.log
 coverage/
 docs/image-assets.local.json
+
+.vercel/

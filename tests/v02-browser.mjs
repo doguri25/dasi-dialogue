@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
+import {VERSION} from '../public/version.js';
 import {reviewApplication} from './helpers.mjs';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
 const browser=await chromium.launch({channel:'chrome',headless:true});
@@ -9,7 +10,7 @@ const base=process.env.TEST_URL||'http://127.0.0.1:3210',action=name=>page.locat
 const overflow=async label=>assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),label);
 const screenshot=async(name,selector)=>{if(selector)await page.locator(selector).scrollIntoViewIfNeeded();await page.evaluate(async()=>{await Promise.all(document.getAnimations().filter(a=>a.effect.getTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{})));});await page.screenshot({path:`.test-artifacts/${name}.png`});};
 try{
- await mkdir('.test-artifacts',{recursive:true});await page.goto(base);assert.match(await page.locator('footer').innerText(),/0.2.0/);
+ await mkdir('.test-artifacts',{recursive:true});await page.goto(base);assert.ok((await page.locator('footer').innerText()).includes(VERSION));
  await page.locator('#search').fill('검색결과없는값');await page.getByRole('button',{name:'전체 사례 보기',exact:true}).click();assert.equal(await page.locator('.case-card').count(),30);
  await action('quick').click();await page.locator('#start-form button[type="submit"]').click();await reviewApplication(page);
  await page.locator('#input-write').click();await page.locator('#draft').fill('민서에게만 물어볼 아직 보내지 않은 질문');await page.locator('#target').selectOption('a');assert.equal(await page.locator('#draft').inputValue(),'');await page.locator('#draft').fill('지우에게만 따로 물어볼 초안');await page.locator('#target').selectOption('v');assert.match(await page.locator('#draft').inputValue(),/민서에게만/);
