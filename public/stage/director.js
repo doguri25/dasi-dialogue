@@ -107,6 +107,20 @@ export function createDirector({mode='3d',reducedMotion=false,load3D,createFlat,
   await wait(reducedMotion?0:350,alive);
  }
 
+ // 첫 화면 미리보기: 두 학생이 소리 없이 번갈아 이야기하고 서로를 봅니다(자막 없음).
+ const LOBBY=['그때 정말 속상했어.','응, 나도 그 얘기 듣고 싶었어.','다음엔 먼저 물어볼게.','천천히 말해도 괜찮아.'];
+ async function lobby(my){
+  const alive=()=>my===token&&!detached;let turn=0;
+  await wait(1200,alive);
+  while(alive()){
+   const speaker=cast.seats[turn%cast.seats.length],other=cast.seats[(turn+1)%cast.seats.length];
+   setRole(other,'listening');setRole(speaker,'speaking',{mood:turn%3?'open':'calm',intensity:.6});
+   const {cues,duration}=speechTimeline(LOBBY[turn%LOBBY.length]);const start=performance.now();
+   await new Promise(res=>{(function tick(){if(!alive())return res();const t=performance.now()-start;if(t>=duration)return res();const c=cues.find(c=>t>=c.start&&t<c.start+c.duration);renderer?.setMouth(speaker,c?c.shape:'REST',c?c.open*.8:0);setTimeout(tick,40);})();});
+   renderer?.setMouth(speaker,'REST',0);setRole(speaker,'idle');
+   await wait(2200+Math.random()*1800,alive);turn++;
+  }
+ }
  const api={
   element,
   get mode(){return element.dataset.stageMode;},
@@ -128,6 +142,7 @@ export function createDirector({mode='3d',reducedMotion=false,load3D,createFlat,
    roleState.clear();for(const role of seats){const m=moods[role]||{};roleState.set(role,{state:'idle',mood:normalizeMood(m.mood,{risk:m.risk,speaker:role}),intensity:moodIntensity(m.risk)});}
    state='idle';setHost();setSpeaker(null);caption.hidden=true;capText.textContent='';capName.textContent='';
    applyAll();
+   if(phase==='lobby')lobby(token);
   },
   teacherSaid(text){
    interrupt();state='listening';setHost();setSpeaker(null);

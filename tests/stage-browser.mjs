@@ -94,6 +94,26 @@ try{
   await page.close();
  }
  if(run('director'))results.push('director: captions, skip, interrupt, order, 2D, context loss');
+
+ // 4. 사례 목록: 첫 화면에서는 3D 파일을 받지 않고, 한가해진 뒤 미리보기 무대가 열림. 설정에서 끌 수 있음.
+ if(run('library')){
+  const page=await browser.newPage({viewport:{width:1366,height:820},locale:'ko-KR'});
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.goto(base);
+  await page.waitForSelector('.hero-stage .stage-host[data-stage-mode="3d"]',{timeout:60000});
+  const timing=await page.evaluate(()=>({three:performance.getEntriesByType('resource').find(r=>/three-stage\.js/.test(r.name))?.startTime,fcp:performance.getEntriesByName('first-contentful-paint')[0]?.startTime}));
+  assert.ok(timing.fcp>0&&timing.three>timing.fcp,`3D files load only after first paint ${JSON.stringify(timing)}`);
+  await page.waitForFunction(()=>document.querySelector('.hero-stage canvas'),null,{timeout:60000});
+  await page.screenshot({path:'.test-artifacts/library-hero-stage.png'});
+  await page.locator('.topbar [data-action="settings"]').click();
+  await page.locator('input[name="stage-pref"][value="off"]').check();
+  assert.equal(await page.evaluate(()=>localStorage.getItem('dasi.stage')),'off');
+  await page.locator('[data-action="close"]').first().click();
+  assert.equal(await page.locator('.hero-stage .stage-host').count(),0,'stage off hides the 3D preview');
+  assert.equal(await page.locator('.hero-stage img').isVisible(),true);
+  await page.evaluate(()=>localStorage.removeItem('dasi.stage'));
+  assert.deepEqual(errors,[]);await page.close();results.push('library: no early 3D request, hero preview, preference off');
+ }
  await writeFile('.test-artifacts/stage-browser.json',JSON.stringify({passed:true,results},null,2));
  console.log(JSON.stringify({passed:true,results}));
 }finally{await browser.close();}
