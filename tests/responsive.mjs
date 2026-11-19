@@ -3,7 +3,7 @@ import {checkQuestionControls} from './question-controls.mjs';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
-const browser=await chromium.launch({channel:'chrome',headless:true});
+const browser=await chromium.launch({channel:process.env.PW_CHANNEL||'chrome',headless:true});
 const context=await browser.newContext({viewport:{width:1440,height:1000},locale:'ko-KR'});
 const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
 const base=process.env.TEST_URL||'http://127.0.0.1:3210';
@@ -16,6 +16,7 @@ const pane=which=>page.locator(`.mobile-room-tabs [data-pane="${which}"]`);
 const metrics=[];
 try{
  await page.goto(base);await settle();await screenshot('ui-desktop-library');
+ assert.equal(await page.locator('.sidebar').count(),0,'v0.4 replaces the sidebar with the top app bar');assert.equal(await page.locator('.topbar .app-nav').isVisible(),true);assert.equal(await page.locator('.topbar .brand').isVisible(),true);
  await page.locator('[data-action="quick"]').click();await page.locator('#start-form button[type="submit"]').click();await reviewApplication(page);await settle();
  assert.equal(await page.locator('.mobile-room-tabs').isVisible(),false);assert.equal(await page.locator('#conversation').isVisible(),true);assert.equal(await page.locator('#facilitator-notes').isVisible(),false);
  await page.locator('.composer-wrap').scrollIntoViewIfNeeded();await screenshot('ui-desktop-questions');
@@ -34,7 +35,7 @@ try{
  await page.locator('#input-choices').click();
  for(const width of [320,390,768,1024,1440]){
   await page.setViewportSize({width,height:900});await settle();await overflow(`Meeting ${width}`);await checkQuestionControls(page);
-  const info=await page.evaluate(()=>({width:innerWidth,bodyFont:parseFloat(getComputedStyle(document.body).fontSize),questionFont:parseFloat(getComputedStyle(document.querySelector('.choice-label')).fontSize),sendHeight:document.querySelector('#compose button[type="submit"]').getBoundingClientRect().height,notesVisible:document.querySelector('#facilitator-notes').getBoundingClientRect().width>0,navPosition:getComputedStyle(document.querySelector('.sidebar nav')).position}));
+  const info=await page.evaluate(()=>({width:innerWidth,bodyFont:parseFloat(getComputedStyle(document.body).fontSize),questionFont:parseFloat(getComputedStyle(document.querySelector('.choice-label')).fontSize),sendHeight:document.querySelector('#compose button[type="submit"]').getBoundingClientRect().height,notesVisible:document.querySelector('#facilitator-notes').getBoundingClientRect().width>0,navPosition:getComputedStyle(document.querySelector('.app-nav')).position,navInTopbar:!!document.querySelector('.topbar .app-nav')}));
   assert.ok(info.questionFont>=14&&info.questionFont<=16);assert.ok(info.sendHeight>=52);assert.equal(info.notesVisible,false);assert.equal(info.navPosition,width<=900?'fixed':'static');metrics.push(info);
   await page.locator('.composer-wrap').scrollIntoViewIfNeeded();await screenshot(`ui-questions-${width}`);
   await page.locator('[data-action="text-size"]').click();await overflow(`Larger meeting ${width}`);await checkQuestionControls(page);await page.locator('[data-action="text-size"]').click();

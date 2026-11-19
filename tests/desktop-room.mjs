@@ -3,7 +3,7 @@ import {mkdir,writeFile} from 'node:fs/promises';
 import {reviewApplication,setRoomPane,chooseQuestion} from './helpers.mjs';
 import {checkQuestionControls} from './question-controls.mjs';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
-const browser=await chromium.launch({channel:'chrome',headless:true});
+const browser=await chromium.launch({channel:process.env.PW_CHANNEL||'chrome',headless:true});
 const page=await browser.newPage({viewport:{width:1366,height:768},locale:'ko-KR'});
 const errors=[];page.on('pageerror',e=>errors.push(e.message));
 const base=process.env.TEST_URL||'http://127.0.0.1:3211';

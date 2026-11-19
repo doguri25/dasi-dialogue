@@ -3,7 +3,7 @@ import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {VERSION} from '../public/version.js';
 import {reviewApplication,chooseQuestion} from './helpers.mjs';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
-const browser=await chromium.launch({channel:'chrome',headless:true});
+const browser=await chromium.launch({channel:process.env.PW_CHANNEL||'chrome',headless:true});
 const context=await browser.newContext({viewport:{width:1440,height:1050},locale:'ko-KR'}),page=await context.newPage(),errors=[];
 page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
 const base=process.env.TEST_URL||'http://127.0.0.1:3210',action=name=>page.locator(`[data-action="${name}"]`).first();

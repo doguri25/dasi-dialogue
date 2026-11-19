@@ -1,0 +1,65 @@
+/* 앱 틀: PC는 위쪽 반투명 앱 바(로고 · 탐색 · 도구), 휴대전화·태블릿은 아래쪽 고정 탐색 */
+.workspace{min-height:100vh;display:flex;flex-direction:column}
+.topbar{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:20px;min-height:72px;padding:10px 28px;background:rgba(247,245,240,.78);-webkit-backdrop-filter:saturate(1.4) blur(16px);backdrop-filter:saturate(1.4) blur(16px);box-shadow:0 1px 0 var(--line)}
+.brand{display:flex;align-items:center;gap:11px;color:var(--ink);text-decoration:none;font-size:1.18rem;font-weight:850;letter-spacing:-.05em;line-height:1.2;border-radius:14px;padding:4px 6px 4px 0}
+.brand img{width:40px;height:40px;border-radius:12px;box-shadow:0 6px 14px -8px rgba(18,48,41,.6)}
+.brand small{display:block;font-size:.7rem;font-weight:600;letter-spacing:-.01em;color:var(--muted);margin-top:2px}
+.app-nav{justify-self:center;display:flex;gap:4px;padding:5px;border-radius:999px;background:rgba(29,47,43,.06);box-shadow:inset 0 0 0 1px var(--line)}
+.nav-link{display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:10px 18px;border-radius:999px;background:transparent;color:var(--ink-2);font-size:.88rem;font-weight:700;white-space:nowrap;transition:background .2s,color .2s,box-shadow .2s}
+.nav-link:hover{background:rgba(255,255,255,.7)}
+.nav-link.active{background:#fff;color:var(--primary-ink);font-weight:800;box-shadow:0 1px 2px rgba(18,48,41,.12),0 6px 16px -8px rgba(18,48,41,.35)}
+.nav-link .icon{width:21px;height:21px}
+.nav-count{min-width:24px;padding:0 7px;border-radius:999px;background:var(--primary-soft);color:var(--primary);font-size:.72rem;font-weight:800;text-align:center;line-height:1.7}
+.mobile-nav-label{display:none}
+.topbar-tools{display:flex;align-items:center;gap:8px}
+.top-button,.text-size-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:10px 16px;border-radius:14px;background:#fff;color:var(--ink-2);font-size:.86rem;font-weight:750;white-space:nowrap;box-shadow:inset 0 0 0 1px var(--line),0 1px 2px rgba(18,48,41,.06);transition:background .2s,color .2s,box-shadow .2s}
+.top-button:hover,.text-size-button:hover{background:#f4f8f4}
+.top-button .icon{width:21px;height:21px}
+.text-size-button[aria-pressed=true],.sound-toggle[aria-pressed=true]{background:var(--primary);color:#fff;box-shadow:none}
+.settings-button .connection-dot{width:8px;height:8px;border-radius:50%;background:#9ab88a;flex:none}
+.settings-button.connected .connection-dot{background:#3fa66a;box-shadow:0 0 0 3px rgba(63,166,106,.2)}
+.dot{display:inline-block;width:8px;height:8px;background:#94b977;border-radius:50%;flex:none}
+main{width:100%;max-width:1440px;margin:0 auto;padding:28px 32px 48px;flex:1}
+footer{display:flex;gap:12px;flex-wrap:wrap;align-items:baseline;max-width:1440px;width:100%;margin:0 auto;padding:22px 32px 34px;color:var(--muted);font-size:.78rem;line-height:1.8}
+.version-label{font-weight:750;white-space:nowrap}
+@media(min-width:901px) and (max-width:1180px){
+ .topbar{padding:10px 20px;gap:12px}
+ .brand small{display:none}
+ .nav-link{padding:10px 13px;font-size:.84rem}
+ .nav-link .icon{display:none}
+ .top-button,.text-size-button{padding:10px 12px}
+ .sound-toggle>span{display:none}
+ main{padding:24px 22px 40px}
+}
+@media(max-width:900px){
+ /* 반투명 흐림(backdrop-filter)은 안쪽 고정 탐색의 기준 상자가 되므로 휴대전화에서는 쓰지 않습니다. */
+ .topbar{grid-template-columns:minmax(0,1fr) auto;gap:10px;min-height:64px;padding:10px 16px;background:rgba(247,245,240,.97);-webkit-backdrop-filter:none;backdrop-filter:none}
+ .brand{font-size:1.12rem}.brand img{width:36px;height:36px}.brand small{font-size:.68rem}
+ .app-nav{position:fixed;left:10px;right:10px;bottom:10px;z-index:25;justify-self:stretch;display:flex;gap:4px;padding:7px 7px max(7px,env(safe-area-inset-bottom));border-radius:26px;background:rgba(255,255,255,.86);-webkit-backdrop-filter:saturate(1.5) blur(18px);backdrop-filter:saturate(1.5) blur(18px);box-shadow:0 12px 40px -12px rgba(18,48,41,.4),inset 0 0 0 1px var(--line)}
+ .nav-link{flex:1;min-width:0;min-height:62px;flex-direction:column;justify-content:center;gap:3px;padding:7px 3px;border-radius:19px;font-size:.78rem;line-height:1.35}
+ .nav-link.active{background:var(--primary-soft);box-shadow:none}
+ .nav-link .icon{display:block;width:24px;height:24px}
+ .desktop-nav-label,.nav-count{display:none}.mobile-nav-label{display:inline}
+ .topbar-tools{gap:6px}
+ .top-button,.text-size-button{min-height:48px;padding:9px 12px;font-size:.84rem}
+ .sound-toggle{width:48px;padding:10px}.sound-toggle>span{display:none}
+ .settings-button>span{display:none}.settings-button{width:48px;padding:10px}
+ main{padding:14px 16px 36px}
+ footer{padding:18px 18px 118px}
+}
+@media(max-width:360px){.brand small{display:none}.text-size-button{padding:9px 9px;font-size:.8rem}.nav-link{font-size:.72rem}}
+/* PC 연습 화면: 창 높이에 맞춰 페이지 전체가 스크롤되지 않게 합니다(높이 560px 이상). */
+@media(min-width:901px) and (min-height:560px){
+ :root[data-practice=active] .workspace{height:100dvh;min-height:0}
+ :root[data-practice=active] .topbar{flex:none;min-height:60px;padding-top:6px;padding-bottom:6px}
+ :root[data-practice=active] .brand img{width:34px;height:34px}
+ :root[data-practice=active] .brand small{display:none}
+ :root[data-practice=active] .nav-link,:root[data-practice=active] .top-button,:root[data-practice=active] .text-size-button{min-height:44px}
+ :root[data-practice=active] main{display:flex;flex-direction:column;flex:1;min-height:0;max-width:none;padding:12px 20px 16px}
+ :root[data-practice=active] footer{display:none}
+ :root[data-practice=active] #toast{top:68px}
+}
+@media(min-width:901px) and (min-height:560px) and (max-height:680px){
+ :root[data-practice=active] .topbar{min-height:52px;padding-top:3px;padding-bottom:3px}
+ :root[data-practice=active] main{padding-top:6px}
+}

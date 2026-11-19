@@ -5,7 +5,7 @@ import {mkdir,readFile,writeFile} from 'node:fs/promises';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
 const {scenarios}=await import('../public/scenarios.js');
 await mkdir('.test-artifacts',{recursive:true});
-const browser=await chromium.launch({channel:'chrome',headless:true});
+const browser=await chromium.launch({channel:process.env.PW_CHANNEL||'chrome',headless:true});
 const context=await browser.newContext({viewport:{width:1440,height:1080},locale:'ko-KR'});
 const page=await context.newPage();const errors=[];page.on('pageerror',err=>errors.push(err.message));
 const base=process.env.TEST_URL||'http://127.0.0.1:3210';
