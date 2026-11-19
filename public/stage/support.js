@@ -8,13 +8,14 @@ export function resolveStageMode({setting='auto',webgl2=false,saveData=false,dev
  return '3d';
 }
 
-// 해상도 배율을 먼저 낮추고, 그다음 그림자, 마지막으로 빛 번짐을 끕니다.
+// 해상도 배율을 먼저 낮추고, 화소마다 비싼 결(요철·코팅, fine)을 끄고, 그다음 그림자,
+// 마지막으로 빛 번짐과 창의 빛줄기·먼지(atmosphere)를 끕니다. 그린 질감과 접지 그림자는 가벼워 늘 남습니다.
 export const QUALITY_LEVELS=Object.freeze([
- {scale:1,shadows:true,bloom:true},
- {scale:.85,shadows:true,bloom:true},
- {scale:.7,shadows:true,bloom:true},
- {scale:.7,shadows:false,bloom:true},
- {scale:.7,shadows:false,bloom:false}
+ {scale:1,shadows:true,bloom:true,fine:true,atmosphere:true},
+ {scale:.85,shadows:true,bloom:true,fine:true,atmosphere:true},
+ {scale:.7,shadows:true,bloom:true,fine:false,atmosphere:true},
+ {scale:.7,shadows:false,bloom:true,fine:false,atmosphere:true},
+ {scale:.7,shadows:false,bloom:false,fine:false,atmosphere:false}
 ]);
 
 // best: 올라갈 수 있는 가장 좋은 화질 단계. 그래픽 문맥을 잃었다 돌아온 뒤에는 한 단계 낮춘 화질이 상한입니다.

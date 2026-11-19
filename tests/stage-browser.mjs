@@ -402,6 +402,40 @@ try{
   assert.deepEqual(errors,[]);await page.close();
   results.push('dialog: 3D rests under other dialogs, keeps drawing inside its own');
  }
+ // 14. 대화실 그래픽(폭주 구구단 방식): 직접 그린 질감, 접지 그림자, 창의 빛줄기와 먼지, 방에서 구운 반사광. 다 쓰면 모두 돌려줌.
+ if(run('craft')){
+  const {page,errors}=await labPage('cast=main&mood=calm&noslow=1',{width:960,height:600,scale:1});
+  const info=await page.evaluate(async()=>{
+   const T=await import('./vendor/three-stage.js'),{buildRoom}=await import('./stage/room.js');
+   let made=0,freed=0;const dispose=T.Texture.prototype.dispose;
+   const room=buildRoom(T,{anisotropy:8});
+   const st=room.stats();
+   room.update(.4,1);const a=room.dustSample();room.update(.4,1.4);const b=room.dustSample();
+   const still=buildRoom(T,{anisotropy:8,still:true});still.update(.4,1);const c=still.dustSample();still.update(.4,1.4);const d=still.dustSample();
+   room.arrange('main',['v','a','g']);
+   const bumps=()=>{let n=0;room.group.traverse(o=>{if(o.material?.bumpMap||o.material?.clearcoat>0)n++;});return n;};
+   const fineBefore=bumps();room.setFine(false);const fineAfter=bumps();room.setFine(true);const fineBack=bumps();
+   room.setDetail(false);const atmosphereOff=room.stats().atmosphere;room.setDetail(true);
+   const env=room.environment(new T.WebGLRenderer({canvas:document.createElement('canvas')}));
+   T.Texture.prototype.dispose=function(){freed++;return dispose.call(this);};
+   room.dispose();still.dispose();T.Texture.prototype.dispose=dispose;
+   return {...st,moved:a!==b,stillMoved:c!==d,freed,env:!!env?.texture,fineBefore,fineAfter,fineBack,atmosphereOff};
+  });
+  assert.ok(info.textures>=9,`procedural textures (${info.textures})`);
+  assert.ok(info.anisotropy>=8,'floor and rug stay sharp at a grazing angle');
+  assert.ok(info.contactShadows>=4,'contact shadows under the table, chairs and pots');
+  assert.ok(info.beams>=2&&info.dust>=60,'window light beams and dust motes');
+  assert.ok(info.glows>=2,'the window view and the lamp glow for the bloom');
+  assert.equal(info.moved,true,'dust drifts in the light');
+  assert.equal(info.stillMoved,false,'with reduced motion the dust holds still');
+  assert.equal(info.env,true,'reflections are baked from the room itself');
+  assert.ok(info.fineBefore>10&&info.fineAfter===0&&info.fineBack===info.fineBefore,`low quality drops bump and coating, and brings them back (${info.fineBefore}/${info.fineAfter}/${info.fineBack})`);
+  assert.equal(info.atmosphereOff,false,'the lowest quality turns the light beams and dust off');
+  assert.equal(info.freed,info.textures*2,`every texture is released (${info.freed}/${info.textures*2})`);
+  await page.locator('#stage').screenshot({path:'.test-artifacts/stage-craft.png'});
+  assert.deepEqual(errors,[]);await page.close();
+  results.push(`craft: ${info.textures} textures, ${info.contactShadows} contact shadows, ${info.beams} beams, ${info.dust} dust motes, room-baked reflections, all released`);
+ }
  await writeFile('.test-artifacts/stage-browser.json',JSON.stringify({passed:true,results},null,2));
  console.log(JSON.stringify({passed:true,results}));
 }finally{await browser.close();}

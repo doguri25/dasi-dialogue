@@ -14,7 +14,8 @@ if(q.has('director')){
   window.__lab={ready:true,director:d,scenario};
  }catch(err){window.__lab.error=String(err?.stack||err);}
 }else try{
- const r=await createRenderer3D(document.getElementById('stage'),{preserveDrawingBuffer:q.has('preserve'),reducedMotion:q.has('still')});
+ // ?quality=0..4: 화질 단계를 고정합니다(느린 개발 환경에서도 실제 PC의 화질로 사진을 찍기 위함).
+ const r=await createRenderer3D(document.getElementById('stage'),{preserveDrawingBuffer:q.has('preserve'),reducedMotion:q.has('still'),fixedLevel:q.has('quality')?Number(q.get('quality')):undefined});
  const looks={v:look,a:look==='middle-b'?'middle-a':'middle-b',g:'guardian'};
  const roles=castName==='pre'?['v']:seatsFor(castName,'all');
  r.setCast({phase:castName,seats:roles.map(role=>({role,lookKey:looks[role],mood,intensity:.8}))});

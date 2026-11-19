@@ -11,7 +11,7 @@ const TENSION={calm:0,open:-.2,hesitant:.25,anxious:.6,defensive:.55,upset:.5,wi
 // 앉은 2등신 캐릭터의 머리 가운데 높이(바닥 기준)
 const HEAD_Y={elementary:.68,middle:.7,high:.72,adult:.74,undefined:.7};
 
-export async function createRenderer3D(container,{reducedMotion=false,preserveDrawingBuffer=false,onSlow,bestLevel=0}={}) {
+export async function createRenderer3D(container,{reducedMotion=false,preserveDrawingBuffer=false,onSlow,bestLevel=0,fixedLevel}={}) {
  const canvas=document.createElement('canvas');canvas.className='stage-canvas-3d';container.appendChild(canvas);
  let renderer;
  try{renderer=new T.WebGLRenderer({canvas,antialias:false,alpha:false,powerPreference:'high-performance',preserveDrawingBuffer});}
@@ -21,12 +21,16 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
  renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFShadowMap;
 
  const scene=new T.Scene();scene.background=new T.Color('#efe6d6');
- const pmrem=new T.PMREMGenerator(renderer),env=pmrem.fromScene(new T.RoomEnvironment(),.04);scene.environment=env.texture;scene.environmentIntensity=.28;
- const room=buildRoom(T);scene.add(room.group);
+ const room=buildRoom(T,{anisotropy:renderer.capabilities.getMaxAnisotropy?.()||1,still:reducedMotion});scene.add(room.group);
+ // 반사광은 이 방을 본뜬 장면에서 굽습니다(실패하면 three.js의 기본 방 조명).
+ let env=null;try{env=room.environment(renderer);}catch{env=null;}
+ if(!env){const pm=new T.PMREMGenerator(renderer);env=pm.fromScene(new T.RoomEnvironment(),.04);pm.dispose();}
+ scene.environment=env.texture;scene.environmentIntensity=.55;
  const camera=new T.PerspectiveCamera(40,16/10,.05,30);
  const post=createPost(T,renderer,scene,camera);
 
- const best=Math.max(0,Math.min(QUALITY_LEVELS.length-1,bestLevel|0));
+ const fixed=Number.isInteger(fixedLevel)?Math.max(0,Math.min(QUALITY_LEVELS.length-1,fixedLevel)):null;   /* 실험실 전용: 자동 화질을 멈춤 */
+ const best=fixed??Math.max(0,Math.min(QUALITY_LEVELS.length-1,bestLevel|0));
  const cast=new Map();let phase='pre',focus=null,level=best,disposed=false,paused=false,lost=false;
  const lostFns=[];
  const camPos=new T.Vector3(0,.8,1.05),camLook=new T.Vector3(0,.6,-.8),wantPos=camPos.clone(),wantLook=camLook.clone();let hFov=46,wantFov=46,minV=30,seed=1;
@@ -62,7 +66,7 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
  // 화면 밖으로 스크롤되면 그리기를 멈춥니다.
  let visible=true;const io=new IntersectionObserver(([entry])=>{visible=entry.isIntersecting;debug.visible=visible;if(visible&&!paused&&!lost&&!disposed&&!raf){lastDraw=0;raf=requestAnimationFrame(frame);}});io.observe(container);
 
- function applyQuality(){const q=QUALITY_LEVELS[level];room.setShadows(q.shadows);renderer.shadowMap.enabled=q.shadows;post.setBloom(q.bloom);resize();}
+ function applyQuality(){const q=QUALITY_LEVELS[level];room.setShadows(q.shadows);renderer.shadowMap.enabled=q.shadows;post.setBloom(q.bloom);room.setFine(q.fine);room.setDetail(q.atmosphere);for(const c of cast.values())c.char.setFine?.(q.fine);resize();}
 
  function setCast({seats=[],phase:ph='pre'}={}){
   phase=ph;const roles=seats.map(s=>s.role);
@@ -70,7 +74,7 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
   const anchors=room.arrange(ph==='pre'?'pre':ph==='lobby'?'lobby':'main',roles);
   for(const s of seats){
    let c=cast.get(s.role);
-   if(!c){const look=LOOKS[s.lookKey]||LOOKS['elementary-a'];c={char:createCharacter(T,look,{seed:seed++,still:reducedMotion}),look,lookKey:s.lookKey,state:'idle',mood:s.mood||'calm',intensity:s.intensity??.55};scene.add(c.char.group);cast.set(s.role,c);}
+   if(!c){const look=LOOKS[s.lookKey]||LOOKS['elementary-a'];c={char:createCharacter(T,look,{seed:seed++,still:reducedMotion}),look,lookKey:s.lookKey,state:'idle',mood:s.mood||'calm',intensity:s.intensity??.55};c.char.setFine?.(QUALITY_LEVELS[level].fine);scene.add(c.char.group);cast.set(s.role,c);}
    const a=anchors[s.role];c.char.group.position.copy(a.position);c.baseY=a.position.y;c.char.group.rotation.y=a.facing;
    c.mood=s.mood||c.mood;c.intensity=s.intensity??c.intensity;c.state='idle';c.char.setPose(poseFor(c.mood,{state:'idle',intensity:c.intensity}),'idle');
   }
@@ -129,7 +133,7 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
   if((evalT+=interval/1000)>=1&&samples.length>=4){
    const sorted=samples.slice().sort((a,b)=>a-b),median=sorted[Math.floor(sorted.length/2)],span=evalT;samples=[];evalT=0;
    debug.fps=Math.round(1000/Math.max(1,median));
-   let next=nextQualityLevel(median,level,best);if(median>90)next=nextQualityLevel(median,next,best);
+   let next=fixed??nextQualityLevel(median,level,best);if(median>90&&fixed===null)next=nextQualityLevel(median,next,best);
    if(next!==level){level=next;debug.level=level;applyQuality();}
    if(isTooSlow(median,level)){slowT+=span;if(slowT>=3&&!slowSent){slowSent=true;onSlow?.();}}else slowT=0;
   }
@@ -148,6 +152,7 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
    const lift=hover===role?1:0;c.lift=reducedMotion?lift:(c.lift||0)+(lift-(c.lift||0))*(1-Math.exp(-dt*12));
    if(typeof c.baseY==='number'){c.char.group.position.y=c.baseY+c.lift*.02;c.char.group.scale.setScalar(1+c.lift*.025);}
   }
+  room.update(dt,time);
   post.render(dt,time);started=true;debug.draws++;
   return true;
  }
@@ -174,6 +179,6 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
    canvas.addEventListener('webglcontextrestored',on);
    return ()=>canvas.removeEventListener('webglcontextrestored',on);
   },
-  dispose(){if(disposed)return;disposed=true;lostFns.length=0;cancelAnimationFrame(raf);ro.disconnect();io.disconnect();document.removeEventListener('visibilitychange',onVisibility);for(const c of cast.values())c.char.dispose();cast.clear();room.dispose();post.dispose();env.texture.dispose();pmrem.dispose();renderer.dispose();canvas.remove();}
+  dispose(){if(disposed)return;disposed=true;lostFns.length=0;cancelAnimationFrame(raf);ro.disconnect();io.disconnect();document.removeEventListener('visibilitychange',onVisibility);for(const c of cast.values())c.char.dispose();cast.clear();room.dispose();post.dispose();env.dispose();renderer.dispose();canvas.remove();}
  };
 }

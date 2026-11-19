@@ -25,6 +25,12 @@ export function createCharacter(T,look,{seed=1,still=false}={}) {
   mats.set(key,m);return m;
  };
  const plain=(color,opts={})=>{const key='p'+color+JSON.stringify(opts);if(!mats.has(key))mats.set(key,new T.MeshStandardMaterial({color,roughness:.35,...opts}));return mats.get(key);};
+ // 그래픽(v0.8): 브라우저에서는 옷에 뜨개 결 요철, 눈동자에 위아래 그라데이션, 피부 가장자리에 따뜻한 빛을 더합니다.
+ const texs=[],browser=typeof document!=='undefined';
+ const canvasTex=(w,h,draw,{color=false,repeat=[1,1]}={})=>{if(!browser)return null;const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new T.CanvasTexture(c);if(color)t.colorSpace=T.SRGBColorSpace;t.wrapS=t.wrapT=T.RepeatWrapping;t.repeat.set(...repeat);texs.push(t);return t;};
+ const knitTex=canvasTex(128,96,(g,w,h)=>{g.fillStyle='#7a7a7a';g.fillRect(0,0,w,h);for(let y=0;y<h;y+=8)for(let x=0;x<w;x+=10){const v=150+Math.round(rand()*50);g.fillStyle=`rgb(${v},${v},${v})`;g.beginPath();g.ellipse(x+3,y+4,2.4,4.2,-.5,0,6.2832);g.fill();g.beginPath();g.ellipse(x+7,y+4,2.4,4.2,.5,0,6.2832);g.fill();}},{repeat:[6,5]});
+ const cloths=[];
+ const cloth=(color,o={})=>{if(!knitTex)return clay(color,o);const key='c'+color+(o.side||'');if(mats.has(key))return mats.get(key);const m=clay(color,o).clone();m.bumpMap=knitTex;m.bumpScale=.55;m.sheen=.6;mats.set(key,m);cloths.push(m);return m;};
  const geo=g=>{geoms.push(g);return g;};
  const SPH=geo(new T.SphereGeometry(1,40,28)),SPH_S=geo(new T.SphereGeometry(1,18,14));
  const mesh=(parent,g,m,{p=[0,0,0],r=[0,0,0],s=[1,1,1]}={})=>{const o=new T.Mesh(g,m);o.position.set(...p);o.rotation.set(...r);o.scale.set(...s);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o;};
@@ -41,19 +47,19 @@ export function createCharacter(T,look,{seed=1,still=false}={}) {
  const {H,W}=A,depth=.82;
  const lathe=(scale,phiStart=0,phiLength=Math.PI*2)=>geo(new T.LatheGeometry([[0,0],[.7,0],[.93,.08],[1,.3],[.97,.55],[.86,.78],[.66,.94],[.36,1.02],[0,1.04]].map(([x,y])=>new T.Vector2(x*W*scale,y*H)),48,phiStart,phiLength));
  const topColor=look.top,under=look.under;
- mesh(torso,lathe(1),clay(look.topKind==='cardigan'?under:topColor),{p:[0,.02,0],s:[1,1,depth]});
+ mesh(torso,lathe(1),cloth(look.topKind==='cardigan'?under:topColor),{p:[0,.02,0],s:[1,1,depth]});
  if(look.topKind==='cardigan'){
-  mesh(torso,lathe(1.04,.42,Math.PI*2-.84),clay(topColor,{side:T.DoubleSide}),{p:[0,.018,0],s:[1,1.004,depth]});
+  mesh(torso,lathe(1.04,.42,Math.PI*2-.84),cloth(topColor,{side:T.DoubleSide}),{p:[0,.018,0],s:[1,1.004,depth]});
   for(let i=0;i<2;i++)mesh(torso,SPH_S,clay('#efe5d0'),{p:[W*.3,.02+H*(.4+i*.2),W*depth*.98],s:[.011,.011,.007]});
  }
  if(look.topKind==='jacket'){
-  mesh(torso,SPH,clay(under),{p:[0,.02+H*.82,W*depth*.84],r:[.15,0,0],s:[W*.32,H*.22,.035]});
+  mesh(torso,SPH,cloth(under),{p:[0,.02+H*.82,W*depth*.84],r:[.15,0,0],s:[W*.32,H*.22,.035]});
   const lapel=clay(new T.Color(topColor).multiplyScalar(.82).getStyle());
   for(const s of [-1,1])mesh(torso,SPH,lapel,{p:[s*W*.24,.02+H*.74,W*depth*.88],r:[.12,0,s*.45],s:[W*.11,H*.26,.026]});
  }
  if(look.topKind==='hoodie'){
-  mesh(torso,geo(new T.TorusGeometry(W*.58,W*.26,16,32,Math.PI*1.25)),clay(topColor),{p:[0,.02+H*.98,-W*.1],r:[Math.PI/2-.2,0,-Math.PI*.125],s:[1,1,.9]});
-  mesh(torso,SPH,clay(topColor),{p:[0,.02+H*.32,W*depth*.84],s:[W*.6,H*.16,.035]});
+  mesh(torso,geo(new T.TorusGeometry(W*.58,W*.26,16,32,Math.PI*1.25)),cloth(topColor),{p:[0,.02+H*.98,-W*.1],r:[Math.PI/2-.2,0,-Math.PI*.125],s:[1,1,.9]});
+  mesh(torso,SPH,cloth(topColor),{p:[0,.02+H*.32,W*depth*.84],s:[W*.6,H*.16,.035]});
   for(const s of [-1,1])mesh(torso,geo(new T.CylinderGeometry(.006,.006,H*.24,8)),clay('#f6f1e6'),{p:[s*W*.18,.02+H*.72,W*depth*.97]});
  }
  if(look.topKind==='sweatshirt'||look.topKind==='knit')mesh(torso,geo(new T.TorusGeometry(W*.36,look.topKind==='knit'?.024:.018,14,36)),clay(new T.Color(topColor).multiplyScalar(.9).getStyle()),{p:[0,.02+H*1.0,0],r:[Math.PI/2,0,0],s:[1,depth*1.15,1]});
@@ -61,14 +67,22 @@ export function createCharacter(T,look,{seed=1,still=false}={}) {
  // ---- 큰 머리(목 없이 어깨에 얹힘) ----
  head.position.set(0,.02+H+R*.72,0);
  const skin=clay(look.skin,{rough:.72,sheen:.55});
+ // 살갗 가장자리(볼·귀·턱선)에 따뜻한 빛이 살짝 비칩니다: 빛이 피부 속으로 스미는 느낌을 값싸게 흉내 냅니다.
+ skin.onBeforeCompile=sh=>{sh.fragmentShader=sh.fragmentShader.replace('#include <opaque_fragment>','outgoingLight+=vec3(1.0,.5,.38)*pow(1.0-clamp(dot(normal,normalize(vViewPosition)),0.0,1.0),2.6)*.16*(.35+.65*clamp(dot(outgoingLight,vec3(.33)),0.0,1.0));\n#include <opaque_fragment>');};
+ skin.customProgramCacheKey=()=>'dasi-skin-rim';
  mesh(head,SPH,skin,{s:[R*1.04,R*.97,R*.98]});
  for(const s of [-1,1])blob(head,{lat:-6,lon:s*90,rx:.02*k,ry:.03*k,rz:.025*k,mat:skin,d:R*1.02});
  blob(head,{lat:-17,lon:0,d:R*.98,rx:.016*k,ry:.012*k,rz:.012*k,color:new T.Color(look.skin).multiplyScalar(.95).getStyle()});
  for(const s of [-1,1])blob(head,{lat:-21,lon:s*40,d:R*.99,rx:.03*k,ry:.019*k,rz:.006,mat:clay(look.cheek||'#eda394',{sheen:.2})});
 
  // ---- 눈·눈썹·입(얼굴 아래쪽의 큰 눈) ----
+ // 눈동자: 위는 짙고 아래로 갈수록 따뜻하게 밝아지는 그라데이션(구의 위아래 좌표에 그려 앞에서 보면 세로로 물듭니다).
+ function irisMat(){
+  const t=canvasTex(4,128,(g,w,h)=>{const gr=g.createLinearGradient(0,0,0,h);gr.addColorStop(0,'#140d0b');gr.addColorStop(.38,'#241813');gr.addColorStop(.62,'#4a3024');gr.addColorStop(.78,'#7d5137');gr.addColorStop(.9,'#9a6845');gr.addColorStop(1,'#3b2a22');g.fillStyle=gr;g.fillRect(0,0,w,h);},{color:true});
+  return t?(()=>{const m=new T.MeshStandardMaterial({map:t,roughness:.2});mats.set('iris',m);return m;})():plain('#3b2a22',{roughness:.22});
+ }
  const eyes=[],brows=[];
- const sclera=plain('#fbf7f2',{roughness:.5}),iris=plain('#3b2a22',{roughness:.22}),pupil=plain('#1b1210',{roughness:.2}),shine=new T.MeshBasicMaterial({color:new T.Color(1.6,1.6,1.6)});
+ const sclera=plain('#fbf7f2',{roughness:.5}),iris=irisMat(),pupil=plain('#1b1210',{roughness:.2}),shine=new T.MeshBasicMaterial({color:new T.Color(1.6,1.6,1.6)});
  for(const s of [-1,1]){
   const a=anchor(face,-5,s*23,R*.985),g=new T.Group();a.add(g);
   const m=(gg,mm,o)=>{const x=mesh(g,gg,mm,o);x.castShadow=false;return x;};
@@ -96,11 +110,11 @@ export function createCharacter(T,look,{seed=1,still=false}={}) {
  if(typeof document!=='undefined'){
   const c=document.createElement('canvas');c.width=128;c.height=64;const g=c.getContext('2d');g.fillStyle='#808080';g.fillRect(0,0,128,64);
   for(let x=0;x<128;x+=2){const v=110+Math.round(rand()*90);g.fillStyle=`rgb(${v},${v},${v})`;g.fillRect(x,0,1+(rand()<.3?1:0),64);}
-  strandTex=new T.CanvasTexture(c);strandTex.wrapS=strandTex.wrapT=T.RepeatWrapping;
+  strandTex=new T.CanvasTexture(c);strandTex.wrapS=strandTex.wrapT=T.RepeatWrapping;texs.push(strandTex);
  }
  const hairMat=(repeat=1)=>{const key='hair'+repeat;if(mats.has(key))return mats.get(key);const base=new T.Color(look.hairColor);
   const m=new T.MeshPhysicalMaterial({color:base,roughness:.52,metalness:0,sheen:.7,sheenRoughness:.45,sheenColor:base.clone().lerp(new T.Color('#ffffff'),.55),side:T.DoubleSide});
-  if(strandTex){const t=strandTex.clone();t.needsUpdate=true;t.repeat.set(repeat,1);m.bumpMap=t;m.bumpScale=1.4;}
+  if(strandTex){const t=strandTex.clone();t.needsUpdate=true;t.repeat.set(repeat,1);texs.push(t);m.bumpMap=t;m.bumpScale=1.4;}
   mats.set(key,m);return m;};
  const hairGroup=new T.Group();head.add(hairGroup);
  const H01=n=>{const x=Math.sin(n*127.1+seed*311.7)*43758.5453;return x-Math.floor(x);};
@@ -157,7 +171,7 @@ export function createCharacter(T,look,{seed=1,still=false}={}) {
  }
 
  // ---- 짧고 부드러운 팔: 어깨에서 한 덩어리로 돌아갑니다(팔꿈치 마디 없음) ----
- const sleeve=clay(topColor),armLen=A.arm,armR=.044*k*.9;
+ const sleeve=cloth(topColor),armLen=A.arm,armR=.044*k*.9;
  const armGeo=geo(new T.CapsuleGeometry(armR,armLen-armR*2,10,16));armGeo.translate(0,-armLen/2+armR*.4,0);
  const arms=[-1,1].map(s=>{
   const pivot=new T.Group();pivot.position.set(s*W*.8,.02+H*.8,0);torso.add(pivot);
@@ -166,7 +180,7 @@ export function createCharacter(T,look,{seed=1,still=false}={}) {
   return {s,pivot,limbMesh,hand,aim:new T.Vector3(0,-1,0)};
  });
  // 다리: 앉은 자세의 짧은 다리와 동그란 신발
- const bottomMat=clay(look.bottom||BOTTOM[look.age]||'#4b5265');
+ const bottomMat=cloth(look.bottom||BOTTOM[look.age]||'#4b5265');
  const legR=.05*k*.85;
  for(const s of [-1,1]){
   const hip=new T.Vector3(s*W*.42,.05,.02),knee=new T.Vector3(s*W*.46,.05,.02+A.thigh),foot=new T.Vector3(s*W*.48,.05-A.shin,.04+A.thigh);
@@ -243,6 +257,8 @@ export function createCharacter(T,look,{seed=1,still=false}={}) {
    const curve=Math.max(-1,Math.min(1,p.smile));lineGroup.scale.set((1-p.lipPress*.25)*(1+Math.max(0,curve)*.15),curve>=0?.15+curve*.85:-(.15+(-curve)*.85),1);
    for(const arm of arms){arm.pivot.position.y=.02+H*(.8+.08*p.shoulders);aimArm(arm,dt,time);}
   },
-  dispose(){root.removeFromParent();geoms.forEach(g=>g.dispose());mats.forEach(m=>m.dispose());}
+  // 낮은 화질: 옷의 뜨개 결 요철을 내려놓습니다.
+  setFine(on){for(const m of cloths){const want=on?knitTex:null;if(m.bumpMap!==want){m.bumpMap=want;m.needsUpdate=true;}}},
+  dispose(){root.removeFromParent();geoms.forEach(g=>g.dispose());mats.forEach(m=>m.dispose());texs.forEach(t=>t.dispose());}
  };
 }

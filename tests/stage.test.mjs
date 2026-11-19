@@ -94,6 +94,12 @@ test('stage mode and quality ladder',()=>{
  assert.equal(nextQualityLevel(40,0),1);assert.equal(nextQualityLevel(15,2),1);assert.equal(nextQualityLevel(25,2),2);assert.equal(nextQualityLevel(60,4),4);assert.equal(nextQualityLevel(10,0),0);
  assert.equal(isTooSlow(55,4),true);assert.equal(isTooSlow(55,3),false);assert.equal(isTooSlow(45,4),false);
 });
+test('the quality ladder gives up fine surface detail before shadows, and atmosphere only at the bottom',()=>{
+ // 요철·코팅 같은 화소마다 비싼 효과를 먼저 끄고(그림자보다 먼저), 빛줄기·먼지는 맨 아래 단계에서 끕니다.
+ assert.deepEqual(QUALITY_LEVELS.map(q=>q.fine),[true,true,false,false,false]);
+ assert.deepEqual(QUALITY_LEVELS.map(q=>q.atmosphere),[true,true,true,true,false]);
+ assert.ok(QUALITY_LEVELS.findIndex(q=>!q.fine)<QUALITY_LEVELS.findIndex(q=>!q.shadows));
+});
 test('after a lost graphics context, quality never climbs back above the lowered ceiling',()=>{
  // 문맥을 잃었다 돌아오면 한 단계 낮춘 화질이 상한입니다. 빨라져도 그 위로 올리지 않고, 느려지면 더 낮춥니다.
  assert.equal(nextQualityLevel(10,2,2),2);

@@ -12,6 +12,10 @@ void main(){
  col=mix(col,vec3(l),.12*tense);
  col*=mix(vec3(1.),vec3(.96,.985,1.04),tense);
  col*=mix(vec3(1.),vec3(1.04,1.,.95),warm);
+ // 오후 햇빛의 색: 밝은 곳은 살짝 따뜻하게, 그늘은 살짝 서늘하게(폭주 구구단 grade.frag의 노을·밤 갈라 물들이기를 낮의 방에 맞춤)
+ l=dot(col,vec3(.2126,.7152,.0722));
+ col=mix(col*vec3(.95,.985,1.045),col*vec3(1.035,1.,.95),smoothstep(.04,.55,l));
+ col=mix(vec3(l),col,1.06);
  col*=1.-smoothstep(.42,.95,r)*.24;
  col+=(h(vUv*913.+fract(uTime)*41.)-.5)*.012;
  gl_FragColor=vec4(col,1.);
