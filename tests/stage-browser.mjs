@@ -42,7 +42,7 @@ try{
  }
  if(run('looks'))results.push(quick?'characters render (quick)':'characters render for 7 looks x 4 moods');
  // 2. 말하는 장면과 여러 명이 앉은 장면
- if(run('casts'))for(const q of ['look=middle-b&mood=open&state=speaking','cast=main&mood=hesitant']){
+ if(run('casts'))for(const q of ['look=middle-b&mood=open&state=speaking','cast=main&mood=hesitant','cast=lobby&mood=calm']){
   const {page,errors}=await labPage(q+'&preserve=1',{width:1280,height:720});
   assert.ok(await centerDeviation(page)>12,q+' blank');
   await page.screenshot({path:`.test-artifacts/lab-${q.replace(/[^a-z]+/g,'-')}.png`});
@@ -53,7 +53,7 @@ try{
  // 3. 감독: 자막·말하기 순서·끼어들기·2D 대체·문맥 손실
  for(const mode of run('director')?['3d','2d']:[]){
   console.log('director',mode);
-  const {page,errors}=await labPage(`director=1&mode=${mode}`,{width:960,height:600,scale:1});
+  const {page,errors}=await labPage(`director=1&mode=${mode}&noslow=1`,{width:960,height:600,scale:1});
   const host=page.locator('.stage-host');
   assert.equal(await host.getAttribute('data-stage-mode'),mode);
   assert.equal(await host.getAttribute('aria-hidden'),'true');
@@ -122,6 +122,41 @@ try{
   assert.deepEqual(gl.slice(0,2),[],'no WebGL errors while the stage waits off-screen');
   const t0=Date.now();await quick.reload({timeout:15000});assert.ok(Date.now()-t0<15000);
   await quick.close();results.push('library: leaving during 3D load causes no GL errors');
+ }
+
+ // 5. 다듬기: 아주 긴 답, 화면 크기 바꾸기, 느린 기기
+ if(run('polish')){
+  let {page,errors}=await labPage('director=1&mode=3d&noslow=1',{width:1366,height:768,scale:1});
+  const long='말하기 어려웠던 장면을 천천히 들어 주셨으면 좋겠어요. '.repeat(60).trim().slice(0,3000);
+  const done=page.evaluate(long=>window.__lab.director.speak([{speaker:'v',text:long,mood:'hesitant'}],{tts:false}),long).catch(e=>e);
+  await page.waitForFunction(()=>document.querySelector('.stage-host').dataset.stageState==='speaking');
+  await page.waitForTimeout(1500);await page.evaluate(()=>window.__lab.director.skip());
+  await page.waitForFunction(long=>document.querySelector('.stage-caption-text').textContent===long,long,{timeout:3000});
+  const box=await page.evaluate(()=>{const h=document.querySelector('.stage-host').getBoundingClientRect(),c=document.querySelector('.stage-caption').getBoundingClientRect(),t=document.querySelector('.stage-caption-text');return {ratio:c.height/h.height,bottom:t.scrollHeight-t.scrollTop-t.clientHeight};});
+  assert.ok(box.ratio<=.345,`caption stays within a third of the stage (${box.ratio.toFixed(2)})`);
+  assert.ok(box.bottom<=2,'caption shows its last line');
+  await done;
+  for(const [w,h,large] of [[390,844,false],[1024,700,true],[1366,768,false]]){
+   await page.setViewportSize({width:w,height:h});await page.evaluate(large=>document.documentElement.dataset.textSize=large?'large':'normal',large);
+   await page.waitForTimeout(900);
+   const m=await page.evaluate(()=>{const c=document.querySelector('.stage-host canvas'),h=document.querySelector('.stage-host').getBoundingClientRect();return {cw:c.clientWidth,ch:c.clientHeight,hw:h.width,hh:h.height,bw:c.width,bh:c.height};});
+   assert.ok(Math.abs(m.cw-m.hw)<=2&&Math.abs(m.ch-m.hh)<=2,`canvas fills the stage at ${w}x${h} ${JSON.stringify(m)}`);
+   assert.ok(Math.abs(m.bw/m.bh-m.cw/m.ch)<.03,`drawing buffer keeps the aspect at ${w}x${h}`);
+  }
+  assert.deepEqual(errors,[]);await page.close();
+  // 느린 기기: CPU 4배 느리게 → 화질을 낮추거나 그림 무대로 바뀌고, 화면은 계속 반응함
+  ({page,errors}=await labPage('director=1&mode=3d',{width:1366,height:768,scale:1}));
+  const cdp=await page.context().newCDPSession(page);await cdp.send('Emulation.setCPUThrottlingRate',{rate:4});
+  await page.evaluate(()=>window.__lab.director.speak([{speaker:'v',text:'천천히 이야기해 볼게요. '.repeat(12),mood:'calm'}],{tts:false}));
+  const after=await page.evaluate(()=>({level:window.__lab.director.renderer.debug?.level||0,mode:document.querySelector('.stage-host').dataset.stageMode}));
+  assert.ok(after.level>0||after.mode==='2d',`slow device lowers quality ${JSON.stringify(after)}`);
+  const lagNow=()=>page.evaluate(async()=>{let worst=0;for(let i=0;i<5;i++){const t=performance.now();await new Promise(r=>setTimeout(r,0));worst=Math.max(worst,performance.now()-t);await new Promise(r=>setTimeout(r,100));}return worst;});
+  let lag=Infinity,state=after;const until=Date.now()+20000;
+  while(Date.now()<until){lag=await lagNow();state=await page.evaluate(()=>({level:window.__lab.director.renderer.debug?.level||0,mode:document.querySelector('.stage-host').dataset.stageMode}));if(lag<500)break;}
+  console.log('event loop lag under 4x CPU (ms)',Math.round(lag),JSON.stringify(state));
+  assert.ok(lag<500,`within 20s the stage adapts so a click handler runs within 500ms (worst lag ${Math.round(lag)}ms, ${JSON.stringify(state)})`);
+  await cdp.send('Emulation.setCPUThrottlingRate',{rate:1});
+  assert.deepEqual(errors,[]);await page.close();results.push('polish: long caption, resize, slow device');
  }
  await writeFile('.test-artifacts/stage-browser.json',JSON.stringify({passed:true,results},null,2));
  console.log(JSON.stringify({passed:true,results}));

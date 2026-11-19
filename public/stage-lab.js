@@ -8,7 +8,7 @@ window.__lab={ready:false};
 if(q.has('director')){
  try{
   const {getStage}=await import('./stage/index.js');const {scenarios}=await import('./scenarios.js');
-  const d=getStage({forceMode:q.get('mode')||'3d'}),scenario=scenarios[0];
+  const d=getStage({forceMode:q.get('mode')||'3d',slowFallback:!q.has('noslow')}),scenario=scenarios[0];
   d.attach(document.getElementById('stage'));d.setCast({scenario,phase:'pre',target:'v',moods:{}});await d.ready();
   window.__lab={ready:true,director:d,scenario};
  }catch(err){window.__lab.error=String(err?.stack||err);}

@@ -55,6 +55,8 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
   renderer.setSize(w,h,false);post.setSize(w,h);camera.aspect=w/h;applyFov();sized=w+'x'+h;
  }
  const ro=new ResizeObserver(()=>resize());ro.observe(container);
+ // 화면 밖으로 스크롤되면 그리기를 멈춥니다.
+ let visible=true;const io=new IntersectionObserver(([entry])=>{visible=entry.isIntersecting;debug.visible=visible;if(visible&&!paused&&!lost&&!disposed&&!raf){lastDraw=0;raf=requestAnimationFrame(frame);}});io.observe(container);
 
  function applyQuality(){const q=QUALITY_LEVELS[level];room.setShadows(q.shadows);renderer.shadowMap.enabled=q.shadows;post.setBloom(q.bloom);resize();}
 
@@ -83,23 +85,26 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
  function setFocus(role){focus=role&&cast.has(role)?role:null;shot();if(reducedMotion){camPos.copy(wantPos);camLook.copy(wantLook);hFov=wantFov;}}
 
  // 그리기 반복: 아무도 말하지 않으면 초당 30프레임, 프레임 시간 중앙값으로 화질을 조절합니다.
- let raf=0,last=0,lastDraw=0,started=false,time=0,samples=[],evalT=0,slowT=0,sized='';
- const debug={fps:0,level:0,paused:false};
+ let raf=0,last=0,lastDraw=0,started=false,time=0,samples=[],evalT=0,slowT=0,sized='',slowSent=false;
+ const debug={fps:0,level:0,paused:false,visible:true};
  function frame(now){
   if(paused||lost||disposed){raf=0;return;}
   raf=requestAnimationFrame(frame);
-  if(!hasSize()){lastDraw=0;return;}
+  if(!visible){raf&&cancelAnimationFrame(raf);raf=0;lastDraw=0;return;}
+  if(!hasSize()||document.querySelector('dialog[open]')){lastDraw=0;return;}   /* 대화창이 열려 있으면 그리지 않습니다 */
   if(sized!==container.clientWidth+'x'+container.clientHeight)resize();
   const speaking=[...cast.values()].some(c=>c.state==='speaking'),target=speaking?1000/60:1000/30;
   if(lastDraw&&now-lastDraw<target-4)return;
   const interval=lastDraw?now-lastDraw:target;lastDraw=now;
   const dt=Math.min(.1,interval/1000);time+=dt;
-  if(interval<1000)samples.push(interval-(target-1000/60));
-  if((evalT+=dt)>=2&&samples.length>8){
-   const sorted=samples.slice().sort((a,b)=>a-b),median=sorted[Math.floor(sorted.length/2)];samples=[];evalT=0;
+  if(interval<4000)samples.push(interval-(target-1000/60));   /* 아주 느린 기기도 셉니다. 탭을 숨겼다 돌아온 간격은 visibilitychange에서 지웁니다. */
+  // 1초마다 중앙값을 보고 화질을 조절합니다. 아주 느리면(90ms 넘음) 두 단계씩 낮춥니다.
+  if((evalT+=interval/1000)>=1&&samples.length>=4){
+   const sorted=samples.slice().sort((a,b)=>a-b),median=sorted[Math.floor(sorted.length/2)],span=evalT;samples=[];evalT=0;
    debug.fps=Math.round(1000/Math.max(1,median));
-   const next=nextQualityLevel(median,level);if(next!==level){level=next;debug.level=level;applyQuality();}
-   if(isTooSlow(median,level)){slowT+=2;if(slowT>=3)onSlow?.();}else slowT=0;
+   let next=nextQualityLevel(median,level);if(median>90)next=nextQualityLevel(median,next);
+   if(next!==level){level=next;debug.level=level;applyQuality();}
+   if(isTooSlow(median,level)){slowT+=span;if(slowT>=3&&!slowSent){slowSent=true;onSlow?.();}}else slowT=0;
   }
   const kc=reducedMotion?1:1-Math.exp(-dt*2.4);
   camPos.lerp(wantPos,kc);camLook.lerp(wantLook,kc);hFov+=(wantFov-hFov)*kc;
@@ -115,6 +120,7 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
  }
  resize();setCast({seats:[],phase:'pre'});raf=requestAnimationFrame(frame);
 
+ document.addEventListener('visibilitychange',()=>{lastDraw=0;samples=[];evalT=0;});
  canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();lost=true;lostFns.forEach(fn=>{try{fn();}catch{}});});
 
  return {
@@ -124,6 +130,6 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
   pause(){paused=true;debug.paused=true;if(raf){cancelAnimationFrame(raf);raf=0;}},
   resume(){paused=false;debug.paused=false;lastDraw=0;resize();if(!raf&&!lost&&!disposed)raf=requestAnimationFrame(frame);},
   onLost(fn){lostFns.push(fn);},
-  dispose(){if(disposed)return;disposed=true;cancelAnimationFrame(raf);ro.disconnect();for(const c of cast.values())c.char.dispose();cast.clear();room.dispose();post.dispose();env.texture.dispose();pmrem.dispose();renderer.dispose();canvas.remove();}
+  dispose(){if(disposed)return;disposed=true;cancelAnimationFrame(raf);ro.disconnect();io.disconnect();for(const c of cast.values())c.char.dispose();cast.clear();room.dispose();post.dispose();env.texture.dispose();pmrem.dispose();renderer.dispose();canvas.remove();}
  };
 }

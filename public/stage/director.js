@@ -8,7 +8,7 @@ import {roleName} from '../scenarios.js';
 
 const wait=(ms,alive)=>new Promise(res=>{const end=performance.now()+ms;(function tick(){if(!alive()||performance.now()>=end)return res();setTimeout(tick,Math.min(50,end-performance.now()));})();});
 
-export function createDirector({mode='3d',reducedMotion=false,load3D,createFlat,onNotice}={}) {
+export function createDirector({mode='3d',reducedMotion=false,load3D,createFlat,onNotice,slowFallback=true}={}) {
  const element=document.createElement('div');
  element.className='stage-host';element.setAttribute('aria-hidden','true');
  element.dataset.stageMode=mode;element.dataset.stageState='idle';
@@ -37,7 +37,7 @@ export function createDirector({mode='3d',reducedMotion=false,load3D,createFlat,
   const container=document.createElement('div');container.className='stage-render';
   let next;
   if(kind==='3d'){
-   try{const create=await load3D();next=await create(container,{reducedMotion,onSlow:()=>fallback('slow')});}
+   try{const create=await load3D();next=await create(container,{reducedMotion,onSlow:slowFallback?()=>fallback('slow'):null});}
    catch{next=null;}
    if(!next){onNotice?.('이 기기에서는 3D 장면을 열 수 없어 그림 무대로 보여 드려요.');kind='2d';}
   }

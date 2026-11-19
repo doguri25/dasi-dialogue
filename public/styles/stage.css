@@ -1,5 +1,6 @@
 /* 무대: 3D/2D 렌더러가 들어가는 칸과 자막. 무대 자체는 장식(aria-hidden)이고 정보는 자막·대화 기록이 전합니다. */
 .stage-host{position:relative;width:100%;height:100%;min-height:0;overflow:hidden;border-radius:inherit;background:radial-gradient(120% 90% at 50% 20%,#f7f0e4 0%,#ece2d1 60%,#e1d5c0 100%);isolation:isolate}
+.stage-host,.stage-host *{box-sizing:border-box}
 .stage-view,.stage-render{position:absolute;inset:0}
 .stage-render canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .stage-host[data-stage-mode="3d"] .stage-view:empty::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.45) 50%,transparent 80%) 0 0/200% 100%;animation:stage-shimmer 1.6s linear infinite}
@@ -7,7 +8,7 @@
 .stage-caption{position:absolute;left:50%;bottom:clamp(10px,3%,22px);transform:translateX(-50%);width:min(92%,760px);max-height:34%;display:flex;flex-direction:column;gap:2px;padding:10px 16px 12px;border-radius:18px;background:rgba(24,46,41,.78);color:#fff;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 12px 30px -16px rgba(0,0,0,.5);z-index:2}
 .stage-caption[hidden]{display:none}
 .stage-caption-name{font-size:.78rem;font-weight:750;letter-spacing:-.01em;color:#cfe3d3}
-.stage-caption-text{margin:0;font-size:1.02rem;line-height:1.55;font-weight:600;overflow:hidden;word-break:keep-all;overflow-wrap:anywhere;min-height:1.55em}
+.stage-caption-text{margin:0;flex:1 1 auto;min-height:0;font-size:1.02rem;line-height:1.55;font-weight:600;overflow:hidden;word-break:keep-all;overflow-wrap:anywhere;min-height:1.55em}
 .stage-host[data-stage-state="speaking"] .stage-caption-name::after{content:"";display:inline-block;width:6px;height:6px;margin-left:8px;border-radius:50%;background:#9fe0b4;vertical-align:middle;animation:stage-pulse 1s ease-in-out infinite}
 @keyframes stage-pulse{50%{opacity:.25}}
 /* 그림 무대(2D) */

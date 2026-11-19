@@ -25,12 +25,13 @@ export function writeStagePreference(value) {
  return v;
 }
 export function onStageNotice(fn){noticeFn=fn;}
-export function getStage({forceMode}={}) {
+export function getStage({forceMode,slowFallback=true}={}) {
  if(!director)director=createDirector({
   mode:forceMode||stageMode(),
   reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches,
   load3D:()=>import('./render3d.js').then(m=>m.createRenderer3D),
   createFlat:createFlatRenderer,
+  slowFallback,
   onNotice:text=>noticeFn?.(text)
  });
  return director;
