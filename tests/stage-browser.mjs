@@ -7,7 +7,8 @@ const require=createRequire(import.meta.url);
 let pw;try{pw=await import(process.env.PLAYWRIGHT_MODULE||'playwright');}catch{pw=require('/opt/node-tools/node_modules/playwright');}
 const chromium=pw.chromium||pw.default.chromium;
 const base=process.env.TEST_URL||'http://127.0.0.1:3210';
-const browser=await chromium.launch({headless:true,...(process.env.PW_CHANNEL?{channel:process.env.PW_CHANNEL}:{})});
+const launch=()=>chromium.launch({headless:true,...(process.env.PW_CHANNEL?{channel:process.env.PW_CHANNEL}:{})});
+let browser=await launch();
 const results=[];
 const only=(process.env.STAGE_ONLY||'').split(',').filter(Boolean),run=name=>!only.length||only.includes(name),quick=process.env.STAGE_QUICK==='1';
 await mkdir('.test-artifacts',{recursive:true});
@@ -31,6 +32,8 @@ const centerDeviation=page=>page.evaluate(()=>{
 try{
  // 1. 캐릭터 한 명이 실제로 그려지는지, 생김새·감정별 사진
  if(run('looks'))for(const look of quick?['elementary-a','guardian']:['elementary-a','elementary-b','middle-a','middle-b','high-a','high-b','guardian']){
+  // 소프트웨어 GPU(SwiftShader)는 큰 화면을 여러 장 그리면 메모리가 쌓이므로 생김새마다 브라우저를 새로 엽니다.
+  await browser.close();browser=await launch();
   for(const mood of quick?['defensive']:['calm','defensive','anxious','open']){
    const {page,errors}=await labPage(`look=${look}&mood=${mood}&preserve=1`);
    const dev=await centerDeviation(page);
