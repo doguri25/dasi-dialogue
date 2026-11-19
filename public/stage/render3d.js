@@ -11,7 +11,7 @@ const TENSION={calm:0,open:-.2,hesitant:.25,anxious:.6,defensive:.55,upset:.5,wi
 // 앉은 2등신 캐릭터의 머리 가운데 높이(바닥 기준)
 const HEAD_Y={elementary:.68,middle:.7,high:.72,adult:.74,undefined:.7};
 
-export async function createRenderer3D(container,{reducedMotion=false,preserveDrawingBuffer=false,onSlow}={}) {
+export async function createRenderer3D(container,{reducedMotion=false,preserveDrawingBuffer=false,onSlow,bestLevel=0}={}) {
  const canvas=document.createElement('canvas');canvas.className='stage-canvas-3d';container.appendChild(canvas);
  let renderer;
  try{renderer=new T.WebGLRenderer({canvas,antialias:false,alpha:false,powerPreference:'high-performance',preserveDrawingBuffer});}
@@ -26,7 +26,8 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
  const camera=new T.PerspectiveCamera(40,16/10,.05,30);
  const post=createPost(T,renderer,scene,camera);
 
- const cast=new Map();let phase='pre',focus=null,level=0,disposed=false,paused=false,lost=false;
+ const best=Math.max(0,Math.min(QUALITY_LEVELS.length-1,bestLevel|0));
+ const cast=new Map();let phase='pre',focus=null,level=best,disposed=false,paused=false,lost=false;
  const lostFns=[];
  const camPos=new T.Vector3(0,.8,1.05),camLook=new T.Vector3(0,.6,-.8),wantPos=camPos.clone(),wantLook=camLook.clone();let hFov=46,wantFov=46,minV=30,seed=1;
  const teacherHead=new T.Vector3(0,.78,SEAT_R+.15);
@@ -100,14 +101,14 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
  function screenOf(role){const h=headOf(role);if(!h)return null;h.project(camera);return {x:+h.x.toFixed(3),y:+h.y.toFixed(3)};}
  // 그리기 반복: 아무도 말하지 않으면 초당 30프레임, 프레임 시간 중앙값으로 화질을 조절합니다.
  let raf=0,last=0,lastDraw=0,started=false,time=0,samples=[],evalT=0,slowT=0,sized='',slowSent=false;
- const debug={fps:0,level:0,paused:false,visible:true,attention:null};
+ const debug={fps:0,level,paused:false,visible:true,attention:null};
  // 마우스(선생님의 손짓)를 따라 보기: 무대 위 좌표(-1~1)를 교사 자리 앞의 한 점으로 바꿉니다.
  let pointer=null;const pointerWorld=new T.Vector3(),drift=new T.Vector3();
  // 그리기가 잇달아 실패하면(셰이더·드라이버 오류 등) 매 프레임 오류를 내며 멈추지 않고, 문맥을 잃었을 때처럼 그림 무대로 넘깁니다.
  let frameErrors=0;
  function onFrameError(err){
   if(++frameErrors===1){try{console.warn('다시, 대화 3D 그리기 오류:',err);}catch{}}
-  if(frameErrors>=3&&!lost){lost=true;if(raf){cancelAnimationFrame(raf);raf=0;}lostFns.forEach(fn=>{try{fn();}catch{}});}
+  if(frameErrors>=3&&!lost){lost=true;if(raf){cancelAnimationFrame(raf);raf=0;}lostFns.forEach(fn=>{try{fn('errors');}catch{}});}
  }
  function frame(now){
   if(paused||lost||disposed){raf=0;return;}
@@ -127,7 +128,7 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
   if((evalT+=interval/1000)>=1&&samples.length>=4){
    const sorted=samples.slice().sort((a,b)=>a-b),median=sorted[Math.floor(sorted.length/2)],span=evalT;samples=[];evalT=0;
    debug.fps=Math.round(1000/Math.max(1,median));
-   let next=nextQualityLevel(median,level);if(median>90)next=nextQualityLevel(median,next);
+   let next=nextQualityLevel(median,level,best);if(median>90)next=nextQualityLevel(median,next,best);
    if(next!==level){level=next;debug.level=level;applyQuality();}
    if(isTooSlow(median,level)){slowT+=span;if(slowT>=3&&!slowSent){slowSent=true;onSlow?.();}}else slowT=0;
   }
@@ -149,10 +150,12 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
   post.render(dt,time);started=true;
   return true;
  }
- resize();setCast({seats:[],phase:'pre'});raf=requestAnimationFrame(frame);
+ if(best>0)applyQuality();else resize();
+ setCast({seats:[],phase:'pre'});raf=requestAnimationFrame(frame);
 
  const onVisibility=()=>{lastDraw=0;samples=[];evalT=0;};document.addEventListener('visibilitychange',onVisibility);
- canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();lost=true;lostFns.forEach(fn=>{try{fn();}catch{}});});
+ // 문맥이 끊기면 그리기를 멈추고 알립니다. 다 쓴 무대(dispose)는 더 알리지 않고, 되살리지도 않습니다.
+ canvas.addEventListener('webglcontextlost',e=>{if(disposed)return;e.preventDefault();lost=true;if(raf){cancelAnimationFrame(raf);raf=0;}lostFns.forEach(fn=>{try{fn('context');}catch{}});});
 
  return {
   kind:'3d',canvas,debug,
@@ -164,6 +167,12 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
   pause(){paused=true;debug.paused=true;if(raf){cancelAnimationFrame(raf);raf=0;}},
   resume(){paused=false;debug.paused=false;lastDraw=0;resize();if(!raf&&!lost&&!disposed)raf=requestAnimationFrame(frame);},
   onLost(fn){lostFns.push(fn);},
-  dispose(){if(disposed)return;disposed=true;cancelAnimationFrame(raf);ro.disconnect();io.disconnect();document.removeEventListener('visibilitychange',onVisibility);for(const c of cast.values())c.char.dispose();cast.clear();room.dispose();post.dispose();env.texture.dispose();pmrem.dispose();renderer.dispose();canvas.remove();}
+  // 끊긴 문맥이 돌아오면 한 번 알립니다. 이 무대를 정리(dispose)한 뒤에도 기다리며, 돌려받은 옛 문맥은 쓰지 않으니 바로 놓아 줍니다.
+  watchRestore(fn){
+   const on=()=>{canvas.removeEventListener('webglcontextrestored',on);try{canvas.getContext('webgl2')?.getExtension('WEBGL_lose_context')?.loseContext();}catch{}fn();};
+   canvas.addEventListener('webglcontextrestored',on);
+   return ()=>canvas.removeEventListener('webglcontextrestored',on);
+  },
+  dispose(){if(disposed)return;disposed=true;lostFns.length=0;cancelAnimationFrame(raf);ro.disconnect();io.disconnect();document.removeEventListener('visibilitychange',onVisibility);for(const c of cast.values())c.char.dispose();cast.clear();room.dispose();post.dispose();env.texture.dispose();pmrem.dispose();renderer.dispose();canvas.remove();}
  };
 }

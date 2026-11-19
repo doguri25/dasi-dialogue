@@ -94,6 +94,13 @@ test('stage mode and quality ladder',()=>{
  assert.equal(nextQualityLevel(40,0),1);assert.equal(nextQualityLevel(15,2),1);assert.equal(nextQualityLevel(25,2),2);assert.equal(nextQualityLevel(60,4),4);assert.equal(nextQualityLevel(10,0),0);
  assert.equal(isTooSlow(55,4),true);assert.equal(isTooSlow(55,3),false);assert.equal(isTooSlow(45,4),false);
 });
+test('after a lost graphics context, quality never climbs back above the lowered ceiling',()=>{
+ // 문맥을 잃었다 돌아오면 한 단계 낮춘 화질이 상한입니다. 빨라져도 그 위로 올리지 않고, 느려지면 더 낮춥니다.
+ assert.equal(nextQualityLevel(10,2,2),2);
+ assert.equal(nextQualityLevel(10,3,2),2);
+ assert.equal(nextQualityLevel(40,2,2),3);
+ assert.equal(nextQualityLevel(10,1),0,'without a ceiling it still climbs to the best level');
+});
 test('characters are about two heads tall with short one-piece soft arms',async()=>{
  const T=await import('../public/vendor/three-stage.js');const {createCharacter}=await import('../public/stage/character.js');
  for(const [key,look] of Object.entries(LOOKS)){

@@ -17,9 +17,11 @@ export const QUALITY_LEVELS=Object.freeze([
  {scale:.7,shadows:false,bloom:false}
 ]);
 
-export function nextQualityLevel(medianMs,level) {
+// best: 올라갈 수 있는 가장 좋은 화질 단계. 그래픽 문맥을 잃었다 돌아온 뒤에는 한 단계 낮춘 화질이 상한입니다.
+export function nextQualityLevel(medianMs,level,best=0) {
+ if(level<best)return best;
  if(medianMs>34&&level<QUALITY_LEVELS.length-1)return level+1;
- if(medianMs<20&&level>0)return level-1;
+ if(medianMs<20&&level>best)return level-1;
  return level;
 }
 

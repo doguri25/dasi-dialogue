@@ -60,13 +60,13 @@ export function createDirector({mode='3d',reducedMotion=false,load3D,createFlat,
  }
 
  let generation=0;
- async function useRenderer(kind){
+ async function useRenderer(kind,{bestLevel=0}={}){
   // 나중에 요청한 무대가 이깁니다. 3D를 불러오는 사이 그림 무대로 바꾸면 늦게 끝난 3D는 버립니다.
   const gen=++generation;
   const container=document.createElement('div');container.className='stage-render';
   let next;
   if(kind==='3d'){
-   try{const create=await load3D();if(gen!==generation)return renderer;next=await create(container,{reducedMotion,onSlow:()=>{if(slowFallback)fallback('slow');}});}
+   try{const create=await load3D();if(gen!==generation)return renderer;next=await create(container,{reducedMotion,bestLevel,onSlow:()=>{if(slowFallback)fallback('slow');}});}
    catch{next=null;}
    if(gen!==generation){next?.dispose();return renderer;}
    if(!next){onNotice?.('이 기기에서는 3D 장면을 열 수 없어 그림 무대로 보여 드려요.');kind='2d';}
@@ -75,17 +75,31 @@ export function createDirector({mode='3d',reducedMotion=false,load3D,createFlat,
   const old=renderer;renderer=guard(next);
   view.replaceChildren(container);element.dataset.stageMode=kind;
   old?.dispose();hoverRole=null;delete element.dataset.hover;element.removeAttribute('title');
-  if(next.onLost)next.onLost(()=>fallback('lost'));
+  if(next.onLost)next.onLost(why=>fallback('lost',why));
   applyAll();
   if(detached)renderer.pause();
   return renderer;
  }
- function fallback(reason){
+ // 그래픽 문맥이 끊겼다 돌아오면 화질을 한 단계 낮춰 3D를 다시 만듭니다(설계 5.6). 잇달아 끊기는 기기에서는 두 번까지만 다시 만듭니다.
+ const MAX_REBUILDS=2;
+ let restoreWatch=null,restoreGen=-1,rebuilds=0;
+ function cancelRestore(){const stop=restoreWatch;restoreWatch=null;try{stop?.();}catch(err){warn(err);}}
+ function fallback(reason,why){
   if(swapping||element.dataset.stageMode==='2d')return;
   swapping=true;
+  const from=renderer,lostLevel=from?.debug?.level??0;
   if(reason==='slow'){try{localStorage.setItem('dasi.stage.slow','1');}catch{}onNotice?.('화면이 느려 그림 무대로 바꿨어요. 설정에서 3D를 다시 켤 수 있어요.');}
   else onNotice?.('그래픽 장치가 멈춰 그림 무대로 바꿨어요.');
-  queueMicrotask(()=>{useRenderer('2d').finally(()=>{swapping=false;});});
+  // 문맥이 끊긴 때만 돌아오기를 기다립니다. 그리기 오류로 바꾼 경우에는 돌아올 문맥이 없습니다.
+  cancelRestore();
+  if(reason==='lost'&&why==='context'&&rebuilds<MAX_REBUILDS&&from?.watchRestore)restoreWatch=from.watchRestore(()=>{restoreWatch=null;rebuild(lostLevel+1);})||null;
+  queueMicrotask(()=>{const done=useRenderer('2d');restoreGen=generation;done.finally(()=>{swapping=false;});});
+ }
+ function rebuild(bestLevel){
+  // 그사이 다른 무대를 골랐다면(설정에서 3D 끄기·켜기) 그 선택을 따릅니다.
+  if(generation!==restoreGen||element.dataset.stageMode!=='2d')return;
+  rebuilds++;
+  loading=useRenderer('3d',{bestLevel}).then(r=>{if(element.dataset.stageMode==='3d')onNotice?.('그래픽 장치가 돌아와 3D 장면을 다시 열었어요.');return r;});
  }
  loading=useRenderer(mode);
 
@@ -225,7 +239,7 @@ export function createDirector({mode='3d',reducedMotion=false,load3D,createFlat,
   // 응답 실패 등으로 방금 일을 없던 것으로 할 때: 멈추고, 대기 자세로, 자막을 비웁니다.
   reset(){interrupt();clearTimeout(thinkTimer);state='idle';setHost();setSpeaker(null);for(const role of cast.seats)setRole(role,'idle');hideCaption();},
   interrupt(){interrupt();if(state!=='idle'){state='idle';setHost();setSpeaker(null);for(const role of cast.seats)setRole(role,'idle');}},
-  setMode(kind){if(kind!==element.dataset.stageMode){loading=useRenderer(kind);}return loading;},
+  setMode(kind){cancelRestore();if(kind!==element.dataset.stageMode){loading=useRenderer(kind);}return loading;},
   setReducedMotion(b){reducedMotion=!!b;},
   setSlowFallback(b){slowFallback=!!b;}
  };

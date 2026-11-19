@@ -103,8 +103,12 @@ try{
   const page=await browser.newPage({viewport:{width:1366,height:820},locale:'ko-KR'});
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   const nocache=await page.context().newCDPSession(page);await nocache.send('Network.enable');await nocache.send('Network.setCacheDisabled',{cacheDisabled:true});
+  // 3D를 쓸 수 있는지 알아보는 WebGL 검사도 첫 화면을 그린 뒤에 합니다(첫 화면을 늦추지 않게).
+  await page.addInitScript(()=>{const get=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...rest){if(/webgl/i.test(type)&&window.__firstGL==null)window.__firstGL=performance.now();return get.call(this,type,...rest);};});
   await page.goto(base);
   await page.waitForSelector('.hero-stage .stage-host[data-stage-mode="3d"]',{timeout:60000});
+  const probe=await page.evaluate(()=>({gl:window.__firstGL,fcp:performance.getEntriesByName('first-contentful-paint')[0]?.startTime}));
+  assert.ok(probe.fcp>0&&probe.gl>probe.fcp,`WebGL probe runs only after first paint ${JSON.stringify(probe)}`);
   await page.waitForFunction(()=>document.querySelector('.hero-stage canvas'),null,{timeout:60000});
   const timing=await page.evaluate(()=>({three:performance.getEntriesByType('resource').find(r=>/three-stage\.js/.test(r.name))?.startTime,fcp:performance.getEntriesByName('first-contentful-paint')[0]?.startTime}));
   assert.ok(timing.fcp>0&&timing.three>timing.fcp,`3D files load only after first paint ${JSON.stringify(timing)}`);
@@ -117,7 +121,7 @@ try{
   assert.equal(await page.locator('.hero-stage .stage-host').count(),0,'stage off hides the 3D preview');
   assert.equal(await page.locator('.hero-stage img').isVisible(),true);
   await page.evaluate(()=>localStorage.removeItem('dasi.stage'));
-  assert.deepEqual(errors,[]);await page.close();results.push('library: no early 3D request, hero preview, preference off');
+  assert.deepEqual(errors,[]);await page.close();results.push('library: no early 3D request or WebGL probe, hero preview, preference off');
   // 3D를 불러오는 중에 화면을 떠나도 크기 0인 화면에 그리지 않음(그래픽 오류 폭주 → 탐색 멈춤 회귀 방지)
   const quick=await browser.newPage({viewport:{width:1440,height:900},locale:'ko-KR'});
   const gl=[];quick.on('console',m=>{if(/GL_INVALID|incomplete/i.test(m.text()))gl.push(m.text());});
@@ -351,6 +355,36 @@ try{
   await speaking();
   assert.deepEqual(errors,[]);await page.close();
   results.push('lobby: ambient conversation restarts after leaving and returning');
+ }
+ // 12. 그래픽 문맥이 끊겼다 돌아오면 화질을 한 단계 낮춰 3D를 다시 만듦(설계 5.6). 잇달아 끊기면 그림 무대에 머묾.
+ if(run('restore')){
+  const {page,errors}=await labPage('director=1&mode=3d&noslow=1',{width:960,height:600,scale:1});
+  const host=sel=>page.waitForFunction(sel,null,{timeout:30000});
+  const lose=()=>page.evaluate(()=>{const r=window.__lab.director.renderer,ext=r.canvas.getContext('webgl2').getExtension('WEBGL_lose_context');window.__ext=ext;const level=r.debug.level;ext.loseContext();return level;});
+  const restore=()=>page.evaluate(()=>window.__ext.restoreContext());
+  const is2d=()=>host(()=>document.querySelector('.stage-host').dataset.stageMode==='2d');
+  const is3d=()=>host(()=>document.querySelector('.stage-host').dataset.stageMode==='3d'&&document.querySelectorAll('.stage-host canvas').length===1&&window.__lab.director.renderer.frames);
+  let before=await lose();await is2d();
+  assert.ok(await page.locator('.flat-seat').count()>=1,'2D stage while the context is lost');
+  await restore();await is3d();
+  let level=await page.evaluate(()=>window.__lab.director.renderer.debug.level);
+  assert.ok(level>=Math.min(before+1,4),`rebuilt one quality step lower (${before} → ${level})`);
+  before=await lose();await is2d();await restore();await is3d();
+  level=await page.evaluate(()=>window.__lab.director.renderer.debug.level);
+  assert.ok(level>=Math.min(before+1,4),`second rebuild is lower again (${before} → ${level})`);
+  // 세 번째로 끊기면 더 다시 만들지 않습니다.
+  await lose();await is2d();await restore();await page.waitForTimeout(2500);
+  assert.equal(await page.locator('.stage-host').getAttribute('data-stage-mode'),'2d','stays 2D after repeated losses');
+  assert.deepEqual(errors,[],'restore errors');await page.close();
+  // 끊긴 사이에 그림 무대를 직접 고르면, 문맥이 돌아와도 3D로 바꾸지 않습니다.
+  const second=await labPage('director=1&mode=3d&noslow=1',{width:960,height:600,scale:1});
+  await second.page.evaluate(()=>{const ext=window.__lab.director.renderer.canvas.getContext('webgl2').getExtension('WEBGL_lose_context');window.__ext=ext;ext.loseContext();});
+  await second.page.waitForFunction(()=>document.querySelector('.stage-host').dataset.stageMode==='2d',null,{timeout:3000});
+  await second.page.evaluate(()=>{window.__lab.director.setMode('2d');window.__ext.restoreContext();});
+  await second.page.waitForTimeout(2500);
+  assert.equal(await second.page.locator('.stage-host').getAttribute('data-stage-mode'),'2d','a chosen 2D stage is kept');
+  assert.deepEqual(second.errors,[]);await second.page.close();
+  results.push('restore: lost context rebuilds 3D one step lower, stops after repeats, respects a chosen 2D stage');
  }
  await writeFile('.test-artifacts/stage-browser.json',JSON.stringify({passed:true,results},null,2));
  console.log(JSON.stringify({passed:true,results}));

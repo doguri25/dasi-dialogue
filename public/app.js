@@ -124,15 +124,17 @@ function afterFirstPaint(fn){
  try{const po=new PerformanceObserver(list=>{if(list.getEntriesByName('first-contentful-paint').length){po.disconnect();idle();}});po.observe({type:'paint',buffered:true});}catch{}
  setTimeout(idle,4000);
 }
-const heroAllowed=()=>innerWidth>900&&!matchMedia('(prefers-reduced-motion: reduce)').matches&&stageMode()==='3d';
+// 3D를 쓸 수 있는지 알아보는 검사(WebGL 문맥 만들기)는 첫 화면을 그린 뒤에 합니다. 그 전에는 화면 폭과 동작 줄이기만 봅니다.
+const heroFits=()=>innerWidth>900&&!matchMedia('(prefers-reduced-motion: reduce)').matches;
+const heroAllowed=()=>heroFits()&&stageMode()==='3d';
 function castMoods(){const out={};for(const m of state.session?.messages||[])if(m.kind==='participant')out[m.speaker]={mood:m.mood,risk:m.risk};return out;}
 function syncStage(){
  const slot=$('#stage-slot');
  if(slot&&state.view==='room'&&state.session){stage=getStage();stage.attach(slot);stage.setCast({scenario:scenario(),phase:state.session.phase,target:state.session.target,moods:castMoods(),sessionId:state.session.id});stage.onPick(pickTarget);stage.setPickable(['main','post'].includes(state.session.phase)&&!state.busy&&!recording);return;}
  stage?.setPickable(false);
  const hero=$('#hero-stage-slot');
- if(hero&&heroAllowed()){
-  const show=()=>{heroWait=0;const slot=$('#hero-stage-slot');if(!slot||state.view!=='library')return;stage=getStage();stage.attach(slot);stage.setCast({scenario:scenarios[0],phase:'lobby',target:'all'});};
+ if(hero&&(stage?heroAllowed():heroFits())){
+  const show=()=>{heroWait=0;const slot=$('#hero-stage-slot');if(!slot||state.view!=='library'||!heroAllowed())return;stage=getStage();stage.attach(slot);stage.setCast({scenario:scenarios[0],phase:'lobby',target:'all'});};
   if(stage)show();else if(!heroWait){heroWait=1;afterFirstPaint(show);}
   return;
  }
