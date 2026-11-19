@@ -139,7 +139,10 @@ export function createDirector({mode='3d',reducedMotion=false,load3D,createFlat,
 
  // 첫 화면 미리보기: 두 학생이 소리 없이 번갈아 이야기하고 서로를 봅니다(자막 없음).
  const LOBBY=['그때 정말 속상했어.','응, 나도 그 얘기 듣고 싶었어.','다음엔 먼저 물어볼게.','천천히 말해도 괜찮아.'];
- async function lobby(my){
+ // 같은 차례(token)에는 이야기 고리를 하나만 돌립니다. 떠나면(detach) 차례가 바뀌어 이전 고리는 스스로 끝납니다.
+ let lobbyFor=-1;
+ function lobby(my){if(lobbyFor===my)return;lobbyFor=my;lobbyLoop(my);}
+ async function lobbyLoop(my){
   const alive=()=>my===token&&!detached;let turn=0;
   await wait(1200,alive);
   while(alive()){
@@ -161,6 +164,7 @@ export function createDirector({mode='3d',reducedMotion=false,load3D,createFlat,
    if(!slot)return;
    if(element.parentNode!==slot)slot.appendChild(element);
    detached=false;renderer?.resume();renderer?.resize?.();
+   if(cast.phase==='lobby')lobby(token);   /* 첫 화면에 돌아오면 대화실의 이야기를 다시 시작합니다 */
   },
   detach(){interrupt();clearTimeout(thinkTimer);state='idle';setHost();setSpeaker(null);hideCaption();detached=true;renderer?.pause();element.remove();},
   setCast({scenario,phase='pre',target='v',moods={},sessionId=''}={}){

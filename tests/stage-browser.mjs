@@ -329,6 +329,29 @@ try{
    assert.deepEqual(errors,[]);await ctx.close();}
   results.push('pick: 3D ray picking with hover, 2D faces, off in pre-meeting');
  }
+ // 10. 3D 그리기가 계속 실패하면(예: 셰이더 오류) 오류를 쏟아내며 멈추지 않고 그림 무대로 바뀜
+ if(run('robust')){
+  const {page,errors}=await labPage('director=1&mode=3d&noslow=1',{width:960,height:600,scale:1});
+  assert.equal(await page.locator('.stage-host').getAttribute('data-stage-mode'),'3d');
+  // three.js의 WebGLRenderer 메서드는 인스턴스에 붙어 있어, 매 프레임 쓰는 수학 메서드를 고장 냅니다.
+  await page.evaluate(async()=>{const T=await import('./vendor/three-stage.js');T.Vector3.prototype.lerp=function(){throw new Error('draw failed');};});
+  await page.waitForFunction(()=>document.querySelector('.stage-host').dataset.stageMode==='2d',null,{timeout:8000});
+  assert.deepEqual(errors,[],'frame errors are caught, not thrown every frame');
+  await page.close();
+  results.push('robust: repeated draw failures fall back to the 2D stage');
+ }
+ // 11. 첫 화면의 대화실: 다른 화면에 갔다 돌아와도 캐릭터들이 다시 이야기를 나눔
+ if(run('lobby')){
+  const {page,errors}=await labPage('director=1&mode=2d',{width:960,height:600,scale:1});
+  const speaking=()=>page.waitForFunction(()=>document.querySelector('.flat-seat[data-state="speaking"]'),null,{timeout:9000});
+  await page.evaluate(()=>window.__lab.director.setCast({scenario:window.__lab.scenario,phase:'lobby',target:'all'}));
+  await speaking();
+  await page.evaluate(()=>{const d=window.__lab.director;d.detach();d.attach(document.getElementById('stage'));d.setCast({scenario:window.__lab.scenario,phase:'lobby',target:'all'});});
+  await page.waitForFunction(()=>!document.querySelector('.flat-seat[data-state="speaking"]'),null,{timeout:3000});
+  await speaking();
+  assert.deepEqual(errors,[]);await page.close();
+  results.push('lobby: ambient conversation restarts after leaving and returning');
+ }
  await writeFile('.test-artifacts/stage-browser.json',JSON.stringify({passed:true,results},null,2));
  console.log(JSON.stringify({passed:true,results}));
 }finally{await browser.close();}

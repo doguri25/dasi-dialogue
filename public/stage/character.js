@@ -11,7 +11,8 @@ const BOTTOM={elementary:'#58627a',middle:'#4b5265',high:'#3f4656',adult:'#5b534
 const MOUTH={A:{h:1,w:.92},E:{h:.7,w:1.05},I:{h:.4,w:1.16},O:{h:.85,w:.64},U:{h:.5,w:.54},EU:{h:.32,w:1.05},M:{h:0,w:.94},REST:{h:0,w:1}};
 const deg=Math.PI/180;
 
-export function createCharacter(T,look,{seed=1}={}) {
+// still: 동작 줄이기. 자세는 곧바로 바뀌고, 숨쉬기·시선 옮기기·끄덕임·깜빡임·손 꼼지락을 하지 않습니다.
+export function createCharacter(T,look,{seed=1,still=false}={}) {
  const A=AGE[look.age]||AGE.middle,R=A.R,k=R/.16;
  const ek=look.age==='adult'?.86:1;   // 어른은 눈을 조금 작게
  const root=new T.Group(),torso=new T.Group(),head=new T.Group(),face=new T.Group();
@@ -192,9 +193,9 @@ export function createCharacter(T,look,{seed=1}={}) {
   }
  }
  function aimArm(arm,dt,t){
-  handGoal(arm.s,t,pose);
+  handGoal(arm.s,still?0:t,pose);
   tmp.copy(goal).sub(arm.pivot.position).normalize();
-  arm.aim.lerp(tmp,1-Math.exp(-dt*6)).normalize();
+  arm.aim.lerp(tmp,still?1:1-Math.exp(-dt*6)).normalize();
   arm.pivot.quaternion.setFromUnitVectors(DOWN,arm.aim);
  }
 
@@ -208,30 +209,31 @@ export function createCharacter(T,look,{seed=1}={}) {
   measure(){return {head:R*.97*2,body:H*1.04+A.thigh+A.shin,arm:armLen,armPieces:1,hairTips,hairBlobs};},
   update(dt,t){
    if(!target)return;time+=dt;
-   const kp=1-Math.exp(-dt*3.2);
+   const kp=still?1:1-Math.exp(-dt*3.2);
    for(const key of Object.keys(target)){if(typeof target[key]==='number')pose[key]+=(target[key]-pose[key])*kp;else pose[key]=target[key];}
-   const p=pose,breath=Math.sin(time*2*Math.PI/3.8),side=seed%2?1:-1;
+   const p=pose,breath=still?0:Math.sin(time*2*Math.PI/3.8),side=seed%2?1:-1;
    torso.rotation.set(p.lean*.18+p.slump*.1+breath*.008,p.turn*side,0);
    torso.scale.set(1+breath*.006,1-p.slump*.03+breath*.01,1+breath*.006);torso.position.y=-p.slump*.01;
    // 시선: 마주 볼지 피할지 가끔 다시 고릅니다.
-   if((gaze.t-=dt)<=0){
+   if(!still&&(gaze.t-=dt)<=0){
     gaze.t=.7+rand()*1.9;
     if(rand()<p.gazeContact)gaze.dir.set(0,0);
     else if(rand()<p.gazeDown)gaze.dir.set((rand()*2-1)*.35,-.55-rand()*.2);
     else gaze.dir.set((rand()<.5?-1:1)*(.55+rand()*.3),(rand()*2-1)*.15);
    }
-   gaze.cur.lerp(gaze.dir,1-Math.exp(-dt*9));
+   gaze.cur.lerp(gaze.dir,still?1:1-Math.exp(-dt*9));
    let fx=0,fy=0;
    if(look3){root.updateMatrixWorld(true);head.getWorldPosition(tmp);tmp2.copy(look3).sub(tmp);root.getWorldQuaternion(qInv);tmp2.applyQuaternion(qInv.invert());fx=Math.atan2(tmp2.x,tmp2.z);fy=Math.atan2(tmp2.y,Math.hypot(tmp2.x,tmp2.z));}
    const gx=fx+gaze.cur.x,gy=fy+gaze.cur.y;
-   if(nod.phase<0&&state==='listening'&&p.nod>.1&&(nod.t-=dt*p.nod)<=0){nod.phase=0;nod.t=2+rand()*3;}
+   if(!still&&nod.phase<0&&state==='listening'&&p.nod>.1&&(nod.t-=dt*p.nod)<=0){nod.phase=0;nod.t=2+rand()*3;}
    let nodOff=0;if(nod.phase>=0){nod.phase+=dt/.55;nodOff=Math.sin(Math.min(1,nod.phase)*Math.PI*2)*.08*(1-nod.phase*.3);if(nod.phase>=1)nod.phase=-1;}
    const yawT=p.headYaw*side-p.turn*side*.6+gx*.45,pitchT=p.headPitch*.9-gy*.4+nodOff;
-   head.rotation.x+=(pitchT-head.rotation.x)*(1-Math.exp(-dt*6));head.rotation.y+=(yawT-head.rotation.y)*(1-Math.exp(-dt*6));head.rotation.z+=(p.headTilt*side+breath*.01-head.rotation.z)*(1-Math.exp(-dt*4));
+   const kh=still?1:1-Math.exp(-dt*6);
+   head.rotation.x+=(pitchT-head.rotation.x)*kh;head.rotation.y+=(yawT-head.rotation.y)*kh;head.rotation.z+=(p.headTilt*side+breath*.01-head.rotation.z)*(still?1:1-Math.exp(-dt*4));
    const ex=Math.max(-1,Math.min(1,(gx-head.rotation.y-torso.rotation.y)*2.2)),ey=Math.max(-1,Math.min(1,(gy+head.rotation.x)*2.2));
    for(const e of eyes)e.iris.position.set(ex*.01*k,ey*.009*k,0);
    // 깜빡임
-   if(blink.phase<0&&(blink.t-=dt)<=0){blink.phase=0;blink.t=p.blinkMin+rand()*(p.blinkMax-p.blinkMin);if(rand()<.15)blink.t=.25;}
+   if(!still&&blink.phase<0&&(blink.t-=dt)<=0){blink.phase=0;blink.t=p.blinkMin+rand()*(p.blinkMax-p.blinkMin);if(rand()<.15)blink.t=.25;}
    let lid=1;if(blink.phase>=0){blink.phase+=dt/.16;lid=blink.phase<.4?1-blink.phase/.4*.92:.08+(blink.phase-.4)/.6*.92;if(blink.phase>=1){blink.phase=-1;lid=1;}}
    const sleepy=1-p.slump*.12;for(const e of eyes)e.group.scale.y=Math.max(.08,lid*sleepy);
    for(const b of brows){const inner=p.browInner*.42-p.browFurrow*.38;b.mesh.rotation.z=Math.PI/2+(b.side>0?-inner:inner);b.mesh.position.set(-b.side*p.browFurrow*.006*k,(p.browRaise*.012-p.browFurrow*.004)*k,0);}

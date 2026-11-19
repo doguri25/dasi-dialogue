@@ -114,3 +114,19 @@ test('hair is made of fine pointed strands, not round clumps',async()=>{
   c.dispose();
  }
 });
+test('with reduced motion, characters change pose at once and then hold still',async()=>{
+ const T=await import('../public/vendor/three-stage.js');const {createCharacter}=await import('../public/stage/character.js');
+ const snap=g=>{const out=[];g.updateMatrixWorld(true);g.traverse(o=>out.push(o.matrixWorld.elements.map(v=>v.toFixed(5)).join(',')));return out.join('|');};
+ const c=createCharacter(T,LOOKS['elementary-a'],{seed:3,still:true});
+ c.setPose(poseFor('calm',{state:'idle',intensity:.55}),'idle');c.update(1/60,0);
+ c.setPose(poseFor('withdrawn',{state:'listening',intensity:1}),'listening');c.update(1/60,1/60);
+ const first=snap(c.group);
+ for(let i=0;i<240;i++)c.update(1/60,(i+2)/60);
+ assert.equal(snap(c.group),first,'no breathing, glancing, nodding, blinking or slow blending');
+ const moving=createCharacter(T,LOOKS['elementary-a'],{seed:3});
+ moving.setPose(poseFor('calm',{state:'idle',intensity:.55}),'idle');moving.update(1/60,0);
+ moving.setPose(poseFor('withdrawn',{state:'listening',intensity:1}),'listening');moving.update(1/60,1/60);
+ const early=snap(moving.group);for(let i=0;i<240;i++)moving.update(1/60,(i+2)/60);
+ assert.notEqual(snap(moving.group),early,'without reduced motion the pose still blends and breathes');
+ c.dispose();moving.dispose();
+});

@@ -8,7 +8,7 @@ export function continuationView(s,c,current,{e,button,sceneHtml}) {
 
 export function readinessView(s,c,{e,button,icon},compact=false) {
  const r=phaseReadiness(s,c);
- return `<section class="readiness ${r.ready?'ready':''} ${r.paused?'paused':''} ${compact?'compact':''}" aria-label="다음 단계 준비"><div class="readiness-heading"><span class="readiness-icon">${icon(r.paused?'pause':r.ready?'check':'leaf')}</span><div><strong>${e(r.title)}</strong><p>${e(r.detail)}</p></div></div>${compact?button('show-notes','진행 확인 열기','text-button'):r.items.length?`<div class="readiness-track"><progress aria-label="직접 확인한 진행 항목" max="${r.items.length}" value="${r.done}">${r.done} / ${r.items.length}</progress><span>${r.done} / ${r.items.length} 확인</span></div><ul>${r.items.map(i=>`<li class="${i.done?'done':''}"><span aria-hidden="true">${i.done?'✓':'○'}</span>${e(i.label)}</li>`).join('')}</ul>`:''}</section>`;
+ return `<section class="readiness ${r.ready?'ready':''} ${r.paused?'paused':''} ${compact?'compact':''}" aria-label="${compact?'다음 단계 준비 요약':'다음 단계 준비'}"><div class="readiness-heading"><span class="readiness-icon">${icon(r.paused?'pause':r.ready?'check':'leaf')}</span><div><strong>${e(r.title)}</strong><p>${e(r.detail)}</p></div></div>${compact?button('show-notes','진행 확인 열기','text-button'):r.items.length?`<div class="readiness-track"><progress aria-label="직접 확인한 진행 항목" max="${r.items.length}" value="${r.done}">${r.done} / ${r.items.length}</progress><span>${r.done} / ${r.items.length} 확인</span></div><ul>${r.items.map(i=>`<li class="${i.done?'done':''}"><span aria-hidden="true">${i.done?'✓':'○'}</span>${e(i.label)}</li>`).join('')}</ul>`:''}</section>`;
 }
 
 export function transcriptView(s,c,{e,button,icon}) {

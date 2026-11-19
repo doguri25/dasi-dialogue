@@ -69,7 +69,7 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
   const anchors=room.arrange(ph==='pre'?'pre':ph==='lobby'?'lobby':'main',roles);
   for(const s of seats){
    let c=cast.get(s.role);
-   if(!c){const look=LOOKS[s.lookKey]||LOOKS['elementary-a'];c={char:createCharacter(T,look,{seed:seed++}),look,lookKey:s.lookKey,state:'idle',mood:s.mood||'calm',intensity:s.intensity??.55};scene.add(c.char.group);cast.set(s.role,c);}
+   if(!c){const look=LOOKS[s.lookKey]||LOOKS['elementary-a'];c={char:createCharacter(T,look,{seed:seed++,still:reducedMotion}),look,lookKey:s.lookKey,state:'idle',mood:s.mood||'calm',intensity:s.intensity??.55};scene.add(c.char.group);cast.set(s.role,c);}
    const a=anchors[s.role];c.char.group.position.copy(a.position);c.baseY=a.position.y;c.char.group.rotation.y=a.facing;
    c.mood=s.mood||c.mood;c.intensity=s.intensity??c.intensity;c.state='idle';c.char.setPose(poseFor(c.mood,{state:'idle',intensity:c.intensity}),'idle');
   }
@@ -102,10 +102,19 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
  let raf=0,last=0,lastDraw=0,started=false,time=0,samples=[],evalT=0,slowT=0,sized='',slowSent=false;
  const debug={fps:0,level:0,paused:false,visible:true,attention:null};
  // 마우스(선생님의 손짓)를 따라 보기: 무대 위 좌표(-1~1)를 교사 자리 앞의 한 점으로 바꿉니다.
- let pointer=null;const pointerWorld=new T.Vector3();
+ let pointer=null;const pointerWorld=new T.Vector3(),drift=new T.Vector3();
+ // 그리기가 잇달아 실패하면(셰이더·드라이버 오류 등) 매 프레임 오류를 내며 멈추지 않고, 문맥을 잃었을 때처럼 그림 무대로 넘깁니다.
+ let frameErrors=0;
+ function onFrameError(err){
+  if(++frameErrors===1){try{console.warn('다시, 대화 3D 그리기 오류:',err);}catch{}}
+  if(frameErrors>=3&&!lost){lost=true;if(raf){cancelAnimationFrame(raf);raf=0;}lostFns.forEach(fn=>{try{fn();}catch{}});}
+ }
  function frame(now){
   if(paused||lost||disposed){raf=0;return;}
   raf=requestAnimationFrame(frame);
+  try{if(drawFrame(now))frameErrors=0;}catch(err){onFrameError(err);}   /* 실제로 그린 프레임만 성공으로 셉니다 */
+ }
+ function drawFrame(now){
   if(!visible){raf&&cancelAnimationFrame(raf);raf=0;lastDraw=0;return;}
   if(!hasSize()||document.querySelector('dialog[open]')){lastDraw=0;return;}   /* 대화창이 열려 있으면 그리지 않습니다 */
   if(sized!==container.clientWidth+'x'+container.clientHeight)resize();
@@ -125,7 +134,7 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
   const kc=reducedMotion?1:1-Math.exp(-dt*2.4);
   camPos.lerp(wantPos,kc);camLook.lerp(wantLook,kc);hFov+=(wantFov-hFov)*kc;
   camera.position.copy(camPos);
-  if(!reducedMotion)camera.position.add(new T.Vector3(Math.sin(time*.37)*.006,Math.sin(time*.53)*.004,0));
+  if(!reducedMotion)camera.position.add(drift.set(Math.sin(time*.37)*.006,Math.sin(time*.53)*.004,0));
   camera.lookAt(camLook);applyFov();
   const speaker=[...cast.entries()].find(([,c])=>c.state==='speaking')?.[0];
   let follow=null;
@@ -138,6 +147,7 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
    if(typeof c.baseY==='number'){c.char.group.position.y=c.baseY+c.lift*.02;c.char.group.scale.setScalar(1+c.lift*.025);}
   }
   post.render(dt,time);started=true;
+  return true;
  }
  resize();setCast({seats:[],phase:'pre'});raf=requestAnimationFrame(frame);
 
