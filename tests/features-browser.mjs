@@ -103,6 +103,39 @@ try{
   assert.deepEqual(errors,[]);await context.close();
   results.push(`print: menu and buttons hidden, header, reflection as text, conversation unfolded, ${pages} A4 page(s)`);
  }
+ // 3. 방금 질문 다시 해 보기: 마지막 질문과 답을 지우고, 직접 쓴 글은 입력창에 돌려주며, 회고에 "다시 해 본 질문"으로 남김.
+ if(run('undo')){
+  const {context,page,errors,action}=await open();
+  await startPractice(page,action);
+  assert.equal(await page.locator('[data-action="retry-turn"]').count(),0,'nothing to take back before the first question');
+  // 고른 안내를 보낸 뒤 되돌리면 고르기 화면으로 돌아갑니다.
+  await page.locator('.choice-card').first().click();await page.locator('#modal [data-action="choose-example"]').click();
+  await page.locator('#compose button[type="submit"]').click();await settled(page);
+  assert.equal(await teacherCount(page),1);
+  await action('retry-turn').click();
+  assert.equal(await teacherCount(page),0,'the question is taken back');
+  assert.equal(await page.locator('.choice-card').count(),4,'choices are shown again');
+  assert.match(await page.locator('.question-choices legend').innerText(),/먼저 대화모임/,'back to the introduction step');
+  // 직접 쓴 질문은 입력창에 돌아옵니다.
+  await page.locator('#input-write').click();await page.locator('#draft').fill('오늘은 대화모임을 안내할게. 참여는 네가 고를 수 있어.');await page.locator('#compose button[type="submit"]').click();
+  await page.waitForFunction(()=>document.querySelectorAll('.message.teacher').length===1&&!document.querySelector('.thinking')&&!document.querySelector('#draft[disabled]'));
+  await page.locator('#draft').fill('혹시 궁금한 거 있니?');await page.locator('#compose button[type="submit"]').click();
+  await page.waitForFunction(()=>document.querySelectorAll('.message.teacher').length===2&&!document.querySelector('.thinking')&&!document.querySelector('#draft[disabled]'));
+  const replies=await page.locator('.message:not(.teacher)').count();
+  await action('retry-turn').click();
+  assert.equal(await teacherCount(page),1);assert.equal(await page.locator('.message:not(.teacher)').count(),replies-1,'its answer is removed too');
+  assert.equal(await page.locator('#draft').inputValue(),'혹시 궁금한 거 있니?','the written question comes back to be rewritten');
+  assert.match(await page.locator('#toast').innerText(),/다시/);
+  await page.locator('#draft').fill('오늘 어떤 일이 있었는지 천천히 들려줄래?');await page.locator('#compose button[type="submit"]').click();
+  await page.waitForFunction(()=>document.querySelectorAll('.message.teacher').length===2&&!document.querySelector('.thinking'));
+  await action('finish').click();await page.locator('#finish-form button[type="submit"]').click();await page.locator('.review-header').waitFor();
+  const tried=await page.locator('.review-retries').innerText();
+  assert.match(tried,/다시 해 본 질문/);assert.match(tried,/혹시 궁금한 거 있니\?/);
+  assert.equal(await page.locator('.review-retries article').count(),2,'both taken-back questions are listed');
+  await page.screenshot({path:'.test-artifacts/review-retries.png',fullPage:true});
+  assert.deepEqual(errors,[]);await context.close();
+  results.push('undo: take back chosen and written questions, rewrite, listed in the review');
+ }
  await writeFile('.test-artifacts/features-browser.json',JSON.stringify({passed:true,results},null,2));
  console.log(JSON.stringify({passed:true,results}));
 }finally{await browser.close();}

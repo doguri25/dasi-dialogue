@@ -62,3 +62,14 @@
 @media(max-width:600px){.review-main{padding:22px 18px}.review-header h1{font-size:1.85rem}.review-buttons .button{flex-basis:100%}.archive-turn{margin-right:8px}.archive-turn.archive-teacher{margin-left:8px}}
 /* 인쇄할 때만 보이는 머리말과 회고 글(styles/print.css) */
 .print-head,.print-reflection{display:none}
+/* 다시 해 본 질문: 되돌린 말과 그때 들은 답 */
+.review-retries{margin:34px 0}
+.review-retries h2 small{display:inline-grid;place-items:center;min-width:28px;height:28px;margin-left:6px;padding:0 8px;border-radius:999px;background:var(--pebble-soft);color:var(--ink);font-size:.86rem;vertical-align:middle}
+.review-retries>p{font-size:.92rem;color:var(--ink-2);line-height:1.85}
+.review-retries>div{display:grid;gap:10px}
+.review-retries article{padding:18px 20px;border-radius:18px;background:var(--paper-2);box-shadow:inset 0 0 0 1px var(--line);min-width:0}
+.review-retries article>span{font-size:.82rem;font-weight:700;color:var(--muted)}
+.review-retries blockquote{margin:8px 0;padding-left:14px;font-size:1rem;line-height:1.8;overflow-wrap:anywhere;white-space:pre-wrap;box-shadow:inset 3px 0 0 var(--line-strong)}
+.review-retries p{margin:6px 0 0;font-size:.94rem;line-height:1.8;color:var(--ink-2);overflow-wrap:anywhere}
+.review-retries p strong{margin-right:8px;color:var(--ink)}
+

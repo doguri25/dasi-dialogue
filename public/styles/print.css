@@ -39,3 +39,4 @@ main{padding:0!important;margin:0!important;max-width:none!important}
 a{color:inherit;text-decoration:none}
 /* 종이 폭(약 700px)은 휴대전화 기준에 걸리므로, 두 칸 배치를 다시 씁니다. */
 .review-columns,.review-evidence>div{grid-template-columns:1fr 1fr!important}
+.review-retries article{break-inside:avoid;box-shadow:inset 0 0 0 .8pt #b9c1cc!important;padding:9pt 11pt!important}
