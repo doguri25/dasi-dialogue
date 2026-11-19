@@ -112,3 +112,9 @@ dialog h3{font-size:1.15rem;margin:27px 0 17px}
 /* 화면 전환(지원하는 브라우저) */
 ::view-transition-old(root),::view-transition-new(root){animation-duration:.26s;animation-timing-function:var(--ease)}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}}
+/* v0.5 천천히 흐르는 오로라 바탕 */
+body::before{content:"";position:fixed;inset:-20vmax;z-index:-1;pointer-events:none;background:radial-gradient(40vmax 30vmax at 20% 15%,rgba(205,228,200,.55),transparent 60%),radial-gradient(36vmax 28vmax at 85% 10%,rgba(247,214,192,.5),transparent 60%),radial-gradient(34vmax 26vmax at 65% 85%,rgba(216,206,240,.45),transparent 60%);animation:aurora 38s ease-in-out infinite alternate}
+@keyframes aurora{0%{transform:translate3d(0,0,0) rotate(0deg) scale(1)}50%{transform:translate3d(3vmax,-2vmax,0) rotate(6deg) scale(1.06)}100%{transform:translate3d(-2vmax,2vmax,0) rotate(-4deg) scale(1.02)}}
+/* 주요 버튼에 빛이 스치는 느낌: 넘침이 생기지 않도록 배경 그라데이션 위치만 옮깁니다. */
+.button.primary{background-image:linear-gradient(110deg,transparent 35%,rgba(255,255,255,.2) 50%,transparent 65%);background-size:260% 100%;background-position:130% 0;background-repeat:no-repeat;transition:background-position .8s var(--ease),background-color .2s,box-shadow .2s,transform .2s var(--ease)}
+.button.primary:hover:not(:disabled){background-position:-30% 0}

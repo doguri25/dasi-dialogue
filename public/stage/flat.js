@@ -22,6 +22,7 @@ export function createFlatRenderer(container) {
   },
   setState(role,state,{mood}={}){const el=seats.get(role);if(!el)return;el.dataset.state=state;if(mood)el.dataset.mood=mood;},
   setMouth(role,shape,open){seats.get(role)?.style.setProperty('--open',String(shape==='M'||shape==='REST'?0:open||0));},
+  setPointer(){},
   setFocus(role){for(const [r,el] of seats)el.classList.toggle('focused',r===role);},
   resize(){},pause(){},resume(){},
   dispose(){root.remove();seats.clear();}

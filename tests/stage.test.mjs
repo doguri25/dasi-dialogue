@@ -105,3 +105,12 @@ test('characters are about two heads tall with short one-piece soft arms',async(
   c.dispose();
  }
 });
+test('hair is made of fine pointed strands, not round clumps',async()=>{
+ const T=await import('../public/vendor/three-stage.js');const {createCharacter}=await import('../public/stage/character.js');
+ for(const [key,look] of Object.entries(LOOKS)){
+  const c=createCharacter(T,look,{seed:2}),m=c.measure();
+  assert.equal(m.hairBlobs,0,`${key}: no round clumps in the hair`);
+  assert.ok(m.hairTips>=6,`${key}: at least 6 fine strand tips (got ${m.hairTips})`);
+  c.dispose();
+ }
+});

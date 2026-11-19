@@ -34,10 +34,11 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
  function headOf(role){const c=cast.get(role);if(!c)return null;const v=new T.Vector3();c.char.head.getWorldPosition(v);return v;}
  function shot(){
   const roles=[...cast.keys()];
-  if(phase==='lobby'){wantPos.set(0,1.02,1.85);wantLook.set(0,.5,-.3);wantFov=60;minV=38;return;}
+  // 첫 화면: 왼쪽에 문구가 떠 있으므로 두 학생이 화면 오른쪽에 오도록 옆으로 옮겨 봅니다.
+  if(phase==='lobby'){const shift=(camera.aspect||1.6)>1.8?-.62:0;wantPos.set(shift,1.0,1.8);wantLook.set(shift,.5,-.3);wantFov=58;minV=36;return;}
   if(roles.length<=1){
    const c=cast.get(roles[0]),y=HEAD_Y[c?.look.age]??1.12;
-   wantPos.set(0,.8,SEAT_R+.25);wantLook.set(0,y-.13,-SEAT_R);wantFov=40;minV=34;return;
+   wantPos.set(0,.78,SEAT_R+.12);wantLook.set(0,y-.09,-SEAT_R);wantFov=36;minV=31;return;
   }
   if(focus&&cast.has(focus)){
    const h=headOf(focus)||new T.Vector3();
@@ -46,7 +47,7 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
   wantPos.set(0,1.0,SEAT_R+.7);wantLook.set(-.1,.5,-.4);wantFov=72;minV=42;
  }
  // 가로 화각을 맞추되, 아주 넓고 낮은 무대에서도 얼굴이 잘리지 않도록 세로 화각의 하한을 둡니다.
- function applyFov(){const aspect=camera.aspect||1.6,f=2*Math.atan(Math.tan(hFov*Math.PI/360)/aspect)*180/Math.PI;camera.fov=Math.max(minV,Math.min(64,f));camera.updateProjectionMatrix();}
+ function applyFov(){if(phase==='lobby'){const shift=(camera.aspect||1.6)>1.8?-.62:0;if(Math.abs(wantPos.x-shift)>.01){wantPos.x=shift;wantLook.x=shift;}}const aspect=camera.aspect||1.6,f=2*Math.atan(Math.tan(hFov*Math.PI/360)/aspect)*180/Math.PI;camera.fov=Math.max(minV,Math.min(64,f));camera.updateProjectionMatrix();}
 
  // 무대가 문서에 붙어 있지 않거나 크기가 없으면 그리지 않습니다(크기 0 버퍼는 그래픽 오류를 쏟아냅니다).
  const hasSize=()=>container.isConnected&&container.clientWidth>1&&container.clientHeight>1;
@@ -88,7 +89,9 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
 
  // 그리기 반복: 아무도 말하지 않으면 초당 30프레임, 프레임 시간 중앙값으로 화질을 조절합니다.
  let raf=0,last=0,lastDraw=0,started=false,time=0,samples=[],evalT=0,slowT=0,sized='',slowSent=false;
- const debug={fps:0,level:0,paused:false,visible:true};
+ const debug={fps:0,level:0,paused:false,visible:true,attention:null};
+ // 마우스(선생님의 손짓)를 따라 보기: 무대 위 좌표(-1~1)를 교사 자리 앞의 한 점으로 바꿉니다.
+ let pointer=null;const pointerWorld=new T.Vector3();
  function frame(now){
   if(paused||lost||disposed){raf=0;return;}
   raf=requestAnimationFrame(frame);
@@ -114,8 +117,11 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
   if(!reducedMotion)camera.position.add(new T.Vector3(Math.sin(time*.37)*.006,Math.sin(time*.53)*.004,0));
   camera.lookAt(camLook);applyFov();
   const speaker=[...cast.entries()].find(([,c])=>c.state==='speaking')?.[0];
+  let follow=null;
+  if(pointer&&!speaker){pointerWorld.set(pointer.x,pointer.y,.5).unproject(camera).sub(camera.position).normalize().multiplyScalar(1.4).add(camera.position);follow=pointerWorld;}
+  debug.attention=follow?{x:+pointer.x.toFixed(2),y:+pointer.y.toFixed(2)}:null;
   for(const [role,c] of cast){
-   const t=speaker&&speaker!==role?headOf(speaker):teacherHead;
+   const t=speaker&&speaker!==role?headOf(speaker):follow||teacherHead;
    c.char.lookAt(t);c.char.update(dt,time);
   }
   post.render(dt,time);started=true;
@@ -128,6 +134,7 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
  return {
   kind:'3d',canvas,debug,
   setCast,setState,setMouth,setFocus,resize,
+  setPointer(x,y){pointer=x==null?null:{x:Math.max(-1,Math.min(1,x)),y:Math.max(-1,Math.min(1,y))};if(!pointer)debug.attention=null;},
   get frames(){return started;},
   pause(){paused=true;debug.paused=true;if(raf){cancelAnimationFrame(raf);raf=0;}},
   resume(){paused=false;debug.paused=false;lastDraw=0;resize();if(!raf&&!lost&&!disposed)raf=requestAnimationFrame(frame);},

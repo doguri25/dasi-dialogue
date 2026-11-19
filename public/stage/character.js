@@ -88,31 +88,71 @@ export function createCharacter(T,look,{seed=1}={}) {
  const cavity=new T.Mesh(SPH,plain('#5b2628',{roughness:.7}));cavity.scale.set(1,1,.01);openMouth.add(cavity);
  const tongue=new T.Mesh(SPH_S,plain('#d9727a',{roughness:.5}));tongue.scale.set(.6,.35,.01);tongue.position.set(0,-.45,.004);cavity.add(tongue);
 
- // ---- 머리카락 ----
- const hair=clay(look.hairColor,{rough:.58,sheen:.6}),hairDS=clay(look.hairColor,{rough:.58,sheen:.6,side:T.DoubleSide});
+ // ---- 머리카락: 머리 모양을 따라 붙는 얇은 층을 겹치고, 끝을 가늘고 뾰족한 가닥으로 나눕니다 ----
+ let hairTips=0,hairBlobs=0;
+ // 머리카락 결: 세로로 가는 줄무늬를 요철(bump)로 넣어 가닥이 보이게 합니다(브라우저에서만).
+ let strandTex=null;
+ if(typeof document!=='undefined'){
+  const c=document.createElement('canvas');c.width=128;c.height=64;const g=c.getContext('2d');g.fillStyle='#808080';g.fillRect(0,0,128,64);
+  for(let x=0;x<128;x+=2){const v=110+Math.round(rand()*90);g.fillStyle=`rgb(${v},${v},${v})`;g.fillRect(x,0,1+(rand()<.3?1:0),64);}
+  strandTex=new T.CanvasTexture(c);strandTex.wrapS=strandTex.wrapT=T.RepeatWrapping;
+ }
+ const hairMat=(repeat=1)=>{const key='hair'+repeat;if(mats.has(key))return mats.get(key);const base=new T.Color(look.hairColor);
+  const m=new T.MeshPhysicalMaterial({color:base,roughness:.52,metalness:0,sheen:.7,sheenRoughness:.45,sheenColor:base.clone().lerp(new T.Color('#ffffff'),.55),side:T.DoubleSide});
+  if(strandTex){const t=strandTex.clone();t.needsUpdate=true;t.repeat.set(repeat,1);m.bumpMap=t;m.bumpScale=1.4;}
+  mats.set(key,m);return m;};
  const hairGroup=new T.Group();head.add(hairGroup);
- const cap=(scale=1.075,cover=.56,tilt=.7)=>mesh(hairGroup,geo(new T.SphereGeometry(R*scale,48,28,0,Math.PI*2,0,Math.PI*cover)),hairDS,{r:[-tilt,0,0],s:[1.04,.97,.98]});
- const bangs=(list)=>list.forEach(([lat,lon,rx,ry,rz,roll])=>blob(hairGroup,{lat:lat+3,lon,rx:rx*k,ry:ry*k,rz:rz*k,roll,mat:hair,d:R*1.03}));
- const bell=(bottom,flare=1.14,open=50,inward=.94)=>{
-  const pts=[[.9,.55],[1.075,.1],[flare,-.35],[flare*.99,bottom*.7],[flare*.96,bottom],[inward,bottom-.05]].map(([x,y])=>new T.Vector2(x*R,y*R));
-  return mesh(hairGroup,geo(new T.LatheGeometry(pts,48,open*deg,Math.PI*2-open*2*deg)),hairDS,{p:[0,0,-R*.02],s:[1.04,1,1]});
- };
+ const H01=n=>{const x=Math.sin(n*127.1+seed*311.7)*43758.5453;return x-Math.floor(x);};
+ const sheet=(pos,uv,cols,rows)=>{const idx=[];for(let a=0;a<cols;a++)for(let b=0;b<rows;b++){const p0=a*(rows+1)+b,p1=p0+rows+1;idx.push(p0,p1,p0+1,p1,p1+1,p0+1);}
+  const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();return geo(g);};
+ // 머리를 감싸는 층: 위도 latTop에서 시작해 latBase 근처에서 뾰족한 끝(teeth개)으로 끝납니다. sweep은 가닥을 옆으로 쓸어 넘깁니다.
+ function shell({latTop,latBase,lonA,lonB,teeth,depth,rs=1.07,cols=96,rows=12,sweep=0,bulge=.025,flare=0,jitter=.45,phase=0}){
+  const pos=[],uv=[];
+  for(let a=0;a<=cols;a++){
+   // 가닥 끝: 거의 곧은 선 아래로 가늘게 내려오는 끝(sin^2), 가닥마다 길이를 조금씩 다르게
+   const u=a/cols,ph=u*teeth+phase,f=ph-Math.floor(ph),tooth=Math.pow(Math.sin(Math.PI*f),2.2),jr=jitter*(H01(Math.floor(ph))-.5)*2;
+   const bottom=latBase-depth*tooth*Math.max(.35,1+jr);
+   for(let b=0;b<=rows;b++){const v=b/rows,lat=latTop+(bottom-latTop)*v,lon=lonA+(lonB-lonA)*u+sweep*v*v;
+    const r=R*rs*(1+bulge*Math.sin(Math.PI*Math.min(1,v*1.1))+flare*v*v),q=onHead(lat,lon,r);pos.push(q.x,q.y*.97,q.z*.98);uv.push(u*teeth,v);}
+  }
+  hairTips+=Math.round(teeth);
+  return mesh(hairGroup,sheet(pos,uv,cols,rows),hairMat(1));
+ }
+ // 머리 아래로 늘어지는 긴 머리(반묶음): 원통 둘레의 층, 아래 끝이 가닥으로 갈라집니다.
+ function curtain({y0,y1,lonA,lonB,teeth,depth,radius,cols=60,rows=10}){
+  const pos=[],uv=[];
+  for(let a=0;a<=cols;a++){const u=a/cols,ph=u*teeth,f=ph-Math.floor(ph),tooth=Math.pow(Math.sin(Math.PI*f),2.2)*(.7+.6*H01(Math.floor(ph)+9)),bottom=y1-depth*tooth;
+   for(let b=0;b<=rows;b++){const v=b/rows,y=y0+(bottom-y0)*v,lon=(lonA+(lonB-lonA)*u)*deg,r=radius*(1-.18*v);pos.push(Math.sin(lon)*r*1.04,y,Math.cos(lon)*r);uv.push(u*teeth,v);}}
+  hairTips+=teeth;return mesh(hairGroup,sheet(pos,uv,cols,rows),hairMat(1));
+ }
+ const cap=(scale=1.06,cover=.56,tilt=.7)=>mesh(hairGroup,geo(new T.SphereGeometry(R*scale,56,32,0,Math.PI*2,0,Math.PI*cover)),hairMat(14),{r:[-tilt,0,0],s:[1.04,.97,.98]});
+ const sideLocks=(latBase,depth=8,teeth=2)=>{for(const s of [-1,1])shell({latTop:48,latBase,lonA:s>0?60:-96,lonB:s>0?96:-60,teeth,depth,rs:1.085,cols:24,sweep:s*-4});};
  switch(look.hair){
-  case 'bob':cap();bell(-.86,1.15,52);bangs([[30,-46,.05,.034,.026,.2],[31,-23,.052,.036,.026,.08],[31,0,.052,.036,.026,0],[31,23,.052,.036,.026,-.08],[30,46,.05,.034,.026,-.2]]);break;
-  case 'chinbob':cap(1.075,.57,.66);bell(-1.02,1.12,50,.98);bangs([[33,-38,.07,.036,.028,.55],[34,-8,.06,.034,.026,.35],[31,24,.055,.032,.026,.15],[28,48,.045,.04,.026,-.3]]);break;
-  case 'halfup':cap(1.075,.56,.66);bell(-1.5,1.1,56,1.0);bangs([[33,-30,.075,.036,.028,.5],[33,2,.06,.032,.026,.3],[31,30,.05,.032,.026,.1]]);
-   blob(hairGroup,{lat:28,lon:180,rx:.045*k,ry:.04*k,rz:.04*k,mat:hair,d:R*1.06});mesh(hairGroup,geo(new T.TorusGeometry(.022*k,.008*k,8,16)),clay('#e8a6a0'),{p:[0,R*.47,-R*.98],r:[.35,0,0]});break;
-  case 'tousled':cap(1.07,.58,.62);
-   for(let i=0;i<7;i++){const lat=46+rand()*30,lon=(rand()*2-1)*150;blob(hairGroup,{lat,lon,rx:(.05+rand()*.02)*k,ry:(.03+rand()*.012)*k,rz:(.016+rand()*.008)*k,roll:rand()*3,mat:hair,d:R*1.06});}
-   bangs([[30,-34,.045,.04,.028,.6],[32,-10,.05,.042,.03,.2],[31,14,.048,.04,.028,-.3],[29,36,.042,.038,.028,-.6]]);
-   for(const s of [-1,1])blob(hairGroup,{lat:5,lon:s*80,rx:.04*k,ry:.06*k,rz:.03*k,mat:hair,d:R*1.02});break;
-  case 'cropped':cap(1.045,.57,.62);bangs([[33,-25,.06,.028,.022,.3],[34,0,.06,.028,.022,0],[33,25,.06,.028,.022,-.3]]);
-   for(const s of [-1,1])blob(hairGroup,{lat:12,lon:s*78,rx:.05*k,ry:.05*k,rz:.02*k,mat:hair,d:R*1.02});break;
-  case 'sidepart':cap(1.055,.57,.6);bangs([[36,-30,.085,.04,.034,.42],[37,0,.07,.036,.03,.2],[34,30,.05,.03,.024,-.2]]);
-   blob(hairGroup,{lat:44,lon:-28,rx:.085*k,ry:.042*k,rz:.02*k,roll:.5,mat:hair,d:R*1.06});
-   for(const s of [-1,1])blob(hairGroup,{lat:10,lon:s*80,rx:.05*k,ry:.05*k,rz:.02*k,mat:hair,d:R*1.02});break;
-  default:cap(1.05,.57,.62);bangs([[35,-24,.07,.032,.026,.4],[36,4,.06,.03,.024,.15],[33,30,.05,.03,.022,-.2]]);
-   for(const s of [-1,1])blob(hairGroup,{lat:10,lon:s*80,rx:.05*k,ry:.05*k,rz:.02*k,mat:hair,d:R*1.02});
+  case 'bob':   // 턱선까지 오는 단정한 단발, 앞머리는 가는 가닥
+   cap();shell({latTop:62,latBase:-40,lonA:58,lonB:302,teeth:18,depth:4,rs:1.1,flare:.06,cols:120});
+   sideLocks(-38,7,2);shell({latTop:64,latBase:25,lonA:-64,lonB:64,teeth:13,depth:7,rs:1.09});shell({latTop:60,latBase:27,lonA:-58,lonB:58,teeth:11,depth:6,rs:1.075,phase:.5});break;
+  case 'chinbob':   // 옆가르마 턱선 단발
+   cap(1.06,.57,.66);shell({latTop:62,latBase:-52,lonA:56,lonB:304,teeth:20,depth:5,rs:1.1,flare:.07,cols:120});
+   sideLocks(-50,8,3);shell({latTop:66,latBase:23,lonA:-70,lonB:60,teeth:10,depth:9,rs:1.09,sweep:16});shell({latTop:62,latBase:26,lonA:-60,lonB:55,teeth:9,depth:8,rs:1.075,sweep:12,phase:.5});break;
+  case 'halfup':   // 어깨까지 오는 반묶음
+   cap(1.06,.56,.66);shell({latTop:62,latBase:-70,lonA:62,lonB:298,teeth:16,depth:4,rs:1.1,flare:.05,cols:110});
+   curtain({y0:-R*.62,y1:-R*1.55,lonA:95,lonB:265,teeth:12,depth:R*.16,radius:R*.98});
+   sideLocks(-58,10,3);shell({latTop:66,latBase:23,lonA:-68,lonB:58,teeth:10,depth:9,rs:1.09,sweep:14});shell({latTop:62,latBase:27,lonA:-58,lonB:52,teeth:9,depth:7,rs:1.075,sweep:10,phase:.5});
+   mesh(hairGroup,geo(new T.SphereGeometry(1,24,16)),hairMat(4),{p:[0,R*.42,-R*1.0],s:[.04*k,.034*k,.032*k]});
+   mesh(hairGroup,geo(new T.TorusGeometry(.022*k,.007*k,10,20)),clay('#e8a6a0'),{p:[0,R*.44,-R*.98],r:[.35,0,0]});hairTips+=0;break;
+  case 'tousled':   // 짧고 살짝 헝클어진 머리: 정수리부터 겹겹이 뻗친 가닥
+   cap(1.06,.58,.62);shell({latTop:88,latBase:46,lonA:0,lonB:360,teeth:11,depth:9,rs:1.11,jitter:.8,cols:110,bulge:.05});
+   shell({latTop:70,latBase:-6,lonA:60,lonB:300,teeth:13,depth:7,rs:1.095,jitter:.6,cols:100});
+   shell({latTop:66,latBase:25,lonA:-66,lonB:66,teeth:11,depth:9,rs:1.09,jitter:.8,sweep:-6});sideLocks(-4,6,2);break;
+  case 'cropped':   // 짧게 다듬은 머리
+   cap(1.05,.57,.62);shell({latTop:66,latBase:2,lonA:62,lonB:298,teeth:16,depth:4,rs:1.075,cols:100});
+   shell({latTop:62,latBase:32,lonA:-60,lonB:60,teeth:14,depth:4,rs:1.08});sideLocks(4,4,2);break;
+  case 'sidepart':   // 짧은 옆가르마: 앞머리를 한쪽으로 쓸어 넘김
+   cap(1.055,.57,.6);shell({latTop:66,latBase:0,lonA:62,lonB:298,teeth:15,depth:4,rs:1.08,cols:100});
+   shell({latTop:74,latBase:30,lonA:-76,lonB:52,teeth:9,depth:8,rs:1.095,sweep:28,bulge:.05});shell({latTop:68,latBase:34,lonA:-60,lonB:56,teeth:10,depth:5,rs:1.08,sweep:20,phase:.5});sideLocks(6,5,2);break;
+  default:   // 어른의 짧은 머리
+   cap(1.05,.57,.62);shell({latTop:66,latBase:-2,lonA:62,lonB:298,teeth:15,depth:4,rs:1.075,cols:100});
+   shell({latTop:68,latBase:30,lonA:-66,lonB:60,teeth:10,depth:6,rs:1.085,sweep:14});sideLocks(4,5,2);
  }
 
  // ---- 짧고 부드러운 팔: 어깨에서 한 덩어리로 돌아갑니다(팔꿈치 마디 없음) ----
@@ -165,7 +205,7 @@ export function createCharacter(T,look,{seed=1}={}) {
   setMouth(shape,open=0){const m=MOUTH[shape]||MOUTH.REST;mouthTarget={h:m.h?open:0,w:m.w};},
   lookAt(v){look3=v?v.clone():null;},
   // 비율 확인용: 머리 높이, 서 있을 때의 몸(몸통+다리) 높이, 팔 길이, 팔 마디 수
-  measure(){return {head:R*.97*2,body:H*1.04+A.thigh+A.shin,arm:armLen,armPieces:1};},
+  measure(){return {head:R*.97*2,body:H*1.04+A.thigh+A.shin,arm:armLen,armPieces:1,hairTips,hairBlobs};},
   update(dt,t){
    if(!target)return;time+=dt;
    const kp=1-Math.exp(-dt*3.2);

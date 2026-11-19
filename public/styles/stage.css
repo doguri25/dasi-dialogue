@@ -33,3 +33,4 @@
 .flat-seat.focused{z-index:1}
 @keyframes flat-breathe{50%{transform:scale(1.015)}}
 @media (prefers-reduced-motion: reduce){.flat-face,.stage-host[data-stage-mode="3d"] .stage-view:empty::after,.stage-host[data-stage-state="speaking"] .stage-caption-name::after{animation:none}.flat-seat{transition:none}}
+.flat-seat[data-state="listening"]{transform:translateY(-4px) scale(1.03)}

@@ -205,3 +205,32 @@
 .stage-pref{border:0;padding:0;margin:4px 0 0;min-width:0}
 .stage-pref legend{padding:0;margin:0 0 10px;font-size:.98rem;font-weight:800}
 .stage-pref .mode-options{margin:0 0 20px}
+
+/* v0.5 몰입형 첫 화면: 3D 대화실이 카드 전체를 채우고 문구는 그 위에 떠 있습니다(PC). */
+@media(min-width:901px){
+ .hero{display:block;min-height:clamp(460px,60vh,620px);border-radius:38px;background:#e8dccb}
+ .hero::before{display:none}
+ .hero-stage{position:absolute;inset:0;margin:0;border-radius:0;min-height:0}
+ .hero-stage .stage-host{border-radius:0}
+ .hero-stage::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(90deg,rgba(248,246,241,.96) 0%,rgba(248,246,241,.84) 26%,rgba(248,246,241,.35) 46%,rgba(248,246,241,0) 62%)}
+ .hero-copy{position:relative;z-index:3;max-width:560px;min-height:inherit;display:flex;flex-direction:column;justify-content:center;padding:56px 40px 56px 56px;pointer-events:none}
+ .hero-copy>*{pointer-events:auto}
+ .hero-copy>.label{align-self:flex-start}
+ .hero h1{font-size:clamp(2.6rem,4vw,3.7rem);line-height:1.12;letter-spacing:-.065em}
+ .hero h1 em{background:linear-gradient(120deg,#1e4d43 0%,#3e8a72 45%,#c8794f 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+ .hero-stage>span{left:auto;right:20px;bottom:20px;z-index:3}
+}
+/* 사례 카드: 마우스를 따라 살짝 기울고 빛이 스칩니다(값은 app.js가 CSSOM으로 넣음). */
+.case-card{transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateY(var(--lift,0px));transition:transform .35s var(--ease),box-shadow .25s;will-change:transform}
+.case-card:hover{--lift:-6px;transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateY(var(--lift))}
+.case-card::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .3s;background:radial-gradient(circle at var(--gx,50%) var(--gy,0%),rgba(255,255,255,.5),transparent 55%)}
+.case-card:hover::after{opacity:1}
+/* 화면이 바뀔 때 카드가 차례로 떠오릅니다. */
+.entering .case-card,.entering .start-steps li,.entering .history-item,.entering .guide-grid article{animation:rise .6s var(--ease) both}
+.entering .case-card:nth-child(2),.entering .start-steps li:nth-child(2),.entering .history-item:nth-child(2),.entering .guide-grid article:nth-child(2){animation-delay:.05s}
+.entering .case-card:nth-child(3),.entering .start-steps li:nth-child(3),.entering .history-item:nth-child(3),.entering .guide-grid article:nth-child(3){animation-delay:.1s}
+.entering .case-card:nth-child(4),.entering .history-item:nth-child(4),.entering .guide-grid article:nth-child(4){animation-delay:.15s}
+.entering .case-card:nth-child(5){animation-delay:.2s}.entering .case-card:nth-child(6){animation-delay:.25s}.entering .case-card:nth-child(n+7){animation-delay:.3s}
+@keyframes rise{from{opacity:0;transform:translateY(18px) scale(.98)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.case-card{transform:none!important}.case-card::after{display:none}}
+.hero-stage .stage-host[data-stage-mode="2d"]{display:none}   /* 첫 화면에서 3D를 못 쓰면 그림 무대 대신 삽화를 보여 줍니다 */

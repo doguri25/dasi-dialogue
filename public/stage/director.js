@@ -20,8 +20,12 @@ export function createDirector({mode='3d',reducedMotion=false,load3D,createFlat,
  const capName=document.createElement('strong');capName.className='stage-caption-name';
  const capText=document.createElement('p');capText.className='stage-caption-text';
  caption.append(capName,capText);element.append(view,caption);
+ // 마우스를 따라 캐릭터가 바라봅니다(말하는 중에는 말하는 사람을 봅니다).
+ element.addEventListener('pointermove',e=>{const r=element.getBoundingClientRect();if(!r.width||!r.height)return;renderer?.setPointer(((e.clientX-r.left)/r.width)*2-1,1-((e.clientY-r.top)/r.height)*2);});
+ element.addEventListener('pointerleave',()=>renderer?.setPointer(null));
+ const pointerAt=(x,y)=>{if(x==null)return renderer?.setPointer(null);const r=element.getBoundingClientRect();if(!r.width||!r.height)return;renderer?.setPointer(((x-r.left)/r.width)*2-1,1-((y-r.top)/r.height)*2);};
 
- let renderer=null,loading=null,state='idle',token=0,skipLine=false,voice=null,detached=true,swapping=false,lastTeacherAt=-1e9,thinkTimer=0;
+ let renderer=null,loading=null,state='idle',token=0,skipLine=false,voice=null,detached=true,swapping=false,lastTeacherAt=-1e9,thinkTimer=0,attendTimer=0;
  let cast={scenario:null,phase:'pre',target:'v',seats:[],key:''};
  const roleState=new Map();   // role → {state, mood, intensity}
 
@@ -183,7 +187,15 @@ export function createDirector({mode='3d',reducedMotion=false,load3D,createFlat,
    }
    if(my===token){state='idle';setHost();setSpeaker(null);renderer?.setFocus(null);}
   },
+  pointerAt(x,y){pointerAt(x,y);},
   skip(){if(state==='speaking')skipLine=true;},
+  // 선생님이 글을 쓰거나 질문을 고르는 동안: 학생이 몸을 기울여 듣다가, 2.5초 조용하면 원래대로 돌아옵니다.
+  attend(){
+   if(state==='speaking'||state==='thinking')return;
+   if(state!=='listening'){state='listening';setHost();for(const role of cast.seats)setRole(role,'listening');}
+   clearTimeout(attendTimer);const my=token;
+   attendTimer=setTimeout(()=>{if(my===token&&state==='listening'){state='idle';setHost();for(const role of cast.seats)setRole(role,'idle');}},2500);
+  },
   // 응답 실패 등으로 방금 일을 없던 것으로 할 때: 멈추고, 대기 자세로, 자막을 비웁니다.
   reset(){interrupt();clearTimeout(thinkTimer);state='idle';setHost();setSpeaker(null);for(const role of cast.seats)setRole(role,'idle');hideCaption();},
   interrupt(){interrupt();if(state!=='idle'){state='idle';setHost();setSpeaker(null);for(const role of cast.seats)setRole(role,'idle');}},

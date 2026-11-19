@@ -274,6 +274,29 @@ try{
   }
   results.push('review: new session, late 3D, 2D faces, AI error, voice unlock, stage errors, touch targets');
  }
+
+ // 8. 살아 있는 무대: 마우스를 따라 보는 캐릭터, 선생님이 글을 쓰면 몸을 기울여 듣기
+ if(run('alive')){
+  {const {page,errors}=await labPage('director=1&mode=3d&noslow=1',{width:960,height:600,scale:1});
+   const box=await page.locator('.stage-host').boundingBox();
+   await page.mouse.move(box.x+24,box.y+box.height*.4);await page.waitForTimeout(700);
+   const left=await page.evaluate(()=>window.__lab.director.renderer.debug.attention);
+   await page.mouse.move(box.x+box.width-24,box.y+box.height*.4);await page.waitForTimeout(700);
+   const right=await page.evaluate(()=>window.__lab.director.renderer.debug.attention);
+   assert.ok(left&&right&&left.x<-.1&&right.x>.1,`characters look toward the pointer ${JSON.stringify({left,right})}`);
+   await page.mouse.move(box.x+box.width+200,box.y-200);await page.waitForTimeout(500);
+   assert.equal(await page.evaluate(()=>window.__lab.director.renderer.debug.attention),null,'pointer leaving the stage releases their attention');
+   assert.deepEqual(errors,[]);await page.close();}
+  {const ctx=await browser.newContext({viewport:{width:1366,height:768},locale:'ko-KR'});await ctx.addInitScript(()=>{if(!sessionStorage.getItem('p')){localStorage.setItem('dasi.stage','off');sessionStorage.setItem('p','1');}});
+   const page=await ctx.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+   await page.goto(base);await page.locator('[data-action="quick"]').first().click();await page.locator('#start-form button[type="submit"]').click();await page.locator('#application-continue').click();await page.locator('#stage-slot .stage-host').waitFor();
+   await page.locator('#input-write').click();await page.locator('#draft').pressSequentially('천천히 말해도 괜찮아',{delay:20});
+   assert.equal(await page.locator('.stage-host').getAttribute('data-stage-state'),'listening','the student listens while the teacher writes');
+   await page.waitForFunction(()=>document.querySelector('.stage-host').dataset.stageState==='idle',null,{timeout:6000});
+   assert.equal(await page.locator('.stage-caption').isHidden(),true,'attending shows no caption');
+   assert.deepEqual(errors,[]);await ctx.close();}
+  results.push('alive: pointer gaze, listening while the teacher writes');
+ }
  await writeFile('.test-artifacts/stage-browser.json',JSON.stringify({passed:true,results},null,2));
  console.log(JSON.stringify({passed:true,results}));
 }finally{await browser.close();}

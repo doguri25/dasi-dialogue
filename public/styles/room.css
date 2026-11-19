@@ -352,3 +352,8 @@
 }
 @media(max-width:360px){.room-actions .button{font-size:.84rem;padding:10px 6px}.room-actions .icon{width:19px;height:19px}.choice-label{font-size:.83rem}}
 @media(prefers-reduced-motion:reduce){.choice-card,.readiness progress::-webkit-progress-value{transition:none;transform:none!important}}
+/* v0.5 무대가 상태에 따라 은은하게 빛납니다: 말하는 중 초록, 듣는 중 연보라. */
+.stage-frame{transition:box-shadow .5s var(--ease)}
+.stage-frame:has(.stage-host[data-stage-state="speaking"]){box-shadow:0 0 0 3px rgba(127,191,150,.75),0 18px 40px -18px rgba(30,77,67,.55)}
+.stage-frame:has(.stage-host[data-stage-state="listening"]),.stage-frame:has(.stage-host[data-stage-state="thinking"]){box-shadow:0 0 0 3px rgba(183,168,216,.75),0 18px 40px -18px rgba(90,67,143,.4)}
+.stage-frame::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;border-radius:inherit;box-shadow:inset 0 0 60px rgba(40,30,20,.12)}
