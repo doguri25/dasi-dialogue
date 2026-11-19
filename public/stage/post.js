@@ -1,6 +1,6 @@
 // 화면 마무리: 장면 → 빛 번짐 → 색 보정 → 톤 매핑(OutputPass).
 // 폭주 구구단(pokju-edu)의 js_fx2.js와 grade.frag 구성을 대화실에 맞게 줄였습니다.
-const GRADE=`uniform sampler2D tDiffuse;uniform float uTime,uMood,uAspect;varying vec2 vUv;
+const GRADE=`uniform sampler2D tDiffuse;uniform float uTime,uMood,uAspect,uSunAmt;uniform vec2 uSun;varying vec2 vUv;
 float h(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
 void main(){
  vec3 col=texture2D(tDiffuse,vUv).rgb;
@@ -16,6 +16,8 @@ void main(){
  l=dot(col,vec3(.2126,.7152,.0722));
  col=mix(col*vec3(.95,.985,1.045),col*vec3(1.035,1.,.95),smoothstep(.04,.55,l));
  col=mix(vec3(l),col,1.06);
+ // 창(해)이 있는 쪽에 번지는 따뜻한 빛: 창이 화면 밖으로 나가도 가장자리에서 은은하게 남습니다.
+ vec2 sd=vUv-uSun;sd.x*=uAspect;col+=vec3(1.,.82,.56)*uSunAmt*(exp(-dot(sd,sd)*5.)*.055+exp(-dot(sd,sd)*40.)*.035);
  col*=1.-smoothstep(.42,.95,r)*.24;
  col+=(h(vUv*913.+fract(uTime)*41.)-.5)*.012;
  gl_FragColor=vec4(col,1.);
@@ -27,14 +29,14 @@ export function createPost(T,renderer,scene,camera) {
   rt=new T.WebGLRenderTarget(2,2,{type:T.HalfFloatType,samples:4});
   composer=new T.EffectComposer(renderer,rt);
   composer.addPass(new T.RenderPass(scene,camera));
-  bloom=new T.UnrealBloomPass(new T.Vector2(256,256),.18,.35,1.2);
+  bloom=new T.UnrealBloomPass(new T.Vector2(256,256),.24,.4,1.02);
   const size=bloom.setSize.bind(bloom);
   bloom.setSize=(w,h)=>{const k=Math.min(1,960/Math.max(1,w));size(Math.round(w*k),Math.round(h*k));};
   // 한 픽셀의 NaN이 빛 번짐으로 화면 전체를 검게 만들지 않도록(pokju-edu 1.4와 같음)
   const hp=bloom.materialHighPassFilter,from='vec4 texel = texture2D( tDiffuse, vUv );';
   if(hp.fragmentShader.includes(from)){hp.fragmentShader=hp.fragmentShader.replace(from,from+'\n\t\t\tif ( any( isnan( texel ) ) || any( isinf( texel ) ) ) texel = vec4( 0.0 );');hp.needsUpdate=true;}
   composer.addPass(bloom);
-  grade=new T.ShaderPass({uniforms:{tDiffuse:{value:null},uTime:{value:0},uMood:{value:0},uAspect:{value:1}},vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:GRADE});
+  grade=new T.ShaderPass({uniforms:{tDiffuse:{value:null},uTime:{value:0},uMood:{value:0},uAspect:{value:1},uSun:{value:new T.Vector2(.8,.8)},uSunAmt:{value:0}},vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:GRADE});
   composer.addPass(grade);
   composer.addPass(new T.OutputPass());
  }catch{composer?.dispose?.();composer=null;rt?.dispose();rt=null;}
@@ -44,6 +46,7 @@ export function createPost(T,renderer,scene,camera) {
   setSize(w,h){if(!composer)return;composer.setPixelRatio(renderer.getPixelRatio());composer.setSize(w,h);grade.uniforms.uAspect.value=w/Math.max(1,h);},
   setBloom(on){if(bloom)bloom.enabled=on;},
   setMood(v){moodTarget=Math.max(-1,Math.min(1,v));},
+  setSun(x,y,on){if(!grade)return;grade.uniforms.uSun.value.set(x,y);grade.uniforms.uSunAmt.value=on;},
   render(dt,time){
    mood+=(moodTarget-mood)*(1-Math.exp(-dt*1.5));
    if(!composer){renderer.render(scene,camera);return;}

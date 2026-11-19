@@ -130,32 +130,38 @@ export function buildRoom(T,{anisotropy=1,still=false}={}) {
  mesh(pad,geo(new T.CylinderGeometry(.006,.006,.17,10)),glaze('#d6a14f'),{p:[.13,.008,0],r:[Math.PI/2,0,.1]});
 
  // ---- 의자: 천의 짜임이 보이는 푹신한 안락의자 ----
- // 피부색과 헷갈리지 않는 차분한 천 색
- const chairColors={v:'#a9c4a2',a:'#b8afd9',g:'#a7c3d6',solo:'#a9c4a2'};
- function chair(color){
+ // 앉는 천(seat)은 옷과 겹치지 않는 색, 둘레 테(trim)는 역할 색(looks.js의 chairFabricFor가 고름).
+ const defaultFabric={v:{seat:'#a9c4a2',trim:'#a9c4a2'},a:{seat:'#b8afd9',trim:'#b8afd9'},g:{seat:'#a7c3d6',trim:'#a7c3d6'}};
+ function chair({seat:color,trim}){
+  const before=mats.length;
   const ch=new T.Group(),seatMat=fine(clay(color,{bumpMap:weaveTex,bumpScale:.7,sheen:.45})),legMat=clay('#e2c49f',{map:grainTex});
   // 둥글고 푹신한 안락의자: 방석, 등받이, 팔걸이, 짧은 다리, 방석 둘레의 가는 테
   mesh(ch,SPH,seatMat,{p:[0,SEAT_Y-.05,.02],s:[.27,.09,.25]});
   mesh(ch,SPH,seatMat,{p:[0,SEAT_Y-.11,0],s:[.29,.08,.27]});
   mesh(ch,SPH,seatMat,{p:[0,SEAT_Y+.2,-.2],r:[-.18,0,0],s:[.27,.26,.09]});
   for(const x of [-.27,.27])mesh(ch,SPH,seatMat,{p:[x,SEAT_Y+.01,-.04],s:[.05,.08,.2]});
-  const pipe=clay(new T.Color(color).multiplyScalar(.86).getStyle(),{sheen:.3});
-  mesh(ch,geo(new T.TorusGeometry(1,.035,8,48)),pipe,{p:[0,SEAT_Y-.1,0],r:[Math.PI/2,0,0],s:[.285,.265,.6]});
+  const pipe=clay(new T.Color(trim).multiplyScalar(.92).getStyle(),{sheen:.35});
+  mesh(ch,PIPE,pipe,{p:[0,SEAT_Y-.1,0],r:[Math.PI/2,0,0],s:[.29,.27,.8]});
   for(const [x,z] of [[-.2,-.17],[.2,-.17],[-.2,.17],[.2,.17]])mesh(ch,CYL,legMat,{p:[x,(SEAT_Y-.16)/2,z],s:[.018,SEAT_Y-.16,.018]});
   contact(ch,0,-.02,.98,.92,.85,.01);
+  ch.userData={seat:color,own:mats.slice(before)};
   return ch;
  }
+ const PIPE=geo(new T.TorusGeometry(1,.045,8,48));
+ function dropChair(ch){ch.removeFromParent();for(const m of ch.userData.own){m.dispose();const i=mats.indexOf(m);if(i>=0)mats.splice(i,1);const f=fineMats.findIndex(x=>x.m===m);if(f>=0)fineMats.splice(f,1);}}
  function anchorFor(angle,radius=SEAT_R){
   const a=angle*deg,pos=new T.Vector3(Math.sin(a)*radius,SEAT_Y,Math.cos(a)*radius);
   return {position:pos,facing:Math.atan2(-pos.x,-pos.z)};
  }
  // 자리 배치: 사전모임은 마주 앉고, 본·사후모임은 원으로 앉습니다.
- function arrange(layout,roles){
+ function arrange(layout,roles,fabrics={}){
   const angles=LAYOUTS[layout]||LAYOUTS.main,out={};
-  for(const [key,obj] of chairs){if(!roles.includes(key)){obj.removeFromParent();chairs.delete(key);}}
+  for(const [key,obj] of chairs){if(!roles.includes(key)){dropChair(obj);chairs.delete(key);}}
   for(const role of roles){
    const anc=anchorFor(angles[role]??180);out[role]=anc;
-   let ch=chairs.get(role);if(!ch){ch=chair(chairColors[role]||chairColors.solo);chairs.set(role,ch);group.add(ch);}
+   const fabric=fabrics[role]||defaultFabric[role]||defaultFabric.v;
+   let ch=chairs.get(role);if(ch&&ch.userData.seat!==fabric.seat){dropChair(ch);ch=null;}
+   if(!ch){ch=chair(fabric);chairs.set(role,ch);group.add(ch);}
    ch.position.set(anc.position.x,0,anc.position.z);ch.rotation.y=anc.facing;
   }
   return out;
@@ -163,7 +169,9 @@ export function buildRoom(T,{anisotropy=1,still=false}={}) {
 
  // ---- 햇빛: 창에서 바닥으로 비스듬히 드는 빛줄기, 바닥에 비친 창 모양, 빛 속을 떠다니는 먼지 ----
  const light=new T.Group();group.add(light);
- const from=new T.Vector3(WINDOW.x,WINDOW.y,WINDOW.z+.05),to=new T.Vector3(.95,0,-.5);
+ // 해는 창을 지나 바닥의 한 점(LAND)에 닿습니다. 그림자·빛줄기·바닥 햇빛이 모두 이 방향을 따릅니다.
+ const from=new T.Vector3(WINDOW.x,WINDOW.y,WINDOW.z+.05),LAND=new T.Vector3(.55,0,-.62),to=LAND.clone();
+ const sunDir=LAND.clone().sub(from).normalize();
  const beamMat=new T.MeshBasicMaterial({map:beamTex,color:new T.Color(1,.9,.72),transparent:true,opacity:.15,depthWrite:false,blending:T.AdditiveBlending,side:T.DoubleSide,toneMapped:false});mats.push(beamMat);
  let beams=0;const beamMeshes=[];
  const axis=to.clone().sub(from),len=axis.length(),dir=axis.clone().normalize(),q=new T.Quaternion().setFromUnitVectors(new T.Vector3(0,-1,0),dir);
@@ -173,7 +181,7 @@ export function buildRoom(T,{anisotropy=1,still=false}={}) {
   b.position.copy(from).addScaledVector(dir,len/2).add(new T.Vector3(dx,0,0));b.renderOrder=3;light.add(b);beamMeshes.push(b);beams++;
  }
  const patchMat=new T.MeshBasicMaterial({map:patchTex,color:new T.Color(1,.88,.68),transparent:true,opacity:.24,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false,polygonOffset:true,polygonOffsetFactor:-3});mats.push(patchMat);
- const patch=new T.Mesh(PLANE,patchMat);patch.rotation.set(-Math.PI/2,0,.22);patch.position.set(to.x-.05,.012,to.z+.05);patch.scale.set(1.25,1.05,1);patch.renderOrder=2;light.add(patch);
+ const patch=new T.Mesh(PLANE,patchMat);patch.rotation.set(-Math.PI/2,0,Math.atan2(sunDir.x,sunDir.z));patch.position.set(to.x,.012,to.z);patch.scale.set(1.05,1.05/Math.max(.35,-sunDir.y),1);patch.renderOrder=2;light.add(patch);
  // 먼지: 빛줄기 둘레의 상자 안에서 천천히 떠오르고 흔들립니다(동작 줄이기에서는 멈춤).
  const DUST=96,rd=TX.seeded(29),dustPos=new Float32Array(DUST*3),dustSeed=new Float32Array(DUST);
  const box={x0:from.x-.75,x1:from.x+.35,y0:.15,y1:WINDOW.y+.35,z0:from.z+.2,z1:to.z+.35};
@@ -197,12 +205,19 @@ export function buildRoom(T,{anisotropy=1,still=false}={}) {
  }
 
  // ---- 빛: 하늘·바닥 반구광, 창 쪽 따뜻한 주광(그림자), 반대편 보조광, 창에서 오는 테두리광 ----
+ // 빛을 한 이야기로 맞춥니다: 오후 해는 창(오른쪽 뒤)에서 들어와 그림자를 선생님 쪽으로 길게 드리우고,
+ // 머리카락·어깨 가장자리를 데웁니다. 얼굴은 선생님 쪽의 부드러운 빛이 밝히고, 책장 위 스탠드가 왼쪽 구석을 데웁니다.
  const lights=new T.Group();group.add(lights);
- const hemi=new T.HemisphereLight('#fff6ea','#a8957d',.86);lights.add(hemi);
- const key=new T.DirectionalLight('#ffdfb8',2.05);key.position.set(2.4,3.4,1.2);key.target.position.set(0,.8,-.4);lights.add(key,key.target);
- key.castShadow=true;key.shadow.mapSize.set(1024,1024);Object.assign(key.shadow.camera,{left:-2.2,right:2.2,top:2.2,bottom:-1,near:.5,far:9});key.shadow.bias=-.0004;key.shadow.normalBias=.025;
- const fill=new T.DirectionalLight('#dfe8ff',.42);fill.position.set(-2.5,1.8,2.2);lights.add(fill);
- const rim=new T.DirectionalLight('#ffeacc',.95);rim.position.set(1.6,2.4,-3.4);lights.add(rim);
+ const hemi=new T.HemisphereLight('#fff6ea','#a08a70',.58);lights.add(hemi);
+ const SUN_AT=new T.Vector3(0,.45,-.3);
+ const key=new T.DirectionalLight('#ffd6a0',3.1);key.position.copy(SUN_AT).addScaledVector(sunDir,-5.5);key.target.position.copy(SUN_AT);lights.add(key,key.target);
+ key.castShadow=true;key.shadow.mapSize.set(1024,1024);Object.assign(key.shadow.camera,{left:-2.4,right:2.4,top:2.2,bottom:-2.2,near:1,far:11});key.shadow.bias=-.0005;key.shadow.normalBias=.03;key.shadow.radius=2.5;
+ const face=new T.DirectionalLight('#fff1e2',.98);face.position.set(.5,2.1,3.4);face.target.position.set(0,.6,-.5);lights.add(face,face.target);
+ const cool=new T.DirectionalLight('#dde6ff',.3);cool.position.set(-2.6,1.6,1.1);lights.add(cool);
+ const lampLight=new T.PointLight('#ffc27a',1.1,2.6,2);lampLight.position.set(-1.85,1.86,-2.4);lights.add(lampLight);
+ // 스탠드 갓 둘레의 은은한 빛무리(늘 화면을 향함)
+ const halo=new T.Sprite(new T.SpriteMaterial({map:speckTex,color:new T.Color(1,.78,.5),transparent:true,opacity:.5,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));mats.push(halo.material);
+ halo.position.set(-1.85,1.85,-2.36);halo.scale.setScalar(.62);light.add(halo);glows++;
 
  // 반사광: 이 방을 본뜬 작은 장면(벽·바닥 색, 밝은 창, 스탠드)을 흐린 반사 지도로 굽습니다.
  // 폭주 구구단이 하늘 돔을 구워 차체·유리에 비추던 방식입니다. 탁자의 코팅·도자기·눈동자에 이 방이 비칩니다.
@@ -222,11 +237,17 @@ export function buildRoom(T,{anisotropy=1,still=false}={}) {
  let detail=true;
  return {
   group,key,arrange,update,environment,
+  windowCenter:new T.Vector3(WINDOW.x,WINDOW.y,WINDOW.z),
   tableHeight:TABLE_Y,seatHeight:SEAT_Y,
   setShadows(on){key.castShadow=on;},
   // 가장 낮은 화질에서는 창의 빛줄기·먼지·바닥 햇빛을 끕니다(접지 그림자는 가벼워 그대로 둡니다).
   setDetail(on){detail=!!on;light.visible=detail;},
   setFine(on){on=!!on;if(on===fineOn)return;fineOn=on;fineMats.forEach(f=>applyFine(f,on));},
+  chairColours(){const out={};for(const [role,ch] of chairs)out[role]=ch.userData.seat;return out;},
+  lighting(){
+   const beamAxis=beamMeshes[0]?new T.Vector3(0,-1,0).applyQuaternion(q):sunDir,windowDir=from.clone().sub(patch.position).normalize();
+   return {sunCastsShadow:key.castShadow,sunFromWindow:+(-sunDir.dot(windowDir)).toFixed(3),beamAlignment:+beamAxis.dot(sunDir).toFixed(3),shadowsTowardTeacher:sunDir.z>0,faceFill:face.intensity>0&&face.position.z>0,lamp:lampLight.intensity>0};
+  },
   stats(){return {textures:texs.length,anisotropy:floorTex.anisotropy,contactShadows,beams,dust:DUST,glows,fine:fineMats.length,fineOn,atmosphere:light.visible};},
   dustSample(){return Array.from(dustPos.slice(0,6),v=>v.toFixed(4)).join(',');},
   dispose(){group.removeFromParent();geoms.forEach(g=>g.dispose());mats.forEach(m=>m.dispose());texs.forEach(t=>t.dispose());}

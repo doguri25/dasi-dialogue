@@ -3,7 +3,7 @@ import * as T from '../vendor/three-stage.js';
 import {buildRoom,TABLE_Y,SEAT_Y,SEAT_R,TABLE_R} from './room.js';
 import {createCharacter} from './character.js';
 import {createPost} from './post.js';
-import {LOOKS} from './looks.js';
+import {LOOKS,chairFabricFor} from './looks.js';
 import {poseFor} from './acting.js';
 import {QUALITY_LEVELS,nextQualityLevel,isTooSlow} from './support.js';
 
@@ -71,7 +71,9 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
  function setCast({seats=[],phase:ph='pre'}={}){
   phase=ph;const roles=seats.map(s=>s.role);
   for(const [role,c] of cast){const seat=seats.find(s=>s.role===role);if(!seat||seat.lookKey!==c.lookKey){c.char.dispose();cast.delete(role);}}
-  const anchors=room.arrange(ph==='pre'?'pre':ph==='lobby'?'lobby':'main',roles);
+  // 의자 천은 그 자리에 앉는 캐릭터의 옷과 겹치지 않는 색으로 고릅니다.
+  const fabrics=Object.fromEntries(seats.map(s=>[s.role,chairFabricFor(s.role,s.lookKey)]));
+  const anchors=room.arrange(ph==='pre'?'pre':ph==='lobby'?'lobby':'main',roles,fabrics);
   for(const s of seats){
    let c=cast.get(s.role);
    if(!c){const look=LOOKS[s.lookKey]||LOOKS['elementary-a'];c={char:createCharacter(T,look,{seed:seed++,still:reducedMotion}),look,lookKey:s.lookKey,state:'idle',mood:s.mood||'calm',intensity:s.intensity??.55};c.char.setFine?.(QUALITY_LEVELS[level].fine);scene.add(c.char.group);cast.set(s.role,c);}
@@ -107,7 +109,7 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
  let raf=0,last=0,lastDraw=0,started=false,time=0,samples=[],evalT=0,slowT=0,sized='',slowSent=false;
  const debug={fps:0,level,paused:false,visible:true,attention:null,draws:0};
  // 마우스(선생님의 손짓)를 따라 보기: 무대 위 좌표(-1~1)를 교사 자리 앞의 한 점으로 바꿉니다.
- let pointer=null;const pointerWorld=new T.Vector3(),drift=new T.Vector3();
+ let pointer=null;const pointerWorld=new T.Vector3(),drift=new T.Vector3(),sunPoint=new T.Vector3();
  // 그리기가 잇달아 실패하면(셰이더·드라이버 오류 등) 매 프레임 오류를 내며 멈추지 않고, 문맥을 잃었을 때처럼 그림 무대로 넘깁니다.
  let frameErrors=0;
  function onFrameError(err){
@@ -153,6 +155,7 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
    if(typeof c.baseY==='number'){c.char.group.position.y=c.baseY+c.lift*.02;c.char.group.scale.setScalar(1+c.lift*.025);}
   }
   room.update(dt,time);
+  sunPoint.copy(room.windowCenter).project(camera);post.setSun((sunPoint.x+1)/2,(sunPoint.y+1)/2,sunPoint.z<1?1:0);
   post.render(dt,time);started=true;debug.draws++;
   return true;
  }

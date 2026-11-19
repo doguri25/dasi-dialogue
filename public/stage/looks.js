@@ -18,3 +18,24 @@ export function lookFor(scenario,role) {
  const match=src.match(/student-([a-z]+-[ab])\.webp$/);
  return match&&LOOKS[match[1]]?match[1]:'elementary-a';
 }
+
+// ---- 의자 천: 옷과 같은 색 의자에 앉지 않게 ----
+// 역할 색(화면의 학생·보호자 색)은 의자 둘레 테(trim)에 늘 남기고, 앉는 천(seat)은 옷과 충분히 다른 색으로 고릅니다.
+// 역할 색이 옷과 다르면 그대로 쓰고, 겹치면 차분한 다른 천(귀리·테라코타·머스터드·장밋빛·하늘) 가운데 가장 먼저 맞는 것을 씁니다.
+export const ROLE_FABRIC={v:'#a9c4a2',a:'#b8afd9',g:'#a7c3d6'};
+const SPARE_FABRICS=['#e6d4b8','#dda58a','#e3c06e','#e7b7b4','#a7c3d6'];
+const MIN_DISTANCE=28;
+function lab(hex){
+ const c=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
+ const x=(c[0]*.4124+c[1]*.3576+c[2]*.1805)/.95047,y=c[0]*.2126+c[1]*.7152+c[2]*.0722,z=(c[0]*.0193+c[1]*.1192+c[2]*.9505)/1.08883;
+ const f=t=>t>.008856?Math.cbrt(t):7.787*t+16/116;
+ return [116*f(y)-16,500*(f(x)-f(y)),200*(f(y)-f(z))];
+}
+// 두 색의 차이(CIE76 ΔE). 28 이상이면 한눈에 다른 색으로 보입니다.
+export function colourDistance(a,b){const p=lab(a),q=lab(b);return Math.hypot(p[0]-q[0],p[1]-q[1],p[2]-q[2]);}
+export function chairFabricFor(role,lookKey){
+ const look=LOOKS[lookKey]||LOOKS['elementary-a'],trim=ROLE_FABRIC[role]||ROLE_FABRIC.v,worn=[look.top,look.under].filter(Boolean);
+ const fits=c=>worn.every(w=>colourDistance(c,w)>=MIN_DISTANCE);
+ const seat=[trim,...SPARE_FABRICS].find(fits)||[trim,...SPARE_FABRICS].reduce((best,c)=>Math.min(...worn.map(w=>colourDistance(c,w)))>Math.min(...worn.map(w=>colourDistance(best,w)))?c:best);
+ return {seat,trim};
+}

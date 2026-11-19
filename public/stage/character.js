@@ -45,7 +45,10 @@ export function createCharacter(T,look,{seed=1,still=false}={}) {
 
  // ---- 몸통(콩 모양)과 옷 ----
  const {H,W}=A,depth=.82;
- const lathe=(scale,phiStart=0,phiLength=Math.PI*2)=>geo(new T.LatheGeometry([[0,0],[.7,0],[.93,.08],[1,.3],[.97,.55],[.86,.78],[.66,.94],[.36,1.02],[0,1.04]].map(([x,y])=>new T.Vector2(x*W*scale,y*H)),48,phiStart,phiLength));
+ const BEAN=[[0,0],[.7,0],[.93,.08],[1,.3],[.97,.55],[.86,.78],[.66,.94],[.36,1.02],[0,1.04]];
+ const lathe=(scale,phiStart=0,phiLength=Math.PI*2)=>geo(new T.LatheGeometry(BEAN.map(([x,y])=>new T.Vector2(x*W*scale,y*H)),48,phiStart,phiLength));
+ // 몸통 높이 y(몸통 좌표)에서의 옆 반지름
+ const beanRadius=y=>{const t=(y-.02)/H;for(let i=1;i<BEAN.length;i++){const [x0,y0]=BEAN[i-1],[x1,y1]=BEAN[i];if(t<=y1)return W*(x0+(x1-x0)*Math.max(0,(t-y0)/(y1-y0||1)));}return 0;};
  const topColor=look.top,under=look.under;
  mesh(torso,lathe(1),cloth(look.topKind==='cardigan'?under:topColor),{p:[0,.02,0],s:[1,1,depth]});
  if(look.topKind==='cardigan'){
@@ -171,12 +174,15 @@ export function createCharacter(T,look,{seed=1,still=false}={}) {
  }
 
  // ---- 짧고 부드러운 팔: 어깨에서 한 덩어리로 돌아갑니다(팔꿈치 마디 없음) ----
- const sleeve=cloth(topColor),armLen=A.arm,armR=.044*k*.9;
- const armGeo=geo(new T.CapsuleGeometry(armR,armLen-armR*2,10,16));armGeo.translate(0,-armLen/2+armR*.4,0);
+ // 매끈한 한 조각 소매: 어깨 쪽 끝은 몸통 속에 묻혀 이음매가 보이지 않고, 손목에서 소매 자체가 살짝 부풀어 소맷부리가 됩니다.
+ // (조각을 이어 붙이면 만나는 곳마다 접힌 선이 생겨 금이 간 것처럼 보입니다.) 손은 소맷부리 안에서 나옵니다.
+ const sleeve=cloth(topColor),armLen=A.arm,armR=.044*k*.9,shoulderY=.02+H*.8,shoulderX=W*.74;
+ const L=armLen,SLEEVE=[[0,-L+armR*.3],[armR*.62,-L+armR*.26],[armR*.93,-L+armR*.12],[armR*1.06,-L*.95],[armR*1.08,-L*.88],[armR*.99,-L*.8],[armR*1.01,-L*.66],[armR*1.1,-L*.38],[armR*1.2,-armR*.25],[armR*1.1,armR*.35],[armR*.72,armR*.8],[0,armR*.98]];
+ const armGeo=geo(new T.LatheGeometry(SLEEVE.map(([r,y])=>new T.Vector2(r,y)),24));
  const arms=[-1,1].map(s=>{
-  const pivot=new T.Group();pivot.position.set(s*W*.8,.02+H*.8,0);torso.add(pivot);
+  const pivot=new T.Group();pivot.position.set(s*shoulderX,shoulderY,0);pivot.userData.armPivot=true;torso.add(pivot);
   const limbMesh=mesh(pivot,armGeo,sleeve);
-  const hand=mesh(pivot,SPH,skin,{p:[0,-armLen+armR*.2,0],s:[armR*1.18,armR*1.05,armR*1.18]});
+  const hand=mesh(pivot,SPH,skin,{p:[0,-armLen+armR*.32,0],s:[armR*.95,armR*.9,armR*.97]});
   return {s,pivot,limbMesh,hand,aim:new T.Vector3(0,-1,0)};
  });
  // 다리: 앉은 자세의 짧은 다리와 동그란 신발
@@ -191,7 +197,7 @@ export function createCharacter(T,look,{seed=1,still=false}={}) {
  function limb(o,a,b){o.position.copy(a).add(b).multiplyScalar(.5);o.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),b.clone().sub(a).normalize());}
 
  // ---- 상태 ----
- let pose=null,target=null,mouthTarget={h:0,w:1},mouth={h:0,w:1},state='idle',time=rand()*10;
+ let pose=null,target=null,mouthTarget={h:0,w:1},mouth={h:0,w:1},state='idle',time=rand()*10,sway=0;
  let blink={t:1+rand()*3,phase:-1},gaze={t:0,dir:new T.Vector2(),cur:new T.Vector2()},nod={t:2+rand()*3,phase:-1},look3=null;
  const tmp=new T.Vector3(),tmp2=new T.Vector3(),DOWN=new T.Vector3(0,-1,0),goal=new T.Vector3(),qInv=new T.Quaternion();
  // 손이 가려는 곳(몸통 좌표). 팔이 짧아 닿지 않으면 그 방향으로 뻗기만 합니다.
@@ -201,15 +207,15 @@ export function createCharacter(T,look,{seed=1,still=false}={}) {
    case 'crossed':return goal.set(-s*W*.75,.02+H*(s>0?.56:.46),front+(s>0?.035:.01));   // 팔을 반대쪽으로 넘겨 팔짱
    case 'clasp':return goal.set(s*.022,.02+H*.42,front+.05);
    case 'lap':return goal.set(s*.05,.02-H*.05,front+.03);
-   case 'fidget':return goal.set(s*.03+s*.008*Math.sin(t*5.3+s),.02+H*.08+.008*Math.sin(t*7.1+s*2),front+.07);
+   case 'fidget':return goal.set(s*.03+s*.005*Math.sin(t*2.6+s),.02+H*.08+.005*Math.sin(t*3.4+s*2),front+.06);   // 차분하게 손을 만지작
    case 'gesture':return s>0?goal.set(W*1.05,.02+H*.75+.05*Math.sin(t*2.2),front+.06+.03*Math.sin(t*1.6)):goal.set(s*W*.62,.02+H*.12,front+.09);
-   default:return goal.set(s*W*.62,.02+H*.12,front+.09);   // 무릎 위에 편하게 올린 손
+   default:return goal.set(s*W*.62,.02+H*.1,front+.06);   // 무릎 위에 편하게 올린 손(몸 가까이)
   }
  }
  function aimArm(arm,dt,t){
   handGoal(arm.s,still?0:t,pose);
   tmp.copy(goal).sub(arm.pivot.position).normalize();
-  arm.aim.lerp(tmp,still?1:1-Math.exp(-dt*6)).normalize();
+  arm.aim.lerp(tmp,still?1:1-Math.exp(-dt*4.5)).normalize();   /* 몸의 자세 변화와 비슷한 빠르기로 따라갑니다 */
   arm.pivot.quaternion.setFromUnitVectors(DOWN,arm.aim);
  }
 
@@ -220,13 +226,16 @@ export function createCharacter(T,look,{seed=1,still=false}={}) {
   setMouth(shape,open=0){const m=MOUTH[shape]||MOUTH.REST;mouthTarget={h:m.h?open:0,w:m.w};},
   lookAt(v){look3=v?v.clone():null;},
   // 비율 확인용: 머리 높이, 서 있을 때의 몸(몸통+다리) 높이, 팔 길이, 팔 마디 수
-  measure(){return {head:R*.97*2,body:H*1.04+A.thigh+A.shin,arm:armLen,armPieces:1,hairTips,hairBlobs};},
+  measure(){return {head:R*.97*2,body:H*1.04+A.thigh+A.shin,arm:armLen,armPieces:1,hairTips,hairBlobs,sleevePieces:arms[0].pivot.children.filter(o=>o.isMesh&&o!==arms[0].hand).length,sleeveBuried:beanRadius(shoulderY)-shoulderX,cuffs:arms.length,handToSleeve:arms[0].hand.scale.x/armR};},
   update(dt,t){
    if(!target)return;time+=dt;
    const kp=still?1:1-Math.exp(-dt*3.2);
    for(const key of Object.keys(target)){if(typeof target[key]==='number')pose[key]+=(target[key]-pose[key])*kp;else pose[key]=target[key];}
    const p=pose,breath=still?0:Math.sin(time*2*Math.PI/3.8),side=seed%2?1:-1;
-   torso.rotation.set(p.lean*.18+p.slump*.1+breath*.008,p.turn*side,0);
+   // 손짓하면 몸통도 그쪽으로 살짝 기울고 돌아 팔과 몸이 함께 움직입니다.
+   const gest=p.arms==='gesture'?.6+.4*Math.sin(time*2.2):0;
+   sway+=(gest-sway)*(still?1:1-Math.exp(-dt*3));
+   torso.rotation.set(p.lean*.18+p.slump*.1+breath*.008,p.turn*side+sway*.06,-sway*.05);
    torso.scale.set(1+breath*.006,1-p.slump*.03+breath*.01,1+breath*.006);torso.position.y=-p.slump*.01;
    // 시선: 마주 볼지 피할지 가끔 다시 고릅니다.
    if(!still&&(gaze.t-=dt)<=0){
@@ -255,7 +264,9 @@ export function createCharacter(T,look,{seed=1,still=false}={}) {
    const open=mouth.h;openMouth.visible=open>.08;lineGroup.visible=!openMouth.visible;
    cavity.scale.set(.021*k*mouth.w*(1-p.lipPress*.2),Math.max(.002,.028*k*open),.01);
    const curve=Math.max(-1,Math.min(1,p.smile));lineGroup.scale.set((1-p.lipPress*.25)*(1+Math.max(0,curve)*.15),curve>=0?.15+curve*.85:-(.15+(-curve)*.85),1);
-   for(const arm of arms){arm.pivot.position.y=.02+H*(.8+.08*p.shoulders);aimArm(arm,dt,time);}
+   // 어깨는 숨에 맞춰 오르내리고, 팔은 그 어깨에 매달려 있습니다.
+   const sy=.02+H*(.8+.08*p.shoulders)+breath*.0035;
+   for(const arm of arms){arm.pivot.position.y=sy;aimArm(arm,dt,time);}
   },
   // 낮은 화질: 옷의 뜨개 결 요철을 내려놓습니다.
   setFine(on){for(const m of cloths){const want=on?knitTex:null;if(m.bumpMap!==want){m.bumpMap=want;m.needsUpdate=true;}}},

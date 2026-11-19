@@ -143,3 +143,43 @@ test('with reduced motion, characters change pose at once and then hold still',a
  assert.notEqual(snap(moving.group),early,'without reduced motion the pose still blends and breathes');
  c.dispose();moving.dispose();
 });
+
+test('nobody sits on a chair the colour of their own clothes',async()=>{
+ const {chairFabricFor,ROLE_FABRIC,colourDistance}=await import('../public/stage/looks.js');
+ for(const [key,look] of Object.entries(LOOKS))for(const role of ['v','a','g']){
+  const f=chairFabricFor(role,key),worn=[look.top,look.under].filter(Boolean);
+  for(const c of worn)assert.ok(colourDistance(f.seat,c)>=28,`${key} as ${role}: chair ${f.seat} too close to clothes ${c} (${colourDistance(f.seat,c).toFixed(1)})`);
+  assert.equal(f.trim,ROLE_FABRIC[role],'the role colour stays on the chair trim');
+ }
+ // 옷과 충분히 다르면 역할 색 그대로 앉습니다.
+ assert.equal(chairFabricFor('g','guardian').seat,ROLE_FABRIC.g);
+ assert.notEqual(chairFabricFor('v','elementary-a').seat,ROLE_FABRIC.v,'sage sweatshirt does not sit on the sage chair');
+ assert.notEqual(chairFabricFor('a','middle-b').seat,ROLE_FABRIC.a,'lilac hoodie does not sit on the lilac chair');
+});
+
+test('arms grow out of the shoulders and move with the body',async()=>{
+ const T=await import('../public/vendor/three-stage.js');const {createCharacter}=await import('../public/stage/character.js');
+ for(const [key,look] of Object.entries(LOOKS)){
+  const c=createCharacter(T,look,{seed:4}),m=c.measure();
+  // 팔은 이어 붙인 조각(어깨 공·소맷부리 고리) 없이 매끈한 한 조각 소매입니다. 조각이 만나는 곳은 금처럼 보입니다.
+  assert.equal(m.sleevePieces,1,`${key}: one seamless sleeve per arm (got ${m.sleevePieces})`);
+  assert.ok(m.sleeveBuried>0,`${key}: the top of the sleeve is buried in the body, so no seam shows (${m.sleeveBuried.toFixed(3)})`);
+  assert.equal(m.cuffs,2,`${key}: the sleeve itself swells into a cuff at the wrist`);
+  assert.ok(m.handToSleeve<=1.02,`${key}: hands are not wider than the sleeve (${m.handToSleeve.toFixed(2)})`);
+  c.dispose();
+ }
+ const torsoOf=c=>c.group.children[0];
+ const pivots=c=>{const out=[];torsoOf(c).children.forEach(o=>{if(o.userData.armPivot)out.push(o);});return out;};
+ // 숨을 쉬면 어깨(팔이 붙은 곳)도 함께 오르내립니다.
+ const b=createCharacter(T,LOOKS['elementary-a'],{seed:5});b.setPose(poseFor('calm',{state:'idle',intensity:.55}),'idle');
+ const ys=[];for(let i=0;i<240;i++){b.update(1/60,i/60);if(i%20===0)ys.push(pivots(b)[0].position.y);}
+ assert.ok(Math.max(...ys)-Math.min(...ys)>.0015,'shoulders rise and fall with the breath');
+ // 손짓할 때는 몸통도 그쪽으로 따라갑니다.
+ const g=createCharacter(T,LOOKS['middle-a'],{seed:6});g.setPose(poseFor('open',{state:'speaking',intensity:1}),'speaking');
+ let lean=0;for(let i=0;i<180;i++){g.update(1/60,i/60);lean=Math.max(lean,Math.abs(torsoOf(g).rotation.z));}
+ assert.ok(lean>.01,`the body follows a gesture (${lean.toFixed(3)})`);
+ const r=createCharacter(T,LOOKS['middle-a'],{seed:6});r.setPose(poseFor('calm',{state:'idle',intensity:.55}),'idle');
+ let rest=0;for(let i=0;i<180;i++){r.update(1/60,i/60);rest=Math.max(rest,Math.abs(torsoOf(r).rotation.z));}
+ assert.ok(rest<lean/2,'and stays upright with hands at rest');
+ [b,g,r].forEach(c=>c.dispose());
+});
