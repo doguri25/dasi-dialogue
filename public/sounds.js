@@ -6,7 +6,7 @@ export function createSounds(host=globalThis){
  function stop(){for(const voice of voices){try{voice.stop();}catch{}}voices.clear();nextAt=0;}
  async function play(kind){
   if(!enabled)return;
-  const notes={select:[[660,0,.07]],send:[[440,0,.08],[660,.08,.09]],reply:[[660,0,.12],[880,.14,.16]]}[kind];
+  const notes={select:[[660,0,.07]],send:[[440,0,.08],[660,.08,.09]],reply:[[660,0,.12],[880,.14,.16]],phase:[[523,0,.1],[659,.1,.1],[784,.2,.2]]}[kind];
   if(!notes)return;
   try{
    const Audio=host.AudioContext||host.webkitAudioContext;if(!Audio)return;

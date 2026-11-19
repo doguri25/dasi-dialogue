@@ -297,6 +297,38 @@ try{
    assert.deepEqual(errors,[]);await ctx.close();}
   results.push('alive: pointer gaze, listening while the teacher writes');
  }
+ // 9. 무대의 캐릭터를 눌러 질문을 건넬 사람 고르기(3D 광선 판정, 그림 무대, 사전모임에서는 꺼짐)
+ if(run('pick')){
+  {const {page,errors}=await labPage('director=1&mode=3d&noslow=1',{width:960,height:600,scale:1});
+   await page.evaluate(()=>{const d=window.__lab.director;d.setCast({scenario:window.__lab.scenario,phase:'main',target:'all',sessionId:'pick'});window.__picked=[];d.onPick(r=>window.__picked.push(r));d.setPickable(true);});
+   await page.waitForTimeout(600);
+   const box=await page.locator('.stage-host').boundingBox();
+   for(const role of ['a','v']){
+    const at=await page.evaluate(r=>window.__lab.director.screenOf(r),role);
+    assert.ok(at,`head position for ${role}`);
+    const x=box.x+(at.x+1)/2*box.width,y=box.y+(1-at.y)/2*box.height+box.height*.06;
+    await page.mouse.move(x,y);await page.waitForTimeout(250);
+    assert.equal(await page.locator('.stage-host').getAttribute('data-hover'),role,`hovering ${role} marks it`);
+    await page.mouse.click(x,y);
+   }
+   await page.mouse.click(box.x+6,box.y+6);
+   assert.deepEqual(await page.evaluate(()=>window.__picked),['a','v'],'clicking characters picks them; empty space picks no one');
+   await page.evaluate(()=>window.__lab.director.setPickable(false));
+   assert.equal(await page.locator('.stage-host').getAttribute('data-hover'),null,'turning picking off clears the hover');
+   assert.deepEqual(errors,[]);await page.close();}
+  {const ctx=await browser.newContext({viewport:{width:1366,height:768},locale:'ko-KR'});await ctx.addInitScript(()=>{if(!sessionStorage.getItem('p')){localStorage.setItem('dasi.stage','off');sessionStorage.setItem('p','1');}});
+   const page=await ctx.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+   await page.goto(base);await page.locator('[data-action="quick"]').first().click();await page.locator('#start-form button[type="submit"]').click();await page.locator('#application-continue').click();await page.locator('#stage-slot .stage-host').waitFor();
+   assert.equal(await page.locator('.stage-host').getAttribute('data-pickable'),'false','pre-meeting shows one student, so picking is off');
+   await page.locator('.desktop-notes-toggle').click();for(const k of ['v','a','g','safe'])await page.locator(`[data-check="${k}"]`).check();await page.locator('[data-action="advance"]').click();
+   await page.locator('.flat-seat[data-role="a"]').waitFor();
+   assert.equal(await page.locator('.stage-host').getAttribute('data-pickable'),'true');
+   await page.locator('.flat-seat[data-role="a"]').click();
+   await page.waitForFunction(()=>document.querySelector('#target-a')?.checked,null,{timeout:5000});
+   assert.match(await page.locator('.target-chip.selected').innerText(),/지우/,'clicking a face on the stage chooses that student');
+   assert.deepEqual(errors,[]);await ctx.close();}
+  results.push('pick: 3D ray picking with hover, 2D faces, off in pre-meeting');
+ }
  await writeFile('.test-artifacts/stage-browser.json',JSON.stringify({passed:true,results},null,2));
  console.log(JSON.stringify({passed:true,results}));
 }finally{await browser.close();}

@@ -28,12 +28,14 @@ const button=(action,label,cls='button',extra='')=>`<button class="${cls}" data-
 const navLabel=(full,short)=>`<span class="desktop-nav-label">${full}</span><span class="mobile-nav-label">${short}</span>`;
 const avatar=(role,c,small=false)=>{const src=portraitFor(c,role);return `<span class="avatar ${role} ${small?'small':''} ${src?'portrait':''}">${src?`<img src="${src}" alt="" width="96" height="96" loading="lazy" decoding="async">`:role==='g'?'보':e(roleName(c,role).slice(0,1))}</span>`;};
 const sceneHtml=(c,cls='')=>{const art=sceneFor(c);return `<figure class="scene-art ${cls}"><img src="${art.src}" alt="${art.alt}" width="1536" height="1024" loading="lazy" decoding="async"><figcaption>${e(c.category)} · 주제 삽화</figcaption></figure>`;};
-function stepper(s){const at=Object.keys(phases).indexOf(s.phase);return `<ol class="steps" aria-label="연습 단계">${Object.entries(phases).map(([k,v],i)=>`<li class="${s.phase===k?'current':at>i?'done':''}" ${s.phase===k?'aria-current="step"':''}><span>${at>i?icon('check'):i+1}</span><div>${v}<small>${['신청 배경·동의·안전 살피기','모임 안내 후 경험 듣기','함께 듣고 실천 약속 정하기','변화와 미이행 살피기'][i]}</small></div></li>`).join('')}</ol>`;}
+const PHASE_NOTES=['신청 배경·동의·안전 살피기','모임 안내 후 경험 듣기','함께 듣고 실천 약속 정하기','변화와 미이행 살피기'];
+function stepper(s){const at=Object.keys(phases).indexOf(s.phase);return `<ol class="steps" aria-label="연습 단계">${Object.entries(phases).map(([k,v],i)=>`<li class="${s.phase===k?'current':at>i?'done':''}" ${s.phase===k?'aria-current="step"':''}><span>${at>i?icon('check'):i+1}</span><div>${v}<small>${PHASE_NOTES[i]}</small></div></li>`).join('')}</ol>`;}
 const applicationUI=()=>({e,button,icon,avatar,sceneHtml,stepper,saveIndicator});
 
 function notify(text){$('#toast').textContent=text;$('#toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),3200);}
 function render(){
  rememberWorkspace(state.session,state);
+ const prevTurns=document.querySelectorAll('#transcript .message,#transcript .system-message').length;
  const focused=document.activeElement?.id,selection=document.activeElement?.selectionStart,oldScroll=$('#transcript')?.scrollTop||0,notesScroll=$('#facilitator-notes')?.scrollTop||0,choicesScroll=$('.choice-grid')?.scrollTop||0,choicesKey=$('.choice-grid')?.dataset.choices;
  document.documentElement.dataset.textSize=state.largeText?'large':'normal';
  document.documentElement.dataset.practice=state.view==='room'&&state.session&&!state.session.finished&&state.session.phase!=='intake'?'active':'';
@@ -44,15 +46,73 @@ function render(){
  if(state.view==='room'){const t=$('#transcript');if(t)t.scrollTop=screen!==renderedScreen||state.session.messages.length!==renderedMessages?t.scrollHeight:oldScroll;}
  if(screen===renderedScreen){const notes=$('#facilitator-notes');if(notes)notes.scrollTop=notesScroll;const choices=$('.choice-grid');if(choices&&choicesKey===choices.dataset.choices)choices.scrollTop=choicesScroll;}
  const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+ const current={view:state.view,sid:state.session?.id||'',phase:state.session?.phase||'',fin:!!state.session?.finished,target:state.session?.target||'',pane:state.mobilePane};
  if(!reduced){
-  if(screen!==renderedScreen){const m=$('#main');m.classList.add('entering');clearTimeout(enterTimer);enterTimer=setTimeout(()=>$('#main')?.classList.remove('entering'),1200);}
-  if(screen!==renderedScreen)$('#main').animate([{opacity:.35,transform:'translateY(8px)'},{opacity:1,transform:'translateY(0)'}],{duration:280,easing:'cubic-bezier(.2,.7,.2,1)'});
-  else if(state.session&&state.session.messages.length>renderedMessages){const last=$('#transcript .message:last-child');last?.animate([{opacity:0,transform:'translateY(12px) scale(.98)'},{opacity:1,transform:'translateY(0) scale(1)'}],{duration:350,easing:'cubic-bezier(.2,.7,.2,1)'});}
+  motion(shown,current,prevTurns);
  }
  $('.nav-link.active')?.setAttribute('aria-current','page');
- renderedScreen=screen;renderedMessages=state.session?.messages.length||0;
+ renderedScreen=screen;renderedMessages=state.session?.messages.length||0;shown=current;
  syncStage();
 }
+
+// 움직임: 무엇이 바뀌었는지 보여 줄 때만 씁니다(동작 줄이기에서는 하지 않음).
+// 화면은 메뉴 순서대로 옆에서 들어오고, 단계가 바뀌면 토킹피스(조약돌)가 다음 단계로 건너가며 무대에 장 제목이 잠깐 뜹니다.
+const VIEW_ORDER={library:0,room:1,history:2,guide:3},PHASE_ORDER=['intake','pre','main','post'];
+const EASE='cubic-bezier(.2,.7,.2,1)',SPRING='cubic-bezier(.3,1.4,.5,1)';
+let shown={view:'',sid:'',phase:'',fin:false,target:'',pane:''},lastPoint=null;
+const pop=(el,from=.92)=>el?.animate([{transform:`scale(${from})`},{transform:'scale(1.04)',offset:.6},{transform:'none'}],{duration:420,easing:SPRING,composite:'add'});
+// 3D 장면을 새로 앉히는 무거운 일이 같은 순간에 일어나도 효과가 건너뛰지 않도록, 화면이 한 번 그려진 뒤에 시작합니다.
+const afterPaint=fn=>requestAnimationFrame(()=>requestAnimationFrame(fn));
+const held=anim=>{if(anim){anim.pause();afterPaint(()=>anim.play());}return anim;};
+const nudge=el=>el?.animate([{boxShadow:'0 3px 0 #050913,0 0 0 0 rgba(255,200,61,.85)'},{boxShadow:'0 3px 0 #050913,0 0 0 14px rgba(255,200,61,0)'}],{duration:900,easing:'ease-out',iterations:2});
+function motion(prev,cur,prevTurns){
+ const main=$('#main');if(!main)return;
+ const viewChanged=prev.view!==cur.view||(cur.view==='room'&&prev.sid!==cur.sid);
+ const phaseChanged=!viewChanged&&cur.view==='room'&&(prev.phase!==cur.phase||prev.fin!==cur.fin);
+ if(viewChanged||phaseChanged){
+  main.classList.add('entering');document.documentElement.dataset.entering='true';clearTimeout(enterTimer);
+  enterTimer=setTimeout(()=>{$('#main')?.classList.remove('entering');delete document.documentElement.dataset.entering;},1200);
+  const dir=phaseChanged?1:!prev.view?0:(VIEW_ORDER[cur.view]??0)>=(VIEW_ORDER[prev.view]??0)?1:-1;
+  held(main.animate([{opacity:0,transform:`translateX(${dir*28}px)`},{opacity:1,transform:'none'}],{duration:380,easing:EASE,fill:'backwards'}));
+  if(phaseChanged&&!cur.fin)passPebble(PHASE_ORDER.indexOf(prev.phase),PHASE_ORDER.indexOf(cur.phase));
+  if(cur.view==='room'&&!cur.fin&&PHASE_ORDER.indexOf(cur.phase)>0&&(phaseChanged||prev.phase!==cur.phase)){const at=PHASE_ORDER.indexOf(cur.phase);afterPaint(()=>chapter(at));}
+  return;
+ }
+ if(prev.target!==cur.target){held(pop($('.target-chip.selected')));held($('#transcript')?.animate([{opacity:0},{opacity:1}],{duration:260,easing:EASE,fill:'backwards'}));return;}
+ if(prev.pane!==cur.pane){
+  const desk=!isMobile(),el=cur.pane==='notes'?$('#facilitator-notes'):desk?$('.composer-wrap'):$('#conversation');
+  held(el?.animate([{opacity:0,transform:desk?'translateX(24px)':'translateY(10px)'},{opacity:1,transform:'none'}],{duration:320,easing:EASE,fill:'backwards'}));return;
+ }
+ const turns=[...document.querySelectorAll('#transcript .message,#transcript .system-message')];
+ if(turns.length>prevTurns&&prevTurns>=0)turns.slice(prevTurns).forEach((el,i)=>{const mine=el.classList.contains('teacher');held(el.animate([{opacity:0,transform:`translateX(${mine?14:-14}px) scale(.97)`},{opacity:1,transform:'none'}],{duration:380,delay:i*140,easing:EASE,fill:'backwards'}));});
+}
+// 토킹피스 건네기: 이전 단계 자리에서 지금 단계 자리로 조약돌이 튀어 넘어갑니다.
+function passPebble(from,to){
+ if(from<0||to<=from)return;
+ const spans=[...document.querySelectorAll('.steps li>span')],a=spans[from],b=spans[to];if(!a||!b)return;
+ const r1=a.getBoundingClientRect(),r2=b.getBoundingClientRect();if(!r1.width||!r2.width)return;
+ const ghost=document.createElement('span');ghost.className='pebble-ghost';ghost.setAttribute('aria-hidden','true');
+ ghost.style.width=r2.width+'px';ghost.style.height=r2.height+'px';document.body.append(ghost);
+ const mid=(r1.left+r2.left)/2,hop=Math.min(r1.top,r2.top)-34;
+ const run=held(ghost.animate([{transform:`translate(${r1.left}px,${r1.top}px) rotate(-30deg) scale(.8)`},{transform:`translate(${mid}px,${hop}px) rotate(160deg) scale(1.1)`,offset:.5},{transform:`translate(${r2.left}px,${r2.top}px) rotate(354deg)`}],{duration:720,delay:160,easing:EASE,fill:'both'}));
+ held(b.animate([{opacity:0},{opacity:0,offset:.99},{opacity:1}],{duration:880,fill:'backwards'}));
+ run.finished.then(()=>{ghost.remove();pop(b,.8);}).catch(()=>ghost.remove());
+}
+// 장 제목: 무대 위에 "3 본모임 · 함께 듣고 실천 약속 정하기"가 잠깐 떴다 사라집니다.
+function chapter(index){
+ const frame=$('.stage-frame');if(!frame)return;
+ frame.querySelector('.phase-chapter')?.remove();
+ const el=document.createElement('div');el.className='phase-chapter';el.setAttribute('aria-hidden','true');
+ const num=document.createElement('span');num.className='phase-chapter-num';num.textContent=String(index+1);
+ const name=document.createElement('strong');name.textContent=Object.values(phases)[index];
+ const note=document.createElement('small');note.textContent=PHASE_NOTES[index];
+ el.append(num,name,note);frame.append(el);
+ // 장 제목이 무대를 덮는 동안은 3D 그리기를 쉬어, 느린 학교 PC에서도 장면 전환이 끊기지 않게 합니다.
+ const r=stage?.renderer;if(r?.kind==='3d'){r.pause?.();setTimeout(()=>{if(stage?.renderer===r&&stage.element.isConnected)r.resume?.();},1500);}
+ el.addEventListener('animationend',e=>{if(e.target===el)el.remove();});setTimeout(()=>el.remove(),2600);
+}
+// 대화창은 누른 자리에서 커지며 열립니다(PC).
+document.addEventListener('pointerdown',e=>{lastPoint={x:e.clientX,y:e.clientY,t:performance.now()};},{capture:true,passive:true});
 
 // 무대: 같은 무대 요소를 render() 뒤마다 새 자리로 옮깁니다. 첫 화면에서는 한가해진 뒤에만 3D를 불러옵니다.
 let stage=null,heroWait=0;
@@ -68,7 +128,8 @@ const heroAllowed=()=>innerWidth>900&&!matchMedia('(prefers-reduced-motion: redu
 function castMoods(){const out={};for(const m of state.session?.messages||[])if(m.kind==='participant')out[m.speaker]={mood:m.mood,risk:m.risk};return out;}
 function syncStage(){
  const slot=$('#stage-slot');
- if(slot&&state.view==='room'&&state.session){stage=getStage();stage.attach(slot);stage.setCast({scenario:scenario(),phase:state.session.phase,target:state.session.target,moods:castMoods(),sessionId:state.session.id});return;}
+ if(slot&&state.view==='room'&&state.session){stage=getStage();stage.attach(slot);stage.setCast({scenario:scenario(),phase:state.session.phase,target:state.session.target,moods:castMoods(),sessionId:state.session.id});stage.onPick(pickTarget);stage.setPickable(['main','post'].includes(state.session.phase)&&!state.busy&&!recording);return;}
+ stage?.setPickable(false);
  const hero=$('#hero-stage-slot');
  if(hero&&heroAllowed()){
   const show=()=>{heroWait=0;const slot=$('#hero-stage-slot');if(!slot||state.view!=='library')return;stage=getStage();stage.attach(slot);stage.setCast({scenario:scenarios[0],phase:'lobby',target:'all'});};
@@ -141,7 +202,7 @@ function history(){return `<section class="page-heading"><span class="label">쌓
 function reviewPage(){const s=state.session,c=scenario(),r=state.review||localReview(s,c);return `<section class="review-header"><span class="label">한 번의 대화, 다음을 위한 배움</span><h1>${e(r.title)}</h1><p>${e(c.title)} · ${e(variants[s.variant].label)}</p><span class="outcome-tag">${e(s.outcome)}</span></section><div class="review-grid"><section class="review-main"><h2>오늘의 모임 돌아보기</h2><p>${e(r.summary)}</p><div class="review-columns"><div><h3>${icon('leaf')}이어갈 점</h3><ul>${(r.strengths.length?r.strengths:['기록을 읽으며 학생의 말을 기다렸던 순간을 찾아보세요.']).map(x=>`<li>${e(x)}</li>`).join('')}</ul></div><div><h3>${icon('spark')}다시 살펴볼 점</h3><ul>${r.improvements.map(x=>`<li>${e(x)}</li>`).join('')}</ul></div></div><div class="focus-note"><strong>다음 연습 제안</strong>${e(r.nextPractice)}</div>${evidenceView(localReview(s,c),applicationUI())}<label class="field">나의 회고<textarea id="reflection" rows="4" placeholder="다시 질문한다면 어떻게 말하고 싶나요? 학생의 거절을 어떻게 받아들였나요?">${e(s.reflection)}</textarea></label><div class="review-save-state">${saveIndicator()}</div><div class="review-buttons">${button('save',icon('save')+'기록 저장','button primary')}${button('export',icon('down')+'대화 내려받기','button outline')}${button('ai-review',icon('spark')+(state.busy?'회고 생성 중…':'AI 심층 회고'),'button outline',state.busy?'disabled':'')}</div>${state.error?`<p class="error" role="alert">${e(state.error)}</p>`:''}${applicationSummary(s,applicationUI())}<details class="all-transcript"><summary>전체 대화 다시 읽기 (${s.messages.length})</summary>${s.messages.map(m=>`<div><span>${phases[m.phase]} · ${m.kind==='teacher'?'나':m.kind==='system'?'안내':e(roleName(c,m.speaker))}</span><p>${e(m.text)}</p></div>`).join('')}</details></section><aside class="review-side"><h3>결말과 배움은 다릅니다.</h3><p>안전한 중단도 좋은 진행일 수 있습니다. 합의가 이뤄졌어도 강요가 없었는지, 실천할 수 있는 약속인지 다시 확인해 보세요.</p>${button('retry','같은 사례 다시 연습','button outline full')}${button('library','다른 사례 고르기','text-button full')}</aside></div>`;}
 function guide(){return `<section class="page-heading"><span class="label">질문보다 먼저 준비할 것</span><h1>모임을 여는 방법</h1><p>충남 관계회복 자료의 원칙을 바탕으로 만든 연습 안내입니다.</p></section><div class="guide-grid">${[['1','신청서 확인','창작 신청서의 배경·학생별 어려움·동의 서류·안전 우려를 읽습니다. 읽은 뒤 사전모임 시작하기를 눌러 바로 이동합니다. 실제 서류를 접수하거나 학교에 발송하지 않습니다.'],['2','사전모임','각 학생에게 먼저 대화모임의 목적·참여 선택권·쉬거나 멈출 수 있음을 안내합니다. 안내를 보낸 뒤에는 무슨 일이 있었는지 학생의 입장에서 차근차근 듣습니다. 학생을 바꾸면 그 학생에게도 먼저 안내합니다.'],['3','본모임','다시 선택권과 중단 방법을 설명합니다. 사건의 영향과 필요한 회복을 듣고, 책임질 행동을 구체적으로 정합니다. 피해학생에게 같은 잘못이나 용서를 요구하지 않습니다.'],['4','사후모임','약속이 지켜졌는지와 지금 안전한지를 별도로 묻습니다. 미이행을 숨기지 않고 지원과 점검 계획을 조정합니다. 모임이 중단돼도 보호는 이어집니다.']].map(([n,h,p])=>`<article><span class="guide-number">${n}</span><h2>${h}</h2><p>${p}</p></article>`).join('')}</div><section class="guide-detail"><h2>이 앱에서 연습하는 방법</h2><ol><li>사례와 대화 조건을 고릅니다. 모든 사건과 인물은 가상입니다. 신청서를 읽은 뒤 바로 사전모임으로 이동합니다. 그림은 학교급별 캐릭터와 주제별 삽화를 여러 사례에 함께 사용합니다.</li><li>키 없이 시나리오 체험을 하거나, AI 연결 설정에서 제공사와 자신의 API 키를 입력합니다.</li><li>사전모임은 안내 고르기에서 시작합니다. 안내와 답변 후에는 무슨 일이 있었는지 듣는 질문 4개가 나옵니다. 다른 질문을 보거나 문장을 고쳐 쓸 수 있고, 직접 입력·마이크도 선택할 수 있습니다.</li><li>실제로 확인한 진행 항목만 체크하고 다음 모임으로 넘어갑니다. 준비되지 않았다면 ‘모임 마치기’에서 보류·중단을 선택합니다.</li><li>진전, 교착, 미이행을 회고합니다. 기록 저장은 선택이며 최대 20개까지 이 브라우저에 보관합니다.</li></ol><h2>마이크와 API 사용</h2><p>한국어 음성 인식은 브라우저의 SpeechRecognition 기능을 사용합니다. 브라우저·운영체제·네트워크에 따라 지원 여부가 다르며, 인식 서비스로 음성이 전송될 수 있습니다. Chrome에서 이 앱의 HTTPS 주소나 localhost 주소로 열어 사용해 보세요. 미지원 환경에서는 텍스트로 입력할 수 있습니다. 이 앱은 음성 파일을 저장하지 않습니다.</p><p>AI 사용 시 사례와 대화 기록이 선택한 제공사로 전송됩니다. API 키는 이 창의 메모리에만 보유하고 서버가 요청을 처리하는 동안 사용합니다. 새로고침하면 키를 다시 입력해야 합니다. ChatGPT·Claude·Gemini 웹 구독과 API 사용량 과금은 별개일 수 있습니다. 연결 확인도 API 요청을 보내며 일시적인 서비스 오류에는 한 번 재시도합니다.</p><h2>자료와 적용 범위</h2><p>대화 문장과 사례는 창작한 훈련용 제안입니다. 관계회복 참여는 학교장 자체해결 동의가 아니며, 신고·사안처리를 대신하지 않습니다. AI 피드백은 전문가 평가나 공식 판정이 아닙니다.</p><div class="source-links"><a href="https://talkcne.or.kr/bbs/board.php?bo_table=notice&wr_id=102" target="_blank" rel="noreferrer">충남 2026 신청서식 ${icon('arrow')}</a><a href="https://talkcne.or.kr/bbs/board.php?bo_table=notice&wr_id=81" target="_blank" rel="noreferrer">충남 관계회복지원단 안내 ${icon('arrow')}</a><a href="https://drive.google.com/file/d/16wsy0OMtfqL-8_smAU_-ExJ_SuHggTS6/view" target="_blank" rel="noreferrer">2026 결과보고서 양식 ${icon('arrow')}</a><a href="https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition" target="_blank" rel="noreferrer">브라우저 음성 인식 지원 ${icon('arrow')}</a></div></section>`;}
 
-function showDialog(html){const wasRecording=recording;stopSpeech();if(wasRecording)render();const d=$('#modal');d.innerHTML=html;const title=d.querySelector('h2');if(title){title.id='dialog-title';d.setAttribute('aria-labelledby','dialog-title');}if(!d.open)d.showModal();}
+function showDialog(html){const wasRecording=recording;stopSpeech();if(wasRecording)render();const d=$('#modal');d.innerHTML=html;const title=d.querySelector('h2');if(title){title.id='dialog-title';d.setAttribute('aria-labelledby','dialog-title');}const opening=!d.open;if(opening)d.showModal();if(opening){const r=d.getBoundingClientRect();if(lastPoint&&performance.now()-lastPoint.t<1500&&r.width){d.style.setProperty('--ox',Math.round(lastPoint.x-r.left)+'px');d.style.setProperty('--oy',Math.round(lastPoint.y-r.top)+'px');}else{d.style.removeProperty('--ox');d.style.removeProperty('--oy');}}}
 function closeDialog(){const d=$('#modal');if(d.open)d.close();d.innerHTML='';}
 function caseDialog(id){const c=scenarios.find(c=>c.id===id);showDialog(`<div class="dialog-heading"><span class="label">${c.grade} · ${c.category} · ${c.difficulty}</span>${button('close',icon('close'),'icon-button','aria-label="닫기"')}</div><h2>${e(c.title)}</h2>${sceneHtml(c,'dialog-scene')}<p class="dialog-description">${e(c.context)}</p><div class="participant-preview">${avatar('v',c)}<div><strong>${c.victim.name}</strong><span>피해 경험을 말하는 학생</span></div>${avatar('a',c)}<div><strong>${c.actor.name}</strong><span>행동한 학생</span></div></div><h3>어떤 상황까지 연습할까요?</h3><form id="start-form" data-id="${id}"><div class="variant-options">${Object.entries(variants).map(([k,v],i)=>`<label><input type="radio" name="variant" value="${k}" ${i===0?'checked':''}><span><strong>${v.label}${i===0?'<em class="recommend">처음이라면 추천</em>':''}</strong><small>${v.description}</small></span></label>`).join('')}</div><p class="muted">성공·실패를 미리 확정하지 않습니다. 중단 조건에서는 거절을 존중하는 진행을 연습합니다.</p><button class="button primary full" type="submit">신청서 확인하기 ${icon('arrow')}</button></form>`);}
 function settingsDialog(){showDialog(`<div class="dialog-heading"><span class="label">나에게 맞는 대화 방식</span>${button('close',icon('close'),'icon-button','aria-label="닫기"')}</div><h2>AI 연결 설정</h2><p class="dialog-description">내 API 키로 학생·보호자의 자유로운 답변을 듣습니다.</p><form id="settings-form"><div class="mode-options"><label><input name="mode" type="radio" value="demo" ${state.mode==='demo'?'checked':''}> 시나리오 체험 <small>API 없이 준비된 반응</small></label><label><input name="mode" type="radio" value="ai" ${state.mode==='ai'?'checked':''}> AI 역할 대화 <small>내 API 사용량 발생</small></label></div><label class="field">AI 서비스<select id="provider">${Object.entries(providers).map(([k,v])=>`<option value="${k}" ${state.provider===k?'selected':''}>${v}</option>`).join('')}</select></label><label class="field">모델 이름<input id="model" value="${e(state.model)}" required maxlength="100" autocomplete="off"><small>계정에서 사용할 수 있는 모델명으로 변경할 수 있습니다.</small></label><label class="field">API 키<input id="api-key" type="password" value="${e(state.apiKey)}" placeholder="선택한 서비스의 API 키" autocomplete="off" spellcheck="false" maxlength="1024"></label><fieldset class="stage-pref"><legend>3D 대화 장면</legend><div class="mode-options stage-options">${[['auto','자동','기기에 맞춰 켜요'],['on','켜기','늘 3D로 봐요'],['off','끄기','그림 무대로 봐요']].map(([v,l,d])=>`<label><input name="stage-pref" type="radio" value="${v}" ${readStagePreference()===v?'checked':''}> ${l} <small>${d}</small></label>`).join('')}</div></fieldset><div class="key-note">${icon('key')}<p>키는 현재 창과 요청 처리 중에만 사용하고 저장하지 않습니다.<br>AI를 사용하면 앱 서버를 통해 사례·대화가 선택한 서비스로 전송됩니다.</p></div><p class="muted">연결 확인은 짧은 요청을 보냅니다. 일시적인 서비스 오류에는 한 번 재시도합니다. 웹 구독과 API 사용 요금은 별개입니다.</p><div id="connection-status" role="status" class="connection-status"></div><div class="dialog-buttons">${button('check-key','연결 확인','button outline')}${button('forget-key','키 지우기','text-button')}<button class="button primary" type="submit">설정 적용</button></div><div class="key-links"><a href="https://console.anthropic.com/" target="_blank" rel="noreferrer">Claude</a><a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">Gemini</a><a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">OpenAI API 키</a></div></form>`);}
@@ -158,6 +219,13 @@ function finishDialog(){showDialog(`<div class="dialog-heading"><span class="lab
 function hintDialog(){showDialog(`<div class="dialog-heading"><span class="label">정답 대신, 질문의 방향</span>${button('close',icon('close'),'icon-button','aria-label="닫기"')}</div><h2>${phases[state.session.phase]} 질문 예시</h2><p>학생의 실제 말에 맞게 고쳐 사용하세요. 공식 대본이 아닌 연습용 문장입니다.</p><div class="hint-options">${currentPrompts().map((q,i)=>button('use-hint',e(q),'hint-option',`data-index="${i}"`)).join('')}</div>`);}
 
 function start(id,variant){stopSpeech();resetChoices();state.mobilePane='chat';state.inputMode='choices';speechInfo='';state.session=newSession(scenarios.find(c=>c.id===id),variant);state.draft='';state.error='';state.review=null;state.view='room';greetTarget();closeDialog();render();window.scrollTo(0,0);$('#main').focus({preventScroll:true});}
+function chooseTarget(value){stopSpeech();rememberWorkspace(state.session,state);resetChoices();state.session.target=value;state.draft=state.session.workspace?.drafts?.[workspaceKey(state.session)]||'';greetTarget();state.session.coach=null;render();}
+// 무대의 캐릭터를 누르면 그 사람에게 질문을 건넵니다(얼굴 버튼과 같음).
+function pickTarget(role){
+ const s=state.session;if(!s||state.view!=='room'||state.busy||recording||keyChecking||$('#modal').open||s.target===role)return;
+ const input=document.getElementById('target-'+role);if(!input||input.disabled||input.closest('fieldset:disabled'))return;
+ sounds.play('select');chooseTarget(role);notify(`${roleName(scenario(),role)}에게 질문을 건네요.`);
+}
 function greetTarget(){const s=state.session,c=scenario();if(s.phase!=='pre'||s.messages.some(m=>m.phase==='pre'&&m.speaker===s.target))return;const text=opening(s,c);s.messages.push({kind:'participant',speaker:s.target,target:s.target,phase:s.phase,text,source:'scenario'});}
 async function api(path,body){abortController=new AbortController();const timeout=setTimeout(()=>abortController?.abort(),65000);try{const res=await fetch('api/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:abortController.signal});const d=await res.json().catch(()=>{throw new Error('이 주소에서는 AI 연결을 사용할 수 없습니다. 시나리오 체험을 이용하거나 https://dasi-dialogue.vercel.app 에서 AI를 연결해 주세요.');});if(!res.ok)throw new Error(d.error||'요청에 실패했습니다.');return d;}catch(err){if(err.name==='AbortError')throw new Error('응답을 기다리는 시간이 길어졌습니다. 다시 시도해 주세요.');if(err instanceof TypeError)throw new Error('앱 서버에 연결할 수 없습니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.');throw err;}finally{clearTimeout(timeout);abortController=null;}}
 function sessionForAI(s){
@@ -225,7 +293,7 @@ document.addEventListener('click',async event=>{
  if(action==='quick')caseDialog(scenarios[0].id);
  if(action==='clear-filters'){state.query='';state.grade='전체';state.category='전체';state.difficulty='전체';render();$('#search')?.focus({preventScroll:true});}
  if(action==='view-examples')examplesDialog();
- if(action==='choose-example'){const choice=questionOptions(state.session,scenario()).find(q=>q.id===b.dataset.id);if(choice){state.selectedChoice=choice;closeDialog();render();if(isMobile())scrollToDialogue(true);else $('#compose button[type="submit"]')?.focus({preventScroll:true});}}
+ if(action==='choose-example'){const choice=questionOptions(state.session,scenario()).find(q=>q.id===b.dataset.id);if(choice){state.selectedChoice=choice;closeDialog();render();if(isMobile())scrollToDialogue(true);else $('#compose button[type="submit"]')?.focus({preventScroll:true});if(!matchMedia('(prefers-reduced-motion: reduce)').matches){pop($('.choice-card.selected'),.95);nudge(isMobile()?$('#send-selected'):$('#compose button[type="submit"]'));}}}
  if(action==='view-transcript')showDialog(transcriptView(state.session,scenario(),applicationUI()));
  if(action==='show-notes'){stopSpeech();state.mobilePane='notes';render();$('#progress-section')?.scrollIntoView({block:'start',behavior:scrollBehavior()});}
  if(['grade','category','difficulty'].includes(action)){state[action]=b.dataset.value;render();}
@@ -238,7 +306,7 @@ document.addEventListener('click',async event=>{
  if(action==='hint')hintDialog();
  if(action==='use-hint'){state.inputMode='write';state.selectedChoice=null;state.draft=currentPrompts()[Number(b.dataset.index)];closeDialog();render();$('#draft')?.focus();}
  if(action==='coach-question'){stopSpeech();state.mobilePane='chat';state.inputMode='write';state.selectedChoice=null;state.draft=state.session.coach?.coaching?.nextQuestion||'';render();$('#draft')?.focus();}
- if(action==='advance'){stopSpeech();rememberWorkspace(state.session,state);try{state.session=transition(state.session);resetChoices();state.mobilePane='chat';state.session.messages.push({kind:'system',phase:state.session.phase,text:state.session.phase==='main'?'본모임입니다. 목적과 참여 선택을 다시 확인하고 대화를 시작해 주세요.':scenario().followup});state.draft='';state.error='';render();window.scrollTo(0,0);$('#main').focus({preventScroll:true});}catch(err){notify(err.message);}}
+ if(action==='advance'){stopSpeech();rememberWorkspace(state.session,state);try{state.session=transition(state.session);sounds.play('phase');resetChoices();state.mobilePane='chat';state.session.messages.push({kind:'system',phase:state.session.phase,text:state.session.phase==='main'?'본모임입니다. 목적과 참여 선택을 다시 확인하고 대화를 시작해 주세요.':scenario().followup});state.draft='';state.error='';render();window.scrollTo(0,0);$('#main').focus({preventScroll:true});}catch(err){notify(err.message);}}
  if(action==='save')saveSession();
  if(action==='finish')finishDialog();
  if(action==='retry')caseDialog(state.session.scenarioId);
@@ -252,7 +320,7 @@ document.addEventListener('click',async event=>{
 });
 document.addEventListener('submit',event=>{event.preventDefault();if(state.busy||keyChecking)return;if(event.target.id==='compose')sendMessage();if(event.target.id==='start-form'){if(state.session&&!state.session.finished&&(state.session.messages.some(m=>m.kind==='teacher')||Object.values(state.session.application?.checks||{}).some(Boolean)||state.session.application?.notes||state.draft.trim())&&!confirm('진행 중인 연습의 저장하지 않은 내용은 사라집니다. 새 연습을 시작할까요?'))return;start(event.target.dataset.id,new FormData(event.target).get('variant'));}if(event.target.id==='settings-form'){const mode=new FormData(event.target).get('mode'),key=$('#api-key').value.trim(),model=$('#model').value.trim();if(mode==='ai'&&key.length<10){$('#connection-status').textContent='API 키를 입력하거나 시나리오 체험을 선택해 주세요.';return;}if(!/^[a-zA-Z0-9._:-]{1,100}$/.test(model)){$('#connection-status').textContent='모델 이름을 확인해 주세요.';return;}state.mode=mode;state.provider=$('#provider').value;state.model=model;state.apiKey=key;closeDialog();render();notify(mode==='ai'?'AI 역할 대화를 선택했습니다.':'시나리오 체험을 선택했습니다.');}if(event.target.id==='finish-form'){stopSpeech();state.session.outcome=$('#outcome').value;state.session.finished=true;state.review=null;closeDialog();render();window.scrollTo(0,0);}});
 document.addEventListener('input',event=>{const t=event.target;if(t.id==='search'){state.query=t.value;render();}if(t.id==='draft'){state.draft=t.value;updateSaveStatus();stage?.attend();}if(t.dataset.agreement){state.session.agreement[t.dataset.agreement]=t.value;const advance=$('[data-action="advance"]');if(advance)advance.disabled=!canAdvance(state.session);updateSaveStatus();document.querySelectorAll('.readiness').forEach(el=>{el.outerHTML=readinessView(state.session,scenario(),applicationUI(),el.classList.contains('compact'));});}if(t.id==='reflection'){state.session.reflection=t.value;updateSaveStatus();}});
-document.addEventListener('change',event=>{const t=event.target;if(t.name==='stage-pref'){writeStagePreference(t.value);render();return;}if(t.name==='question-choice'){if(state.busy)return;const id=t.value;render();questionDialog(id);}if(t.name==='target'){stopSpeech();rememberWorkspace(state.session,state);resetChoices();state.session.target=t.value;state.draft=state.session.workspace?.drafts?.[workspaceKey(state.session)]||'';greetTarget();state.session.coach=null;render();}if(t.dataset.check){state.session.checks[t.dataset.check]=t.checked;render();}if(t.id==='provider'){$('#model').value=defaults[t.value];$('#api-key').value=t.value===state.provider?state.apiKey:'';$('#connection-status').textContent='';}});
+document.addEventListener('change',event=>{const t=event.target;if(t.name==='stage-pref'){writeStagePreference(t.value);render();return;}if(t.name==='question-choice'){if(state.busy)return;const id=t.value;render();questionDialog(id);}if(t.name==='target')chooseTarget(t.value);if(t.dataset.check){state.session.checks[t.dataset.check]=t.checked;render();}if(t.id==='provider'){$('#model').value=defaults[t.value];$('#api-key').value=t.value===state.provider?state.apiKey:'';$('#connection-status').textContent='';}});
 document.addEventListener('keydown',event=>{if(event.target.id==='draft'&&event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();sendMessage();}});
 $('#modal').addEventListener('cancel',()=>{setTimeout(()=>{$('#modal').innerHTML='';},0);});
 // Backdrop clicks report the dialog itself as target; require press and release outside so text drags do not close it.

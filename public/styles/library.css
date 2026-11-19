@@ -221,6 +221,16 @@
  .variant-options>label{align-items:flex-start;gap:12px}.variant-options input{margin-top:3px}
  .mode-options,.stage-options{grid-template-columns:1fr}
 }
+/* 첫 화면에 들어올 때 한 번: 무대가 밝아지고, 문구 카드가 올라오고, 토킹피스가 카드 모서리에 떨어지고, 연습 순서의 선이 그어집니다. */
+.entering .hero-stage{animation:hero-stage .9s var(--ease) both}
+.entering .hero-copy{animation:hero-card .7s .12s var(--ease) both}
+.hero-copy::before{--r:-8deg}
+.entering .hero-copy::before{animation:pebble-drop .75s .55s var(--spring) both}
+.entering .start-steps li:not(:last-child)::after{animation:line-draw .9s .7s var(--ease) both}
+@keyframes hero-stage{from{opacity:0;transform:scale(1.04)}to{opacity:1;transform:none}}
+@keyframes hero-card{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:none}}
+@keyframes line-draw{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0)}}
+@media(max-width:900px){@keyframes line-draw{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0)}}}
 /* 화면이 바뀔 때 한 번만, 사례 카드가 차례로 놓입니다. */
 .entering .case-card{animation:place .5s var(--ease) both}
 .entering .case-card:nth-child(2){animation-delay:.04s}.entering .case-card:nth-child(3){animation-delay:.08s}.entering .case-card:nth-child(4){animation-delay:.12s}.entering .case-card:nth-child(5){animation-delay:.16s}.entering .case-card:nth-child(n+6){animation-delay:.2s}

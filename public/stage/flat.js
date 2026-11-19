@@ -23,6 +23,9 @@ export function createFlatRenderer(container) {
   setState(role,state,{mood}={}){const el=seats.get(role);if(!el)return;el.dataset.state=state;if(mood)el.dataset.mood=mood;},
   setMouth(role,shape,open){seats.get(role)?.style.setProperty('--open',String(shape==='M'||shape==='REST'?0:open||0));},
   setPointer(){},
+  // 그림 무대의 캐릭터 고르기: 누른 자리의 얼굴을 찾습니다.
+  pick(x,y,cx,cy){const el=document.elementFromPoint(cx,cy)?.closest?.('.flat-seat');return el&&root.contains(el)?el.dataset.role:null;},
+  setHover(role){for(const [r,el] of seats)el.classList.toggle('hovered',r===role);},
   setFocus(role){for(const [r,el] of seats)el.classList.toggle('focused',r===role);},
   resize(){},pause(){},resume(){},
   dispose(){root.remove();seats.clear();}

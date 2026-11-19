@@ -70,7 +70,7 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
   for(const s of seats){
    let c=cast.get(s.role);
    if(!c){const look=LOOKS[s.lookKey]||LOOKS['elementary-a'];c={char:createCharacter(T,look,{seed:seed++}),look,lookKey:s.lookKey,state:'idle',mood:s.mood||'calm',intensity:s.intensity??.55};scene.add(c.char.group);cast.set(s.role,c);}
-   const a=anchors[s.role];c.char.group.position.copy(a.position);c.char.group.rotation.y=a.facing;
+   const a=anchors[s.role];c.char.group.position.copy(a.position);c.baseY=a.position.y;c.char.group.rotation.y=a.facing;
    c.mood=s.mood||c.mood;c.intensity=s.intensity??c.intensity;c.state='idle';c.char.setPose(poseFor(c.mood,{state:'idle',intensity:c.intensity}),'idle');
   }
   if(focus&&!cast.has(focus))focus=null;
@@ -87,6 +87,17 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
  function setMouth(role,shape,open){cast.get(role)?.char.setMouth(shape,open);}
  function setFocus(role){focus=role&&cast.has(role)?role:null;shot();if(reducedMotion){camPos.copy(wantPos);camLook.copy(wantLook);hFov=wantFov;}}
 
+ // 무대의 캐릭터 고르기: 화면 좌표(-1~1)에서 광선을 쏘아 가장 가까운 캐릭터를 찾습니다.
+ const ray=new T.Raycaster(),ndc=new T.Vector2();let hover=null;
+ function pick(x,y){
+  if(!hasSize()||!Number.isFinite(x)||!Number.isFinite(y))return null;
+  camera.updateMatrixWorld();ndc.set(x,y);ray.setFromCamera(ndc,camera);
+  let best=null;
+  for(const [role,c] of cast){const hit=ray.intersectObject(c.char.group,true)[0];if(hit&&(!best||hit.distance<best.d))best={role,d:hit.distance};}
+  return best?best.role:null;
+ }
+ // 검사·도움말용: 캐릭터 머리가 화면의 어디에 있는지(-1~1)
+ function screenOf(role){const h=headOf(role);if(!h)return null;h.project(camera);return {x:+h.x.toFixed(3),y:+h.y.toFixed(3)};}
  // 그리기 반복: 아무도 말하지 않으면 초당 30프레임, 프레임 시간 중앙값으로 화질을 조절합니다.
  let raf=0,last=0,lastDraw=0,started=false,time=0,samples=[],evalT=0,slowT=0,sized='',slowSent=false;
  const debug={fps:0,level:0,paused:false,visible:true,attention:null};
@@ -123,6 +134,8 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
   for(const [role,c] of cast){
    const t=speaker&&speaker!==role?headOf(speaker):follow||teacherHead;
    c.char.lookAt(t);c.char.update(dt,time);
+   const lift=hover===role?1:0;c.lift=reducedMotion?lift:(c.lift||0)+(lift-(c.lift||0))*(1-Math.exp(-dt*12));
+   if(typeof c.baseY==='number'){c.char.group.position.y=c.baseY+c.lift*.02;c.char.group.scale.setScalar(1+c.lift*.025);}
   }
   post.render(dt,time);started=true;
  }
@@ -134,6 +147,8 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
  return {
   kind:'3d',canvas,debug,
   setCast,setState,setMouth,setFocus,resize,
+  pick,screenOf,
+  setHover(role){hover=role&&cast.has(role)?role:null;},
   setPointer(x,y){pointer=x==null?null:{x:Math.max(-1,Math.min(1,x)),y:Math.max(-1,Math.min(1,y))};if(!pointer)debug.attention=null;},
   get frames(){return started;},
   pause(){paused=true;debug.paused=true;if(raf){cancelAnimationFrame(raf);raf=0;}},

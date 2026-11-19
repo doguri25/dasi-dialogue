@@ -29,3 +29,8 @@ test('unsupported or blocked audio and unavailable storage never interrupt pract
  await assert.doesNotReject(sounds.play('reply'));sounds.setEnabled(false);sounds.setEnabled(true);await sounds.play('unknown');
  await assert.doesNotReject(createSounds({}).play('select'));
 });
+test('moving to the next meeting plays a short rising three-note cue',async()=>{
+ const f=fixture(),sounds=createSounds(f.host);await sounds.play('phase');
+ assert.deepEqual(f.tones.map(t=>t.frequencyValue),[523,659,784]);
+ assert.ok(f.tones.every((t,i)=>!i||t.at>f.tones[i-1].at));
+});

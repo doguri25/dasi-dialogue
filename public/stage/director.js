@@ -21,8 +21,26 @@ export function createDirector({mode='3d',reducedMotion=false,load3D,createFlat,
  const capText=document.createElement('p');capText.className='stage-caption-text';
  caption.append(capName,capText);element.append(view,caption);
  // 마우스를 따라 캐릭터가 바라봅니다(말하는 중에는 말하는 사람을 봅니다).
- element.addEventListener('pointermove',e=>{const r=element.getBoundingClientRect();if(!r.width||!r.height)return;renderer?.setPointer(((e.clientX-r.left)/r.width)*2-1,1-((e.clientY-r.top)/r.height)*2);});
- element.addEventListener('pointerleave',()=>renderer?.setPointer(null));
+ // 고르기를 켜 두면(본·사후모임) 캐릭터를 눌러 질문을 건넬 사람을 바꿀 수 있습니다. 키보드는 얼굴 버튼을 씁니다.
+ let pickFn=null,pickOn=false,hoverRole=null,hoverRaf=0,lastMove=null,down=null;
+ const toStage=(cx,cy)=>{const r=element.getBoundingClientRect();if(!r.width||!r.height)return null;return {x:((cx-r.left)/r.width)*2-1,y:1-((cy-r.top)/r.height)*2,cx,cy};};
+ function setHover(role){
+  if(role&&!cast.seats.includes(role))role=null;
+  if(role===hoverRole)return;hoverRole=role;
+  if(role){element.dataset.hover=role;element.title=`${roleName(cast.scenario,role)}에게 질문하기`;}else{delete element.dataset.hover;element.removeAttribute('title');}
+  renderer?.setHover?.(role);
+ }
+ function hoverNow(){hoverRaf=0;if(!lastMove||!pickOn||!pickFn)return setHover(null);try{setHover(renderer?.pick?.(lastMove.x,lastMove.y,lastMove.cx,lastMove.cy)||null);}catch(err){warn(err);}}
+ element.addEventListener('pointermove',e=>{const p=toStage(e.clientX,e.clientY);if(!p)return;renderer?.setPointer(p.x,p.y);lastMove=e.target.closest?.('.stage-caption')?null:p;if(pickOn&&!hoverRaf)hoverRaf=requestAnimationFrame(hoverNow);});
+ element.addEventListener('pointerleave',()=>{renderer?.setPointer(null);lastMove=null;setHover(null);});
+ element.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY};});
+ element.addEventListener('click',e=>{
+  if(!pickOn||!pickFn||e.target.closest?.('.stage-caption'))return;
+  if(down&&Math.hypot(e.clientX-down.x,e.clientY-down.y)>8)return;
+  const p=toStage(e.clientX,e.clientY);if(!p)return;
+  let role=null;try{role=renderer?.pick?.(p.x,p.y,p.cx,p.cy)||null;}catch(err){warn(err);}
+  if(role&&cast.seats.includes(role)){try{pickFn(role);}catch(err){warn(err);}}
+ });
  const pointerAt=(x,y)=>{if(x==null)return renderer?.setPointer(null);const r=element.getBoundingClientRect();if(!r.width||!r.height)return;renderer?.setPointer(((x-r.left)/r.width)*2-1,1-((y-r.top)/r.height)*2);};
 
  let renderer=null,loading=null,state='idle',token=0,skipLine=false,voice=null,detached=true,swapping=false,lastTeacherAt=-1e9,thinkTimer=0,attendTimer=0;
@@ -56,7 +74,7 @@ export function createDirector({mode='3d',reducedMotion=false,load3D,createFlat,
   if(kind==='2d')next=createFlat(container);
   const old=renderer;renderer=guard(next);
   view.replaceChildren(container);element.dataset.stageMode=kind;
-  old?.dispose();
+  old?.dispose();hoverRole=null;delete element.dataset.hover;element.removeAttribute('title');
   if(next.onLost)next.onLost(()=>fallback('lost'));
   applyAll();
   if(detached)renderer.pause();
@@ -188,6 +206,10 @@ export function createDirector({mode='3d',reducedMotion=false,load3D,createFlat,
    if(my===token){state='idle';setHost();setSpeaker(null);renderer?.setFocus(null);}
   },
   pointerAt(x,y){pointerAt(x,y);},
+  onPick(fn){pickFn=typeof fn==='function'?fn:null;},
+  setPickable(on){pickOn=!!on;if(!pickOn)setHover(null);element.dataset.pickable=pickOn?'true':'false';},
+  // 검사용: 캐릭터 머리가 화면의 어디에 있는지
+  screenOf(role){return renderer?.screenOf?.(role)||null;},
   skip(){if(state==='speaking')skipLine=true;},
   // 선생님이 글을 쓰거나 질문을 고르는 동안: 학생이 몸을 기울여 듣다가, 2.5초 조용하면 원래대로 돌아옵니다.
   attend(){
