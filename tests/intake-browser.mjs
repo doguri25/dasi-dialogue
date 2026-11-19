@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
-import {reviewApplication,chooseQuestion,setRoomPane} from './helpers.mjs';
+import {reviewApplication,chooseQuestion,setRoomPane,chooseTarget} from './helpers.mjs';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
 const browser=await chromium.launch({channel:process.env.PW_CHANNEL||'chrome',headless:true});
 const context=await browser.newContext({viewport:{width:1440,height:1000},locale:'ko-KR'});
@@ -26,9 +26,9 @@ try{
  await screenshot('pre-introduction-desktop','.pre-meeting-guide');
  await sendChoice();assert.match(await page.locator('.pre-meeting-guide .current').innerText(),/무슨 일이/);assert.match(await page.locator('.choice-text').first().innerText(),/무슨 일이 있었는지/);
  assert.equal(await page.locator('input[name="question-choice"]:checked').count(),0);await sendChoice();assert.match(await page.locator('.message .bubble').last().innerText(),/제가 그린/);
- await page.locator('#target').selectOption('a');assert.match(await page.locator('.pre-meeting-guide .current').innerText(),/대화모임 안내/);
+ await chooseTarget(page,'a');assert.match(await page.locator('.pre-meeting-guide .current').innerText(),/대화모임 안내/);
  assert.ok(!(await page.locator('#transcript').innerText()).includes('제가 그린'));await page.locator('#input-write').click();await page.locator('#draft').fill('오늘은 네가 겪은 일을 듣는 대화모임이야. 말하기 어렵다면 멈춰도 돼. 궁금한 게 있니?');await page.locator('#compose button[type="submit"]').click();
- assert.match(await page.locator('.pre-meeting-guide .current').innerText(),/무슨 일이/);await page.locator('#input-choices').click();await page.locator('#target').selectOption('v');assert.match(await page.locator('.pre-meeting-guide .current').innerText(),/무슨 일이/);
+ assert.match(await page.locator('.pre-meeting-guide .current').innerText(),/무슨 일이/);await page.locator('#input-choices').click();await chooseTarget(page,'v');assert.match(await page.locator('.pre-meeting-guide .current').innerText(),/무슨 일이/);
  await action('save').click();await page.reload();await action('history').click();await action('resume').click();assert.match(await page.locator('.pre-meeting-guide .current').innerText(),/무슨 일이/);
  await setRoomPane(page,'notes');await action('view-application').click();assert.match(await page.locator('#modal').innerText(),/신청서 열람/);await action('close').click();await setRoomPane(page,'chat');
  for(const width of [320,390,768,1024,1440]){await page.setViewportSize({width,height:900});await overflow(`Story ${width}`);await action('text-size').click();await overflow(`Large story ${width}`);await action('text-size').click();}

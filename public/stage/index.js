@@ -21,11 +21,12 @@ export function stageMode(setting=readStagePreference()) {
 export function writeStagePreference(value) {
  const v=['auto','on','off'].includes(value)?value:'auto';
  try{localStorage.setItem(PREF,v);if(v==='on')localStorage.removeItem(SLOW);}catch{}
- director?.setMode(stageMode(v));
+ director?.setSlowFallback(v==='auto');director?.setMode(stageMode(v));
  return v;
 }
 export function onStageNotice(fn){noticeFn=fn;}
-export function getStage({forceMode,slowFallback=true}={}) {
+// 느린 기기에서 그림 무대로 바꾸는 것은 '자동'일 때만입니다(설계 5.6).
+export function getStage({forceMode,slowFallback=readStagePreference()==='auto'}={}) {
  if(!director)director=createDirector({
   mode:forceMode||stageMode(),
   reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches,

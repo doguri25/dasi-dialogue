@@ -18,7 +18,7 @@ export function createDirector({mode='3d',reducedMotion=false,load3D,createFlat,
  const capText=document.createElement('p');capText.className='stage-caption-text';
  caption.append(capName,capText);element.append(view,caption);
 
- let renderer=null,loading=null,state='idle',token=0,skipLine=false,voice=null,detached=true,swapping=false;
+ let renderer=null,loading=null,state='idle',token=0,skipLine=false,voice=null,detached=true,swapping=false,lastTeacherAt=-1e9,thinkTimer=0;
  let cast={scenario:null,phase:'pre',target:'v',seats:[],key:''};
  const roleState=new Map();   // role → {state, mood, intensity}
 
@@ -37,7 +37,7 @@ export function createDirector({mode='3d',reducedMotion=false,load3D,createFlat,
   const container=document.createElement('div');container.className='stage-render';
   let next;
   if(kind==='3d'){
-   try{const create=await load3D();next=await create(container,{reducedMotion,onSlow:slowFallback?()=>fallback('slow'):null});}
+   try{const create=await load3D();next=await create(container,{reducedMotion,onSlow:()=>{if(slowFallback)fallback('slow');}});}
    catch{next=null;}
    if(!next){onNotice?.('이 기기에서는 3D 장면을 열 수 없어 그림 무대로 보여 드려요.');kind='2d';}
   }
@@ -145,11 +145,14 @@ export function createDirector({mode='3d',reducedMotion=false,load3D,createFlat,
    if(phase==='lobby')lobby(token);
   },
   teacherSaid(text){
-   interrupt();state='listening';setHost();setSpeaker(null);
+   interrupt();clearTimeout(thinkTimer);lastTeacherAt=performance.now();state='listening';setHost();setSpeaker(null);
    for(const role of cast.seats)setRole(role,'listening');
    renderer?.setFocus(null);show('나',String(text||''));
   },
   think(){
+   // 교사의 말을 잠깐 들은 뒤(0.7초) 생각하는 자세로 바뀝니다.
+   const delay=Math.max(0,(reducedMotion?150:700)-(performance.now()-lastTeacherAt));
+   if(delay>0){clearTimeout(thinkTimer);const my=token;thinkTimer=setTimeout(()=>{if(my===token&&state==='listening')api.think();},delay);return;}
    state='thinking';setHost();
    const responders=cast.phase==='pre'||cast.target==='all'?cast.seats.filter(r=>cast.target!=='all'||r!=='g'):[cast.target];
    for(const role of cast.seats)setRole(role,responders.includes(role)?'thinking':'listening');
@@ -160,7 +163,10 @@ export function createDirector({mode='3d',reducedMotion=false,load3D,createFlat,
    setHost();
   },
   async speak(messages=[],{tts=false,risk='none'}={}){
-   interrupt();const my=token;
+   interrupt();clearTimeout(thinkTimer);const my=token;
+   // 답이 곧바로 와도(시나리오 체험) 듣고 생각하는 짧은 틈을 둡니다.
+   const beat=(reducedMotion?400:1300)-(performance.now()-lastTeacherAt);
+   if(beat>0){if(state==='listening'){state='thinking';setHost();for(const role of cast.seats)setRole(role,'thinking');}await wait(beat,()=>my===token);if(my!==token)return;}
    for(const m of messages){
     if(my!==token)return;
     if(!m||!cast.seats.includes(m.speaker)||typeof m.text!=='string')continue;
@@ -171,7 +177,8 @@ export function createDirector({mode='3d',reducedMotion=false,load3D,createFlat,
   skip(){if(state==='speaking')skipLine=true;},
   interrupt(){interrupt();if(state!=='idle'){state='idle';setHost();setSpeaker(null);for(const role of cast.seats)setRole(role,'idle');}},
   setMode(kind){if(kind!==element.dataset.stageMode){loading=useRenderer(kind);}return loading;},
-  setReducedMotion(b){reducedMotion=!!b;}
+  setReducedMotion(b){reducedMotion=!!b;},
+  setSlowFallback(b){slowFallback=!!b;}
  };
  return api;
 }

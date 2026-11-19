@@ -99,6 +99,7 @@ try{
  if(run('library')){
   const page=await browser.newPage({viewport:{width:1366,height:820},locale:'ko-KR'});
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const nocache=await page.context().newCDPSession(page);await nocache.send('Network.enable');await nocache.send('Network.setCacheDisabled',{cacheDisabled:true});
   await page.goto(base);
   await page.waitForSelector('.hero-stage .stage-host[data-stage-mode="3d"]',{timeout:60000});
   const timing=await page.evaluate(()=>({three:performance.getEntriesByType('resource').find(r=>/three-stage\.js/.test(r.name))?.startTime,fcp:performance.getEntriesByName('first-contentful-paint')[0]?.startTime}));
@@ -156,7 +157,53 @@ try{
   console.log('event loop lag under 4x CPU (ms)',Math.round(lag),JSON.stringify(state));
   assert.ok(lag<500,`within 20s the stage adapts so a click handler runs within 500ms (worst lag ${Math.round(lag)}ms, ${JSON.stringify(state)})`);
   await cdp.send('Emulation.setCPUThrottlingRate',{rate:1});
-  assert.deepEqual(errors,[]);await page.close();results.push('polish: long caption, resize, slow device');
+  assert.deepEqual(errors,[]);await page.close();
+  // 화면 밖으로 스크롤하면 그리기를 멈춤
+  ({page,errors}=await labPage('director=1&mode=3d&noslow=1&tall=1',{width:960,height:700,scale:1}));
+  assert.equal(await page.evaluate(()=>window.__lab.director.renderer.debug.visible),true);
+  await page.evaluate(()=>scrollTo(0,document.body.scrollHeight));await page.waitForTimeout(600);
+  assert.equal(await page.evaluate(()=>window.__lab.director.renderer.debug.visible),false,'off-screen stage stops drawing');
+  await page.evaluate(()=>scrollTo(0,0));await page.waitForTimeout(600);
+  assert.equal(await page.evaluate(()=>window.__lab.director.renderer.debug.visible),true);
+  assert.deepEqual(errors,[]);await page.close();results.push('polish: long caption, resize, slow device, off-screen pause');
+ }
+
+ // 6. 연습실: 질문 → 듣기·생각하기 → 말하기 → 대기, 자막과 대화 기록이 같은 문장, 말하는 중 대상 바꾸기·단계 이동·화면 떠나기
+ if(run('room')){
+  const ctx=await browser.newContext({viewport:{width:1366,height:768},locale:'ko-KR'});
+  await ctx.addInitScript(()=>{if(!sessionStorage.getItem('stage-set')){localStorage.setItem('dasi.stage','on');sessionStorage.setItem('stage-set','1');}});
+  const page=await ctx.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.goto(base);await page.locator('[data-action="quick"]').first().click();await page.locator('#start-form button[type="submit"]').click();await page.locator('#application-continue').click();
+  const host=page.locator('#stage-slot .stage-host');await host.waitFor({timeout:60000});
+  await page.waitForFunction(()=>document.querySelector('#stage-slot .stage-host canvas'),null,{timeout:60000});
+  assert.equal(await host.getAttribute('data-stage-mode'),'3d');
+  const watch=()=>page.evaluate(()=>new Promise(res=>{const seen=[];const h=document.querySelector('.stage-host');const mo=new MutationObserver(()=>{const v=h.dataset.stageState;if(seen.at(-1)!==v)seen.push(v);if(v==='idle'&&seen.includes('speaking')){mo.disconnect();res(seen);}});mo.observe(h,{attributes:true});setTimeout(()=>{mo.disconnect();res(seen);},30000);})).catch(()=>[]);
+  let states=watch();
+  await page.locator('.choice-card').first().click();await page.locator('#modal [data-action="choose-example"]').click();await page.locator('#compose button[type="submit"]').click();
+  states=await states;
+  assert.ok(states.includes('listening')||states.includes('thinking'),'listens or thinks first '+states);
+  assert.ok(states.indexOf('speaking')>=0&&states.at(-1)==='idle','then speaks and settles '+states);
+  const lastBubble=await page.locator('.message:not(.teacher) .bubble').last().innerText();
+  assert.equal(await page.locator('.stage-caption-text').innerText(),lastBubble,'caption and transcript show the same line');
+  // 말하는 중 대상 바꾸기: 목소리를 끄고 새 출연진은 이전 자막을 이어받지 않음
+  await page.locator('[data-action="tts-toggle"]').click();assert.equal(await page.locator('[data-action="tts-toggle"]').getAttribute('aria-pressed'),'true');
+  await page.locator('.choice-card').first().click();await page.locator('#modal [data-action="choose-example"]').click();await page.locator('#compose button[type="submit"]').click();
+  await page.waitForFunction(()=>document.querySelector('.stage-host').dataset.stageState==='speaking',null,{timeout:30000});
+  await page.locator('#target-a').check();
+  assert.equal(await page.evaluate(()=>speechSynthesis.speaking),false,'voice stops when switching target');
+  assert.notEqual(await page.locator('.stage-caption-text').innerText(),lastBubble,'new cast does not inherit the old line');
+  // 다른 화면으로 가면 무대를 떼어 내고(그리기 멈춤) 목소리도 멈춤
+  await page.locator('nav [data-action="history"]').click();
+  assert.equal(await page.evaluate(()=>speechSynthesis.speaking),false);
+  assert.equal(await page.locator('.stage-host').count(),0,'stage is detached off the room');
+  await page.waitForTimeout(300);
+  // 설정에서 3D를 끄면 연습실은 그림 무대
+  await page.locator('nav [data-action="room"]').click();await host.waitFor();
+  await page.locator('.topbar [data-action="settings"]').click();await page.locator('input[name="stage-pref"][value="off"]').check();await page.locator('[data-action="close"]').first().click();
+  await page.waitForFunction(()=>document.querySelector('.stage-host')?.dataset.stageMode==='2d',null,{timeout:5000});
+  assert.equal(await page.locator('.flat-seat').count(),1);
+  await page.screenshot({path:'.test-artifacts/room-2d.png'});
+  assert.deepEqual(errors,[]);await ctx.close();results.push('room: listen→speak→idle, caption = transcript, target switch, leave, 3D off');
  }
  await writeFile('.test-artifacts/stage-browser.json',JSON.stringify({passed:true,results},null,2));
  console.log(JSON.stringify({passed:true,results}));

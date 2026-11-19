@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
-import {reviewApplication,chooseQuestion} from './helpers.mjs';
+import {reviewApplication,chooseQuestion,chooseTarget} from './helpers.mjs';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
 const browser=await chromium.launch({channel:process.env.PW_CHANNEL||'chrome',headless:true});
 const context=await browser.newContext({viewport:{width:390,height:844},locale:'ko-KR'});
@@ -26,8 +26,8 @@ try{
  fail=true;const count=await page.locator('.message.teacher').count(),chosen=await page.locator('.choice-card.selected .choice-text').innerText();await page.locator('#send-selected').click();await page.locator('#reply-error').waitFor();assert.match(await page.locator('#reply-error').innerText(),/HTTP 529/);assert.equal(await page.locator('.message.teacher').count(),count);assert.equal(await page.locator('.choice-card.selected .choice-text').innerText(),chosen);assert.equal(await page.locator('#send-selected').isEnabled(),true);await page.screenshot({path:'.test-artifacts/mobile-service-error.png'});
  fail=false;missing=true;await page.locator('#send-selected').click();await afterReply();assert.match(await page.locator('.choice-help').innerText(),/발언을 참고한/);assert.match(await page.locator('.choice-text').first().innerText(),/복도에서 기다렸/);assert.equal(await page.locator('.choice-card img').count(),0);
  // A separate student starts with their own introduction, not the other student's suggestions.
- await page.locator('#target').selectOption('a');assert.match(await page.locator('.question-choices legend').innerText(),/먼저 대화모임/);assert.ok(!(await page.locator('.question-choices').textContent()).includes('복도에서'));
- await page.locator('#target').selectOption('v');assert.match(await page.locator('.choice-text').first().innerText(),/복도에서/);
+ await chooseTarget(page,'a');assert.match(await page.locator('.question-choices legend').innerText(),/먼저 대화모임/);assert.ok(!(await page.locator('.question-choices').textContent()).includes('복도에서'));
+ await chooseTarget(page,'v');assert.match(await page.locator('.choice-text').first().innerText(),/복도에서/);
  await page.setViewportSize({width:1440,height:1000});await page.locator('.question-choices').scrollIntoViewIfNeeded();const y=await page.evaluate(()=>scrollY);await chooseQuestion(page);assert.equal(await page.locator('.mobile-selection').isVisible(),false);assert.ok(Math.abs(await page.evaluate(()=>scrollY)-y)<5,'Desktop selection must not jump to transcript');await page.screenshot({path:'.test-artifacts/contextual-choices-desktop.png'});
  assert.deepEqual(errors,[]);await writeFile('.test-artifacts/followups-results.json',JSON.stringify({passed:true,mockedCalls:calls,viewports:[320,390,768,1440],flows:['AI-generated follow-ups update after each student reply','contextual fallback when no AI choices','mobile selection scroll and send next to transcript','no automatic submission on selection','mobile response scroll','cancel selection','HTTP529 wording and question preserved','private student separation','HTML escaped','reduced-motion scroll','desktop no jump'],limits:'Mocked AI; no real API calls or physical phone.'},null,2));console.log(JSON.stringify({passed:true,mockedCalls:calls}));
 }finally{await browser.close();}

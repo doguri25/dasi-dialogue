@@ -1,4 +1,4 @@
-import {reviewApplication,setRoomPane,chooseQuestion} from './helpers.mjs';
+import {reviewApplication,setRoomPane,chooseQuestion,chooseTarget} from './helpers.mjs';
 // Run with PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node tests/browser.mjs.
 import assert from 'node:assert/strict';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
@@ -35,12 +35,12 @@ try{
  const editText=await pick(1);await click('edit-choice');assert.equal(await page.locator('#draft').inputValue(),editText);
  await page.locator('#draft').fill('직접 쓰던 문장');await pick(2);await page.locator('#input-write').click();assert.equal(await page.locator('#draft').inputValue(),'직접 쓰던 문장');
  await page.locator('#input-choices').click();await page.screenshot({path:'.test-artifacts/choices-desktop.png',fullPage:true});
- await page.locator('#target').selectOption('g');assert.equal(await page.locator('input[name="question-choice"]:checked').count(),0);assert.match(await page.locator('.question-choices').textContent(),/학생이 겪은 일/);
- await page.locator('#target').selectOption('v');
+ await chooseTarget(page,'g');assert.equal(await page.locator('input[name="question-choice"]:checked').count(),0);assert.match(await page.locator('.question-choices').textContent(),/학생이 겪은 일/);
+ await chooseTarget(page,'v');
  await send('원하지 않으면 멈춰도 돼. 지금 마음은 어떠니?');
  assert.match(await page.locator('#transcript').innerText(),/멈춰도 돼/);
- await page.locator('#target').selectOption('a');assert.ok(!(await page.locator('#transcript').innerText()).includes('원하지 않으면 멈춰도 돼'));
- await send('그날 무슨 일이 있었는지 들려줄래?');await page.locator('#target').selectOption('g');await send('어떤 지원이 필요할까요?');
+ await chooseTarget(page,'a');assert.ok(!(await page.locator('#transcript').innerText()).includes('원하지 않으면 멈춰도 돼'));
+ await send('그날 무슨 일이 있었는지 들려줄래?');await chooseTarget(page,'g');await send('어떤 지원이 필요할까요?');
  await setRoomPane(page,'notes');
  for(const k of ['v','a','g','safe'])await page.locator(`[data-check="${k}"]`).check();
  await setRoomPane(page,'chat');await pick();await setRoomPane(page,'notes');await click('advance');assert.match(await page.locator('.steps .current').innerText(),/본모임/);assert.equal(await page.locator('input[name="question-choice"]:checked').count(),0);await sendChoice();

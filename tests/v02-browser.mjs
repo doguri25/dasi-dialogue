@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {VERSION} from '../public/version.js';
-import {reviewApplication,chooseQuestion} from './helpers.mjs';
+import {reviewApplication,chooseQuestion,chooseTarget} from './helpers.mjs';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
 const browser=await chromium.launch({channel:process.env.PW_CHANNEL||'chrome',headless:true});
 const context=await browser.newContext({viewport:{width:1440,height:1050},locale:'ko-KR'}),page=await context.newPage(),errors=[];
@@ -13,11 +13,11 @@ try{
  await mkdir('.test-artifacts',{recursive:true});await page.goto(base);assert.ok((await page.locator('footer').innerText()).includes(VERSION));
  await page.locator('#search').fill('검색결과없는값');await page.getByRole('button',{name:'전체 사례 보기',exact:true}).click();assert.equal(await page.locator('.case-card').count(),30);
  await action('quick').click();await page.locator('#start-form button[type="submit"]').click();await reviewApplication(page);
- await page.locator('#input-write').click();await page.locator('#draft').fill('민서에게만 물어볼 아직 보내지 않은 질문');await page.locator('#target').selectOption('a');assert.equal(await page.locator('#draft').inputValue(),'');await page.locator('#draft').fill('지우에게만 따로 물어볼 초안');await page.locator('#target').selectOption('v');assert.match(await page.locator('#draft').inputValue(),/민서에게만/);
+ await page.locator('#input-write').click();await page.locator('#draft').fill('민서에게만 물어볼 아직 보내지 않은 질문');await chooseTarget(page,'a');assert.equal(await page.locator('#draft').inputValue(),'');await page.locator('#draft').fill('지우에게만 따로 물어볼 초안');await chooseTarget(page,'v');assert.match(await page.locator('#draft').inputValue(),/민서에게만/);
  await action('save').click();assert.match(await page.locator('.save-indicator').innerText(),/저장했어요/);await page.reload();assert.equal(await page.locator('.continue-practice').count(),1);await screenshot('v02-home-desktop','.continue-practice');await page.locator('.continue-practice [data-action="resume"]').click();assert.match(await page.locator('#draft').inputValue(),/민서에게만/);assert.equal(await page.locator('#input-write').getAttribute('aria-pressed'),'true');
  await page.locator('#input-choices').click();await chooseQuestion(page,1);const selected=await page.locator('.choice-card.selected .choice-text').innerText();await action('save').click();await page.reload();await page.locator('.continue-practice [data-action="resume"]').click();assert.equal(await page.locator('.choice-card.selected .choice-text').innerText(),selected);assert.equal(await page.locator('#compose button[type="submit"]').isEnabled(),true);
  await page.locator('#compose button[type="submit"]').click();assert.match(await page.locator('.save-indicator').innerText(),/바뀐 내용/);await action('view-transcript').click();assert.match(await page.locator('#modal').innerText(),/진행자 → 민서/);assert.ok(!(await page.locator('#modal').innerText()).includes('아직 보내지 않은 질문'));await action('close').click();
- await page.locator('#target').selectOption('a');await page.locator('#input-write').click();assert.match(await page.locator('#draft').inputValue(),/지우에게만/);await page.locator('#target').selectOption('v');await page.locator('#input-choices').click();
+ await chooseTarget(page,'a');await page.locator('#input-write').click();assert.match(await page.locator('#draft').inputValue(),/지우에게만/);await chooseTarget(page,'v');await page.locator('#input-choices').click();
  for(const width of [320,390,768,1024,1440]){
   await page.setViewportSize({width,height:900});await overflow(`v0.2 room ${width}`);await action('text-size').click();await overflow(`v0.2 large ${width}`);await action('text-size').click();
  }

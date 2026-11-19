@@ -3,3 +3,4 @@ main{height:100%;display:flex;flex-direction:column}
 .lab-stage{position:relative;flex:1;min-height:0}
 .lab-stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .lab-note{margin:0;padding:6px 12px;font-size:13px;color:#52675f}
+.lab-tall main{height:auto}.lab-tall .lab-stage{height:70vh;flex:none}.lab-spacer{height:200vh}

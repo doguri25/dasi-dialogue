@@ -16,3 +16,8 @@ export async function chooseQuestion(page,index=0){
  await page.locator('#modal [data-action="choose-example"]').click();
  return full;
 }
+
+// v0.4: 대화 상대는 얼굴 버튼(라디오)으로 고릅니다.
+export async function chooseTarget(page,role){
+ await page.locator(`#target-${role}`).check();
+}

@@ -9,6 +9,7 @@ if(q.has('director')){
  try{
   const {getStage}=await import('./stage/index.js');const {scenarios}=await import('./scenarios.js');
   const d=getStage({forceMode:q.get('mode')||'3d',slowFallback:!q.has('noslow')}),scenario=scenarios[0];
+  if(q.has('tall')){document.body.classList.add('lab-tall');const spacer=document.createElement('div');spacer.className='lab-spacer';document.querySelector('main').append(spacer);}
   d.attach(document.getElementById('stage'));d.setCast({scenario,phase:'pre',target:'v',moods:{}});await d.ready();
   window.__lab={ready:true,director:d,scenario};
  }catch(err){window.__lab.error=String(err?.stack||err);}

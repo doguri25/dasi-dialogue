@@ -202,3 +202,6 @@
  .mode-options,.stage-options{grid-template-columns:1fr}
 }
 @media(prefers-reduced-motion:reduce){.case-card,.case-scene img{transition:none;transform:none!important}}
+.stage-pref{border:0;padding:0;margin:4px 0 0;min-width:0}
+.stage-pref legend{padding:0;margin:0 0 10px;font-size:.98rem;font-weight:800}
+.stage-pref .mode-options{margin:0 0 20px}
