@@ -386,6 +386,22 @@ try{
   assert.deepEqual(second.errors,[]);await second.page.close();
   results.push('restore: lost context rebuilds 3D one step lower, stops after repeats, respects a chosen 2D stage');
  }
+ // 13. 대화창이 열리면 3D는 쉬지만, 무대가 그 창 안에 있으면(회고의 장면 다시 보기) 계속 그림.
+ if(run('dialog')){
+  const {page,errors}=await labPage('director=1&mode=3d&noslow=1',{width:960,height:600,scale:1});
+  const draws=()=>page.evaluate(()=>window.__lab.director.renderer.debug.draws);
+  const grew=async()=>{const a=await draws();await page.waitForTimeout(900);return (await draws())-a;};
+  assert.ok(typeof await draws()==='number','the renderer counts frames it draws');
+  assert.ok(await grew()>0,'draws normally');
+  await page.evaluate(()=>{const d=document.createElement('dialog');d.id='other';d.textContent='다른 창';document.body.append(d);d.showModal();});
+  await page.waitForTimeout(200);
+  assert.equal(await grew(),0,'rests while another dialog covers it');
+  await page.evaluate(()=>{document.getElementById('other').close();const d=document.createElement('dialog');d.id='inside';d.style.width='720px';const slot=document.createElement('div');slot.style.cssText='position:relative;width:640px;height:400px';d.append(slot);document.body.append(d);d.showModal();window.__lab.director.attach(slot);});
+  await page.waitForTimeout(300);
+  assert.ok(await grew()>0,'keeps drawing inside the open dialog');
+  assert.deepEqual(errors,[]);await page.close();
+  results.push('dialog: 3D rests under other dialogs, keeps drawing inside its own');
+ }
  await writeFile('.test-artifacts/stage-browser.json',JSON.stringify({passed:true,results},null,2));
  console.log(JSON.stringify({passed:true,results}));
 }finally{await browser.close();}

@@ -101,7 +101,7 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
  function screenOf(role){const h=headOf(role);if(!h)return null;h.project(camera);return {x:+h.x.toFixed(3),y:+h.y.toFixed(3)};}
  // 그리기 반복: 아무도 말하지 않으면 초당 30프레임, 프레임 시간 중앙값으로 화질을 조절합니다.
  let raf=0,last=0,lastDraw=0,started=false,time=0,samples=[],evalT=0,slowT=0,sized='',slowSent=false;
- const debug={fps:0,level,paused:false,visible:true,attention:null};
+ const debug={fps:0,level,paused:false,visible:true,attention:null,draws:0};
  // 마우스(선생님의 손짓)를 따라 보기: 무대 위 좌표(-1~1)를 교사 자리 앞의 한 점으로 바꿉니다.
  let pointer=null;const pointerWorld=new T.Vector3(),drift=new T.Vector3();
  // 그리기가 잇달아 실패하면(셰이더·드라이버 오류 등) 매 프레임 오류를 내며 멈추지 않고, 문맥을 잃었을 때처럼 그림 무대로 넘깁니다.
@@ -117,7 +117,8 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
  }
  function drawFrame(now){
   if(!visible){raf&&cancelAnimationFrame(raf);raf=0;lastDraw=0;return;}
-  if(!hasSize()||document.querySelector('dialog[open]')){lastDraw=0;return;}   /* 대화창이 열려 있으면 그리지 않습니다 */
+  const open=document.querySelector('dialog[open]');
+  if(!hasSize()||(open&&!open.contains(container))){lastDraw=0;return;}   /* 대화창이 열려 있으면 그리지 않습니다(무대가 그 창 안에 있을 때는 그립니다) */
   if(sized!==container.clientWidth+'x'+container.clientHeight)resize();
   const speaking=[...cast.values()].some(c=>c.state==='speaking'),target=speaking?1000/60:1000/30;
   if(lastDraw&&now-lastDraw<target-4)return;
@@ -147,7 +148,7 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
    const lift=hover===role?1:0;c.lift=reducedMotion?lift:(c.lift||0)+(lift-(c.lift||0))*(1-Math.exp(-dt*12));
    if(typeof c.baseY==='number'){c.char.group.position.y=c.baseY+c.lift*.02;c.char.group.scale.setScalar(1+c.lift*.025);}
   }
-  post.render(dt,time);started=true;
+  post.render(dt,time);started=true;debug.draws++;
   return true;
  }
  if(best>0)applyQuality();else resize();

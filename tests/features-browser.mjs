@@ -136,6 +136,51 @@ try{
   assert.deepEqual(errors,[]);await context.close();
   results.push('undo: take back chosen and written questions, rewrite, listed in the review');
  }
+ // 4. 회고에서 장면 다시 보기: 인용된 질문과 전체 대화의 내 말에서 무대 창을 열고, 내 말 자막 → 학생의 답 순서로 다시 봄.
+ if(run('replay')){
+  const {context,page,errors,action}=await open();
+  await startPractice(page,action);
+  const ask=async text=>{const n=await teacherCount(page);await page.locator('#input-write').click();await page.locator('#draft').fill(text);await page.locator('#compose button[type="submit"]').click();
+   await page.waitForFunction(n=>document.querySelectorAll('.message.teacher').length===n+1&&!document.querySelector('.thinking')&&!document.querySelector('#draft[disabled]'),n);};
+  await ask('오늘은 대화모임을 안내할게. 참여는 네가 고를 수 있고 언제든 쉬어도 돼.');
+  await ask('그때 어떤 일이 있었는지 네가 기억하는 대로 들려줄래?');
+  const answer=(await page.locator('.message:not(.teacher) .bubble').last().innerText()).trim();
+  await action('finish').click();await page.locator('#finish-form button[type="submit"]').click();await page.locator('.review-header').waitFor();
+  assert.equal(await page.locator('.stage-host').count(),0,'the review opens without loading a stage');
+  const fromEvidence=page.locator('.review-evidence [data-action="replay"]');
+  assert.ok(await fromEvidence.count()>=1,'quoted questions can be replayed');
+  await page.locator('.all-transcript summary').click();
+  assert.equal(await page.locator('.all-transcript [data-action="replay"]').count(),2,'each of my questions in the full conversation can be replayed');
+  await page.locator('.all-transcript [data-action="replay"]').nth(1).click();
+  await page.locator('#modal[open] .stage-host').waitFor();
+  assert.match(await page.locator('#modal h2').innerText(),/사전모임/);
+  await page.waitForFunction(()=>/기억하는 대로/.test(document.querySelector('#modal .stage-caption-text')?.textContent||''),null,{timeout:5000});
+  assert.equal(await page.locator('#modal .stage-caption-name').innerText(),'나','my question is shown first');
+  await page.waitForFunction(()=>document.querySelector('#modal .stage-host')?.dataset.stageState==='speaking',null,{timeout:12000});
+  await page.waitForFunction(()=>document.querySelector('#modal [data-replay-state]')?.dataset.replayState==='done',null,{timeout:30000});
+  assert.equal((await page.locator('#modal .stage-caption-text').innerText()).trim(),answer,'the student answers again with the same words');
+  assert.match(await page.locator('#modal .replay-lines').textContent(),/기억하는 대로/,'the lines are readable as text too');
+  // 다시 보기
+  await page.locator('#modal [data-action="replay-again"]').click();
+  await page.waitForFunction(()=>document.querySelector('#modal [data-replay-state]')?.dataset.replayState==='playing');
+  // Esc로 닫으면 무대가 내려오고 소리도 멈춤
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(()=>!document.querySelector('#modal').open);
+  await page.waitForFunction(()=>!document.querySelector('.stage-host'),null,{timeout:2000}).catch(()=>{});   /* 창의 close 알림은 닫힌 뒤 한 박자 늦게 옵니다 */
+  assert.equal(await page.locator('.stage-host').count(),0,'closing the replay takes the stage down');
+  // 인용 장면에서도 열림
+  await fromEvidence.first().click();await page.locator('#modal[open] .stage-host').waitFor();
+  await page.screenshot({path:'.test-artifacts/review-replay.png'});
+  await page.locator('#modal [data-action="close"]').last().click();
+  await page.waitForFunction(()=>!document.querySelector('#modal').open);
+  await page.waitForFunction(()=>!document.querySelector('.stage-host'),null,{timeout:2000}).catch(()=>{});
+  assert.equal(await page.locator('.stage-host').count(),0);
+  // 인쇄에는 다시 보기 단추가 나오지 않음
+  await page.emulateMedia({media:'print'});
+  assert.ok((await page.evaluate(()=>[...document.querySelectorAll('[data-action="replay"]')].map(b=>getComputedStyle(b).display))).every(v=>v==='none'));
+  assert.deepEqual(errors,[]);await context.close();
+  results.push('replay: review scenes replay on the stage (my line, then the answer), again, close, not printed');
+ }
  await writeFile('.test-artifacts/features-browser.json',JSON.stringify({passed:true,results},null,2));
  console.log(JSON.stringify({passed:true,results}));
 }finally{await browser.close();}
