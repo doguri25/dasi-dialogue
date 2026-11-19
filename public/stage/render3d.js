@@ -33,26 +33,27 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
  const best=fixed??Math.max(0,Math.min(QUALITY_LEVELS.length-1,bestLevel|0));
  const cast=new Map();let phase='pre',focus=null,level=best,disposed=false,paused=false,lost=false;
  const lostFns=[];
- const camPos=new T.Vector3(0,.8,1.05),camLook=new T.Vector3(0,.6,-.8),wantPos=camPos.clone(),wantLook=camLook.clone();let hFov=46,wantFov=46,minV=30,seed=1;
+ const camPos=new T.Vector3(0,.8,1.05),camLook=new T.Vector3(0,.6,-.8),wantPos=camPos.clone(),wantLook=camLook.clone();let hFov=46,wantFov=46,minV=30,tallV=30,seed=1;
  const teacherHead=new T.Vector3(0,.78,SEAT_R+.15);
 
  function headOf(role){const c=cast.get(role);if(!c)return null;const v=new T.Vector3();c.char.head.getWorldPosition(v);return v;}
  function shot(){
   const roles=[...cast.keys()];
   // 첫 화면: 왼쪽에 문구가 떠 있으므로 두 학생이 화면 오른쪽에 오도록 옆으로 옮겨 봅니다.
-  if(phase==='lobby'){const shift=(camera.aspect||1.6)>1.8?-.62:0;wantPos.set(shift,1.0,1.8);wantLook.set(shift,.5,-.3);wantFov=58;minV=36;return;}
+  if(phase==='lobby'){const shift=(camera.aspect||1.6)>1.8?-.62:0;wantPos.set(shift,1.0,1.8);wantLook.set(shift,.5,-.3);wantFov=58;minV=36;tallV=36;return;}
   if(roles.length<=1){
    const c=cast.get(roles[0]),y=HEAD_Y[c?.look.age]??1.12;
-   wantPos.set(0,.78,SEAT_R+.12);wantLook.set(0,y-.09,-SEAT_R);wantFov=36;minV=31;return;
+   wantPos.set(0,.78,SEAT_R+.12);wantLook.set(0,y-.09,-SEAT_R);wantFov=36;minV=31;tallV=56;return;
   }
   if(focus&&cast.has(focus)){
    const h=headOf(focus)||new T.Vector3();
-   wantPos.set(h.x*.2,.9,SEAT_R+.55);wantLook.set(h.x*.85,h.y-.1,h.z*.9);wantFov=50;minV=38;return;
+   wantPos.set(h.x*.2,.9,SEAT_R+.55);wantLook.set(h.x*.85,h.y-.1,h.z*.9);wantFov=50;minV=38;tallV=58;return;
   }
-  wantPos.set(0,1.0,SEAT_R+.7);wantLook.set(-.1,.5,-.4);wantFov=72;minV=42;
+  wantPos.set(0,1.0,SEAT_R+.7);wantLook.set(-.1,.5,-.4);wantFov=72;minV=42;tallV=62;
  }
  // 가로 화각을 맞추되, 아주 넓고 낮은 무대에서도 얼굴이 잘리지 않도록 세로 화각의 하한을 둡니다.
- function applyFov(){if(phase==='lobby'){const shift=(camera.aspect||1.6)>1.8?-.62:0;if(Math.abs(wantPos.x-shift)>.01){wantPos.x=shift;wantLook.x=shift;}}const aspect=camera.aspect||1.6,f=2*Math.atan(Math.tan(hFov*Math.PI/360)/aspect)*180/Math.PI;camera.fov=Math.max(minV,Math.min(64,f));camera.updateProjectionMatrix();}
+ // 정사각형에 가까운 무대(PC에서 대화 기록 옆)에서는 너무 가까워 보이지 않게 세로 화각을 조금 더 엽니다.
+ function applyFov(){if(phase==='lobby'){const shift=(camera.aspect||1.6)>1.8?-.62:0;if(Math.abs(wantPos.x-shift)>.01){wantPos.x=shift;wantLook.x=shift;}}const aspect=camera.aspect||1.6,f=2*Math.atan(Math.tan(hFov*Math.PI/360)/aspect)*180/Math.PI,lo=aspect<1.25?Math.max(minV,tallV):minV;camera.fov=Math.max(lo,Math.min(64,f));camera.updateProjectionMatrix();}
 
  // 무대가 문서에 붙어 있지 않거나 크기가 없으면 그리지 않습니다(크기 0 버퍼는 그래픽 오류를 쏟아냅니다).
  const hasSize=()=>container.isConnected&&container.clientWidth>1&&container.clientHeight>1;

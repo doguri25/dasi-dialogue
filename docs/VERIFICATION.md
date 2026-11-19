@@ -286,3 +286,14 @@
 - 통과: `npm test` 68개, `features-browser.mjs`(keys·print·undo·replay·hero·mroom), `responsive.mjs`, `followups-browser.mjs`, `browser.mjs`, `v02-browser.mjs`, `intake-browser.mjs`, `desktop-room.mjs`, `sounds-browser.mjs`, `stage-browser.mjs` review·polish·room·pick.
 - 한계: Chromium으로 휴대전화 크기를 흉내 냈을 뿐 실제 아이폰 Safari에서는 확인하지 않았습니다. 화면 낭독기로 새 메뉴를 써 보지 않았습니다. 가로로 눕힌 낮은 화면(높이 520 미만)은 예전처럼 스크롤합니다.
 
+
+## v1.0.0 — 화면 다시 짓기
+
+- 검사를 먼저 썼습니다: `tests/ui-browser.mjs`(새 화면 전체)와 `tests/flow.test.mjs`(시작·결과 기본값·기록할 연습·기록 20개·노트 남은 수). 새 화면이 없는 상태에서 둘 다 실패하는 것을 확인한 뒤 만들었습니다.
+- 클릭 수(바꾸기 전 → 뒤): 연습 시작 4 → 1, 질문 하나 보내기(PC) 3 → 1, 다음 단계(사전모임) 6 → 5(체크 4 + 다음 단계), 저장 매번 1 → 0, 마치기 3 → 1.
+- 통과: `npm test` 73개, `ui-browser.mjs` 전체(home·room·gate·save·review·ai·speech·unsafe·large·phone 4종·sound), `stage-browser.mjs` 빠른 실행 15개 항목.
+- 한 화면 확인 크기: PC 1440×900·1280×720·1366×768·1920×1080, 태블릿 1024×768, 휴대전화 390×844·440×956·360×740·320×568. 큰 글자는 320~1440 폭에서 옆으로 넘치지 않음.
+- 만드는 동안 검사가 잡은 것: 사례 카드가 스크롤 칸 안에서 눌려 납작해짐(격자 줄 높이), 휴대전화 되돌리기 단추가 32px, 큰 글자 320px에서 제안 줄의 원래 폭이 질문 칸을 밀어 냄(443px), 휴대전화 노트 판이 다시 그릴 때마다 들어오는 효과를 되풀이해 반투명하게 보임.
+- 3D: PC 연습실의 무대가 1068×220의 넓고 낮은 띠에서는 학생 얼굴만 크게 잘려 보여, 무대를 대화 기록 옆(약 500×530)으로 옮기고 정사각형에 가까운 무대에서는 세로 화각을 넓혔습니다(사진으로 확인). 실험실 검사(960×600)의 화각은 바뀌지 않습니다.
+- 지운 검사: 예전 화면을 전제로 한 `browser`·`responsive`·`v02-browser`·`intake-browser`·`followups-browser`·`sounds-browser`·`desktop-room`·`question-controls`·`features-browser.mjs`와 `helpers.mjs`. 그 검사들이 지키던 동작(필터, 학생별 분리·초안, 세 제공사·HTTP 오류 문구, 오류 시 문장 복구, 키 비저장, 음성 입력, 안전 보류, 관문, 내려받기·AI 회고·인쇄·장면 다시 보기·되돌리기, 효과음, 큰 글자, 동작 줄이기, 전체 대화)은 `ui-browser.mjs`로 옮겼습니다. 예전 검사의 "고르기만으로는 보내지 않음"은 일부러 바꾼 동작(누르면 보냄)이라 옮기지 않았습니다.
+- 한계: Chromium으로 휴대전화·태블릿 크기를 흉내 냈을 뿐 실제 아이폰 Safari·안드로이드 기기, 화면 낭독기로는 확인하지 않았습니다. 실제 API 키·물리 마이크는 쓰지 않았습니다.

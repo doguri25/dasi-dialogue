@@ -1,42 +1,27 @@
-/* 회고 인쇄·PDF: 메뉴·버튼·무대는 빼고, 종이 한 장 폭에 맞춰 흑백으로도 읽히게 정리합니다. */
+/* 회고 인쇄·PDF: 메뉴·단추·무대는 빼고, 종이 한 장 폭에 맞춰 흑백으로도 읽히게 정리합니다. */
 @page{size:A4;margin:14mm 13mm 15mm}
 *,*::before,*::after{animation:none!important;transition:none!important}
-html,body{background:#fff!important;color:#141b2b}
+html,body{background:#fff!important;color:#141b2b;height:auto!important;min-height:0!important}
 body{font-size:10.5pt;line-height:1.65}
-.topbar,.app-nav,footer,.toast,#toast,dialog,.skip,.skip-link,.stage-host,.stage-wrap,.review-buttons,.review-save-state,.review-side .button,.review-side .text-button,.replay-button,.replay-theatre,.retry-turn,.mobile-room-tabs{display:none!important}
-.workspace{display:block!important;min-height:0!important}
-main{padding:0!important;margin:0!important;max-width:none!important}
+.frame{display:block!important;height:auto!important;min-height:0!important}
+.appbar,.skip,#toast,dialog,.review-actions,.outcomes,.mini-stage,.replay-status,.replay-lines,.replay-btn,.scenes-col>h2,#reflection,.reflection small,.review>.error{display:none!important}
+.review{display:block!important;overflow:visible!important;padding:0!important}
 .print-head{display:flex!important;align-items:center;gap:8pt;padding:0 0 8pt;margin:0 0 12pt;border-bottom:1.2pt solid #141b2b;font-size:9.5pt}
 .print-head img{width:20pt;height:20pt}
 .print-head strong{font-size:11pt}
 .print-head span{margin-left:auto;color:#3b475b}
-.review-header{padding:0 0 10pt!important;max-width:none!important}
-.review-header .label{font-size:9pt}
-.review-header h1{font-size:19pt!important;margin:4pt 0!important}
-.review-header p{margin-bottom:8pt!important}
-.outcome-tag{background:none!important;color:#141b2b!important;padding:3pt 10pt!important;box-shadow:inset 0 0 0 1pt #141b2b}
-.outcome-tag::before{background:#141b2b!important}
-.review-grid{display:block!important}
-.review-main{padding:0!important;background:none!important;box-shadow:none!important}
-.review-main h2{font-size:14pt!important;margin:14pt 0 6pt!important;break-after:avoid}
-.review-main h3{break-after:avoid}
-.review-main>p,.review-columns ul,.review-evidence blockquote,.all-transcript p{font-size:10.5pt!important;line-height:1.7!important}
-.review-columns{margin:12pt 0!important;gap:8pt!important}
-.review-columns>div,.focus-note,.review-evidence article{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-shadow:inset 0 0 0 .8pt #b9c1cc!important;padding:10pt 12pt!important;border-radius:8pt!important}
-.review-evidence{margin:14pt 0!important}
-.review-evidence>div{gap:8pt!important}
-.review-evidence article,.review-columns>div,.focus-note,.all-transcript>div,.review-side,.print-reflection,li{break-inside:avoid}
-.review-main>.field{margin-top:14pt!important;font-weight:760}
-#reflection{display:none!important}
-.print-reflection{display:block!important;white-space:pre-wrap;overflow-wrap:anywhere;margin-top:5pt;padding:9pt 11pt;min-height:3.2em;border:.8pt solid #8a93a3;border-radius:8pt;font-weight:400}
-.all-transcript{margin-top:14pt!important;padding:0!important;background:none!important;box-shadow:none!important}
-.all-transcript summary{list-style:none;min-height:0!important;font-size:13pt!important;font-weight:800;margin-bottom:4pt}
-.all-transcript summary::-webkit-details-marker{display:none}
-.all-transcript>div{padding:6pt 0!important;box-shadow:0 -.6pt 0 #c9d0d9!important}
-.review-side{position:static!important;margin-top:14pt;padding:10pt 12pt!important;background:none!important;color:#141b2b!important;box-shadow:inset 0 0 0 .8pt #8a93a3;border-radius:8pt}
-.review-side h3{color:#141b2b!important;font-size:11.5pt!important;margin-bottom:4pt!important}
-.review-side p{color:#3b475b!important;margin:0!important}
+.review-head{display:block!important;margin:0 0 6pt}
+.review-title h1{font-size:19pt!important}
+.outcome-print{display:block!important;margin-top:4pt;font-weight:700}
+.review-cols{display:block!important}
+.review-col{display:block!important;overflow:visible!important;border:0!important;padding:0!important;margin:12pt 0 0!important;background:none!important}
+.review-col h2{font-size:14pt!important;margin:0 0 6pt!important;break-after:avoid}
+.review-col h3{break-after:avoid;margin-top:10pt!important}
+.pair{display:grid!important;grid-template-columns:1fr 1fr;gap:8pt}
+.pair>div,.next-practice,.evidence article,.review-retries article{-webkit-print-color-adjust:exact;print-color-adjust:exact;background:none!important;box-shadow:inset 0 0 0 .8pt #b9c1cc!important;border:0!important;padding:9pt 11pt!important;border-radius:8pt!important;break-inside:avoid}
+.evidence{display:grid!important;grid-template-columns:1fr 1fr;gap:8pt}
+.reflection{display:block!important;margin-top:12pt;font-weight:760}
+.print-reflection{display:block!important;white-space:pre-wrap;overflow-wrap:anywhere;margin-top:5pt;padding:9pt 11pt;min-height:3.2em;border:.8pt solid #8a93a3;border-radius:8pt;font-weight:400;break-inside:avoid}
+.review-transcript{display:block!important;margin-top:12pt}
+.review-transcript .line{padding:5pt 0!important;break-inside:avoid;border-top:.6pt solid #c9d0d9!important}
 a{color:inherit;text-decoration:none}
-/* 종이 폭(약 700px)은 휴대전화 기준에 걸리므로, 두 칸 배치를 다시 씁니다. */
-.review-columns,.review-evidence>div{grid-template-columns:1fr 1fr!important}
-.review-retries article{break-inside:avoid;box-shadow:inset 0 0 0 .8pt #b9c1cc!important;padding:9pt 11pt!important}

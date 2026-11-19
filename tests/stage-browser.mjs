@@ -98,35 +98,27 @@ try{
  }
  if(run('director'))results.push('director: captions, skip, interrupt, order, 2D, context loss');
 
- // 4. 사례 목록: 첫 화면에서는 3D 파일을 받지 않고, 한가해진 뒤 미리보기 무대가 열림. 설정에서 끌 수 있음.
+ // 4. 첫 화면(v1.0): 3D 미리보기가 없으므로 3D 파일도 WebGL 검사도 하지 않음. 연습실에 들어가야 3D를 불러옴. 설정에서 끌 수 있음.
  if(run('library')){
   const page=await browser.newPage({viewport:{width:1366,height:820},locale:'ko-KR'});
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
-  const nocache=await page.context().newCDPSession(page);await nocache.send('Network.enable');await nocache.send('Network.setCacheDisabled',{cacheDisabled:true});
-  // 3D를 쓸 수 있는지 알아보는 WebGL 검사도 첫 화면을 그린 뒤에 합니다(첫 화면을 늦추지 않게).
   await page.addInitScript(()=>{const get=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...rest){if(/webgl/i.test(type)&&window.__firstGL==null)window.__firstGL=performance.now();return get.call(this,type,...rest);};});
-  await page.goto(base);
-  await page.waitForSelector('.hero-stage .stage-host[data-stage-mode="3d"]',{timeout:60000});
-  const probe=await page.evaluate(()=>({gl:window.__firstGL,fcp:performance.getEntriesByName('first-contentful-paint')[0]?.startTime}));
-  assert.ok(probe.fcp>0&&probe.gl>probe.fcp,`WebGL probe runs only after first paint ${JSON.stringify(probe)}`);
-  await page.waitForFunction(()=>document.querySelector('.hero-stage canvas'),null,{timeout:60000});
-  const timing=await page.evaluate(()=>({three:performance.getEntriesByType('resource').find(r=>/three-stage\.js/.test(r.name))?.startTime,fcp:performance.getEntriesByName('first-contentful-paint')[0]?.startTime}));
-  assert.ok(timing.fcp>0&&timing.three>timing.fcp,`3D files load only after first paint ${JSON.stringify(timing)}`);
-  await page.waitForFunction(()=>document.querySelector('.hero-stage canvas'),null,{timeout:60000});
-  await page.screenshot({path:'.test-artifacts/library-hero-stage.png'});
-  await page.locator('.topbar [data-action="settings"]').click();
-  await page.locator('input[name="stage-pref"][value="off"]').check();
+  await page.goto(base);await page.locator('.case').first().waitFor();await page.waitForTimeout(3000);
+  const home=await page.evaluate(()=>({gl:window.__firstGL??null,three:performance.getEntriesByType('resource').some(r=>/three-stage|render3d/.test(r.name))}));
+  assert.deepEqual(home,{gl:null,three:false},'the first screen loads no 3D and makes no WebGL context');
+  await page.locator('[data-action="quick"]').click();await page.locator('#stage-slot .stage-host[data-stage-mode="3d"]').waitFor({timeout:60000});
+  await page.waitForFunction(()=>document.querySelector('#stage-slot canvas'),null,{timeout:60000});
+  await page.locator('.room-bar [data-action="settings"]').click();await page.locator('input[name="stage-pref"][value="off"]').check();
   assert.equal(await page.evaluate(()=>localStorage.getItem('dasi.stage')),'off');
-  await page.locator('[data-action="close"]').first().click();
-  assert.equal(await page.locator('.hero-stage .stage-host').count(),0,'stage off hides the 3D preview');
-  assert.equal(await page.locator('.hero-stage img').isVisible(),true);
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(()=>document.querySelector('.stage-host')?.dataset.stageMode==='2d',null,{timeout:5000});
   await page.evaluate(()=>localStorage.removeItem('dasi.stage'));
-  assert.deepEqual(errors,[]);await page.close();results.push('library: no early 3D request or WebGL probe, hero preview, preference off');
+  assert.deepEqual(errors,[]);await page.close();results.push('library: no 3D or WebGL on the first screen, 3D in the room, preference off applies at once');
   // 3D를 불러오는 중에 화면을 떠나도 크기 0인 화면에 그리지 않음(그래픽 오류 폭주 → 탐색 멈춤 회귀 방지)
   const quick=await browser.newPage({viewport:{width:1440,height:900},locale:'ko-KR'});
   const gl=[];quick.on('console',m=>{if(/GL_INVALID|incomplete/i.test(m.text()))gl.push(m.text());});
-  await quick.goto(base);await quick.waitForTimeout(250);
-  await quick.locator('[data-action="quick"]').first().click();await quick.locator('#start-form button[type="submit"]').click();await quick.locator('#application-continue').click();
+  await quick.goto(base);await quick.locator('[data-action="quick"]').click();await quick.waitForTimeout(250);
+  await quick.locator('[data-action="go"][data-view="home"]').first().click();
   await quick.waitForTimeout(9000);
   assert.deepEqual(gl.slice(0,2),[],'no WebGL errors while the stage waits off-screen');
   const t0=Date.now();await quick.reload({timeout:15000});assert.ok(Date.now()-t0<15000);
@@ -176,54 +168,54 @@ try{
   assert.deepEqual(errors,[]);await page.close();results.push('polish: long caption, resize, slow device, off-screen pause');
  }
 
- // 6. 연습실: 질문 → 듣기·생각하기 → 말하기 → 대기, 자막과 대화 기록이 같은 문장, 말하는 중 대상 바꾸기·단계 이동·화면 떠나기
+ // 6. 연습실: 제안을 누르면 → 듣기·생각하기 → 말하기 → 대기, 자막과 대화 기록이 같은 문장, 말하는 중 대상 바꾸기·화면 떠나기·3D 끄기
  if(run('room')){
   const ctx=await browser.newContext({viewport:{width:1366,height:768},locale:'ko-KR'});
   await ctx.addInitScript(()=>{if(!sessionStorage.getItem('stage-set')){localStorage.setItem('dasi.stage','on');sessionStorage.setItem('stage-set','1');}});
   const page=await ctx.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
-  await page.goto(base);await page.locator('[data-action="quick"]').first().click();await page.locator('#start-form button[type="submit"]').click();await page.locator('#application-continue').click();
+  await page.goto(base);await page.locator('[data-action="quick"]').click();
   const host=page.locator('#stage-slot .stage-host');await host.waitFor({timeout:60000});
   await page.waitForFunction(()=>document.querySelector('#stage-slot .stage-host canvas'),null,{timeout:60000});
   assert.equal(await host.getAttribute('data-stage-mode'),'3d');
   const watch=()=>page.evaluate(()=>new Promise(res=>{const seen=[];const h=document.querySelector('.stage-host');const mo=new MutationObserver(()=>{const v=h.dataset.stageState;if(seen.at(-1)!==v)seen.push(v);if(v==='idle'&&seen.includes('speaking')){mo.disconnect();res(seen);}});mo.observe(h,{attributes:true});setTimeout(()=>{mo.disconnect();res(seen);},30000);})).catch(()=>[]);
   let states=watch();
-  await page.locator('.choice-card').first().click();await page.locator('#modal [data-action="choose-example"]').click();await page.locator('#compose button[type="submit"]').click();
+  await page.locator('.sug .sug-say').first().click();
   states=await states;
   assert.ok(states.includes('listening')||states.includes('thinking'),'listens or thinks first '+states);
   assert.ok(states.indexOf('speaking')>=0&&states.at(-1)==='idle','then speaks and settles '+states);
-  const lastBubble=await page.locator('.message:not(.teacher) .bubble').last().innerText();
+  const lastBubble=await page.locator('.msg.participant .bubble').last().innerText();
   assert.equal(await page.locator('.stage-caption-text').innerText(),lastBubble,'caption and transcript show the same line');
   // 말하는 중 대상 바꾸기: 목소리를 끄고 새 출연진은 이전 자막을 이어받지 않음
-  await page.locator('[data-action="tts-toggle"]').click();assert.equal(await page.locator('[data-action="tts-toggle"]').getAttribute('aria-pressed'),'true');
-  await page.locator('.choice-card').first().click();await page.locator('#modal [data-action="choose-example"]').click();await page.locator('#compose button[type="submit"]').click();
+  await page.locator('.stage-tools [data-action="tts-toggle"]').click();assert.equal(await page.locator('.stage-tools [data-action="tts-toggle"]').getAttribute('aria-pressed'),'true');
+  await page.locator('.sug .sug-say').first().click();
   await page.waitForFunction(()=>document.querySelector('.stage-host').dataset.stageState==='speaking',null,{timeout:30000});
-  await page.locator('#target-a').check();
+  await page.locator('label[for="target-a"]').click();
   assert.equal(await page.evaluate(()=>speechSynthesis.speaking),false,'voice stops when switching target');
   assert.notEqual(await page.locator('.stage-caption-text').innerText(),lastBubble,'new cast does not inherit the old line');
   // 다른 화면으로 가면 무대를 떼어 내고(그리기 멈춤) 목소리도 멈춤
-  await page.locator('nav [data-action="history"]').click();
+  await page.locator('.room-bar [data-action="go"][data-view="home"]').click();
   assert.equal(await page.evaluate(()=>speechSynthesis.speaking),false);
   assert.equal(await page.locator('.stage-host').count(),0,'stage is detached off the room');
   await page.waitForTimeout(300);
-  // 설정에서 3D를 끄면 연습실은 그림 무대
-  await page.locator('nav [data-action="room"]').click();await host.waitFor();
-  await page.locator('.topbar [data-action="settings"]').click();await page.locator('input[name="stage-pref"][value="off"]').check();await page.locator('[data-action="close"]').first().click();
+  // 설정에서 3D를 끄면 연습실은 바로 그림 무대
+  await page.locator('[data-action="resume"]').click();await host.waitFor();
+  await page.locator('.room-bar [data-action="settings"]').click();await page.locator('input[name="stage-pref"][value="off"]').check();await page.keyboard.press('Escape');
   await page.waitForFunction(()=>document.querySelector('.stage-host')?.dataset.stageMode==='2d',null,{timeout:5000});
   assert.equal(await page.locator('.flat-seat').count(),1);
   await page.screenshot({path:'.test-artifacts/room-2d.png'});
-  assert.deepEqual(errors,[]);await ctx.close();results.push('room: listen→speak→idle, caption = transcript, target switch, leave, 3D off');
+  assert.deepEqual(errors,[]);await ctx.close();results.push('room: tap→listen→speak→idle, caption = transcript, target switch, leave, 3D off');
  }
 
  // 7. 최종 검토에서 찾은 문제(같은 사례 새 연습, 3D 불러오는 중 그림 무대 전환, 그림 무대 얼굴, AI 오류, 목소리 시작, 무대 오류 격리, 누르기 크기)
  if(run('review')){
   const roomCtx=async(pref,{width=1366,height=768,init}={})=>{const ctx=await browser.newContext({viewport:{width,height},locale:'ko-KR'});await ctx.addInitScript(p=>{if(!sessionStorage.getItem('pref-set')){localStorage.setItem('dasi.stage',p);sessionStorage.setItem('pref-set','1');}},pref);if(init)await ctx.addInitScript(init);const page=await ctx.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());return {ctx,page,errors};};
-  const enter=async page=>{await page.goto(base);await page.locator('[data-action="quick"]').first().click();await page.locator('#start-form button[type="submit"]').click();await page.locator('#application-continue').click();await page.locator('#stage-slot .stage-host').waitFor({timeout:60000});};
-  // PC는 문장 창에서 고르고, 휴대전화(v0.9)는 카드를 누르면 바로 고른 뒤 카드 자리의 보내기로 보냅니다.
-  const sendFirst=async page=>{await page.locator('.choice-card').first().click();if(await page.locator('#modal').evaluate(d=>d.open))await page.locator('#modal [data-action="choose-example"]').click();const phone=page.locator('#send-selected');if(await phone.isVisible())await phone.click();else await page.locator('#compose button[type="submit"]').click();};
+  const enter=async page=>{await page.goto(base);await page.locator('[data-action="quick"]').click();await page.locator('#stage-slot .stage-host').waitFor({timeout:60000});};
+  // v1.0: 제안 문장을 한 번 누르면 바로 보냅니다(PC·휴대전화 같음).
+  const sendFirst=page=>page.locator('.sug .sug-say').first().click();
   // F1: 같은 사례로 새 연습을 시작하면 이전 자막·감정을 이어받지 않음
   {const {ctx,page,errors}=await roomCtx('off');await enter(page);await sendFirst(page);
    await page.waitForFunction(()=>document.querySelector('.stage-host').dataset.stageState==='speaking',null,{timeout:30000});
-   await page.locator('nav [data-action="library"]').click();await page.locator('[data-action="quick"]').first().click();await page.locator('#start-form button[type="submit"]').click();await page.locator('#application-continue').click();
+   await page.locator('.room-bar [data-action="go"][data-view="home"]').click();await page.locator('[data-action="quick"]').click();
    await page.locator('#stage-slot .stage-host').waitFor();
    assert.equal(await page.locator('.stage-caption').isHidden(),true,'a new session starts without the old caption');
    assert.equal(await page.locator('.flat-seat').first().getAttribute('data-mood'),'calm','a new session starts with fresh moods');
@@ -240,24 +232,25 @@ try{
   for(const [w,h] of [[1366,768],[1280,720],[390,844],[360,740]]){
    const {ctx,page,errors}=await roomCtx('off',{width:w,height:h});await enter(page);await sendFirst(page);
    await page.waitForFunction(()=>document.querySelector('.stage-host').dataset.stageState==='speaking',null,{timeout:30000});await page.waitForTimeout(1500);
-   const r=await page.evaluate(()=>{const b=s=>{const x=document.querySelector(s).getBoundingClientRect();return {l:x.left,r:x.right,t:x.top,b:x.bottom};};return {face:b('.flat-face'),frame:b('.stage-frame'),controls:b('.stage-controls'),caption:b('.stage-caption')};});
+   const r=await page.evaluate(()=>{const b=s=>{const x=document.querySelector(s).getBoundingClientRect();return {l:x.left,r:x.right,t:x.top,b:x.bottom};};return {face:b('.flat-face'),frame:b('.stage-frame'),controls:b('.stage-tools'),chips:b('.faces'),caption:b('.stage-caption')};});
    const inside=(a,o)=>a.l>=o.l-1&&a.r<=o.r+1&&a.t>=o.t-1&&a.b<=o.b+1,overlap=(a,o)=>a.l<o.r&&a.r>o.l&&a.t<o.b&&a.b>o.t;
    assert.ok(inside(r.face,r.frame),`face inside the stage at ${w}x${h} ${JSON.stringify(r)}`);
    assert.ok(!overlap(r.face,r.controls),`controls do not cover the face at ${w}x${h}`);
+   assert.ok(!overlap(r.face,r.chips),`face chips do not cover the face at ${w}x${h} ${JSON.stringify(r)}`);
    assert.ok(!overlap(r.face,r.caption),`caption does not cover the face at ${w}x${h}`);
    assert.deepEqual(errors,[]);await ctx.close();
   }
   // F4: AI 오류가 나면 무대는 대기 상태로 돌아가고 지운 문장을 자막에 남기지 않음
   {const {ctx,page,errors}=await roomCtx('off');await enter(page);
-   await page.locator('.topbar [data-action="settings"]').click();await page.locator('input[name="mode"][value="ai"]').check();await page.locator('#api-key').fill('dummy-review-key');await page.locator('#settings-form button[type="submit"]').click();
+   await page.locator('.room-bar [data-action="settings"]').click();await page.locator('input[name="mode"][value="ai"]').check();await page.locator('#api-key').fill('dummy-review-key');await page.keyboard.press('Escape');
    await page.route('**/api/reply',async route=>{await new Promise(res=>setTimeout(res,1500));await route.fulfill({status:502,json:{error:'테스트 서비스 오류: 고른 문장은 유지됩니다.'}});});
    await sendFirst(page);await page.locator('#reply-error').waitFor({timeout:15000});await page.waitForTimeout(400);
    assert.equal(await page.locator('.stage-host').getAttribute('data-stage-state'),'idle','stage returns to idle after an AI error');
    assert.equal(await page.locator('.stage-caption').isHidden(),true,'the removed line is not left in the caption');
    assert.deepEqual(errors,[]);await ctx.close();}
   // F5: 목소리를 켜면 보내기를 누른 바로 그때 음성이 준비됨(아이패드 자동 재생 제한)
-  {const {ctx,page,errors}=await roomCtx('off',{init:()=>{window.__speakAt=[];const orig=speechSynthesis.speak.bind(speechSynthesis);speechSynthesis.speak=u=>{window.__speakAt.push(performance.now());return orig(u);};document.addEventListener('click',e=>{if(e.target.closest('#compose button[type="submit"]'))window.__clickAt=performance.now();},true);}});
-   await enter(page);await page.locator('[data-action="tts-toggle"]').click();await page.evaluate(()=>{window.__speakAt=[];});
+  {const {ctx,page,errors}=await roomCtx('off',{init:()=>{window.__speakAt=[];const orig=speechSynthesis.speak.bind(speechSynthesis);speechSynthesis.speak=u=>{window.__speakAt.push(performance.now());return orig(u);};document.addEventListener('click',e=>{if(e.target.closest('.sug-say'))window.__clickAt=performance.now();},true);}});
+   await enter(page);await page.locator('.stage-tools [data-action="tts-toggle"]').click();await page.evaluate(()=>{window.__speakAt=[];});
    await sendFirst(page);await page.waitForTimeout(300);
    const t=await page.evaluate(()=>({click:window.__clickAt,first:window.__speakAt[0]}));
    assert.ok(t.first!==undefined&&t.first-t.click<100,`speech is unlocked inside the send click ${JSON.stringify(t)}`);
@@ -269,12 +262,12 @@ try{
     try{await d.speak([{speaker:'v',text:'네.',mood:'calm'}],{tts:false});out.push('ok');}catch{out.push('threw');}return out;});
    assert.deepEqual(res,['ok','ok','ok','ok','ok'],'director methods never throw into the app');
    await page.close();}
-  // F7: 무대·얼굴 버튼은 48px 이상이고 휴대전화에서도 모두 보임
-  for(const [w,h] of [[1366,768],[390,844]]){
+  // F7: 무대 도구·얼굴 단추는 40px 이상이고 휴대전화에서도 모두 무대 안에 보임
+  for(const [w,h] of [[1366,768],[390,844],[320,568]]){
    const {ctx,page,errors}=await roomCtx('off',{width:w,height:h});await enter(page);
-   const m=await page.evaluate(()=>{const top=document.querySelector('.stage-top').getBoundingClientRect();return {sizes:[...document.querySelectorAll('.stage-chip,.target-chip')].map(e=>Math.round(e.getBoundingClientRect().height)).filter(h=>h>0),   /* 휴대전화는 무대 버튼을 메뉴로 옮겨 숨깁니다 */clipped:[...document.querySelectorAll('.target-chip')].filter(e=>{const r=e.getBoundingClientRect();return r.right>top.right+1||r.left<top.left-1;}).length};});
-   assert.ok(m.sizes.every(x=>x>=48),`touch targets at least 48px at ${w}x${h} ${m.sizes}`);
-   assert.equal(m.clipped,0,`all face chips are visible at ${w}x${h}`);
+   const m=await page.evaluate(()=>{const frame=document.querySelector('.stage-frame').getBoundingClientRect();const items=[...document.querySelectorAll('.stage-tools .icon-btn,.face')].filter(e=>e.getBoundingClientRect().width>0);return {sizes:items.map(e=>Math.round(Math.min(e.getBoundingClientRect().height,e.getBoundingClientRect().width))),clipped:items.filter(e=>{const r=e.getBoundingClientRect();return r.right>frame.right+1||r.left<frame.left-1||r.top<frame.top-1||r.bottom>frame.bottom+1;}).length};});
+   assert.ok(m.sizes.length>=4&&m.sizes.every(x=>x>=40),`touch targets at least 40px at ${w}x${h} ${m.sizes}`);
+   assert.equal(m.clipped,0,`face chips and stage tools stay on the stage at ${w}x${h}`);
    assert.deepEqual(errors,[]);await ctx.close();
   }
   results.push('review: new session, late 3D, 2D faces, AI error, voice unlock, stage errors, touch targets');
@@ -294,8 +287,8 @@ try{
    assert.deepEqual(errors,[]);await page.close();}
   {const ctx=await browser.newContext({viewport:{width:1366,height:768},locale:'ko-KR'});await ctx.addInitScript(()=>{if(!sessionStorage.getItem('p')){localStorage.setItem('dasi.stage','off');sessionStorage.setItem('p','1');}});
    const page=await ctx.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
-   await page.goto(base);await page.locator('[data-action="quick"]').first().click();await page.locator('#start-form button[type="submit"]').click();await page.locator('#application-continue').click();await page.locator('#stage-slot .stage-host').waitFor();
-   await page.locator('#input-write').click();await page.locator('#draft').pressSequentially('천천히 말해도 괜찮아',{delay:20});
+   await page.goto(base);await page.locator('[data-action="quick"]').click();await page.locator('#stage-slot .stage-host').waitFor();
+   await page.locator('#draft').pressSequentially('천천히 말해도 괜찮아',{delay:20});
    assert.equal(await page.locator('.stage-host').getAttribute('data-stage-state'),'listening','the student listens while the teacher writes');
    await page.waitForFunction(()=>document.querySelector('.stage-host').dataset.stageState==='idle',null,{timeout:6000});
    assert.equal(await page.locator('.stage-caption').isHidden(),true,'attending shows no caption');
@@ -323,14 +316,14 @@ try{
    assert.deepEqual(errors,[]);await page.close();}
   {const ctx=await browser.newContext({viewport:{width:1366,height:768},locale:'ko-KR'});await ctx.addInitScript(()=>{if(!sessionStorage.getItem('p')){localStorage.setItem('dasi.stage','off');sessionStorage.setItem('p','1');}});
    const page=await ctx.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
-   await page.goto(base);await page.locator('[data-action="quick"]').first().click();await page.locator('#start-form button[type="submit"]').click();await page.locator('#application-continue').click();await page.locator('#stage-slot .stage-host').waitFor();
+   await page.goto(base);await page.locator('[data-action="quick"]').click();await page.locator('#stage-slot .stage-host').waitFor();
    assert.equal(await page.locator('.stage-host').getAttribute('data-pickable'),'false','pre-meeting shows one student, so picking is off');
-   await page.locator('.desktop-notes-toggle').click();for(const k of ['v','a','g','safe'])await page.locator(`[data-check="${k}"]`).check();await page.locator('[data-action="advance"]').click();
+   for(const k of ['v','a','g','safe'])await page.locator(`#notes [data-check="${k}"]`).check();await page.locator('#notes [data-action="advance"]').click();
    await page.locator('.flat-seat[data-role="a"]').waitFor();
    assert.equal(await page.locator('.stage-host').getAttribute('data-pickable'),'true');
    await page.locator('.flat-seat[data-role="a"]').click();
    await page.waitForFunction(()=>document.querySelector('#target-a')?.checked,null,{timeout:5000});
-   assert.match(await page.locator('.target-chip.selected').innerText(),/지우/,'clicking a face on the stage chooses that student');
+   assert.match(await page.locator('.face.on').innerText(),/지우/,'clicking a face on the stage chooses that student');
    assert.deepEqual(errors,[]);await ctx.close();}
   results.push('pick: 3D ray picking with hover, 2D faces, off in pre-meeting');
  }

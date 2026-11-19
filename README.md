@@ -1,4 +1,4 @@
-# 다시, 대화 · v0.7.1
+# 다시, 대화 · v1.0
 
 충남 관계회복지원단 교사가 가상 학생·보호자와 대화모임을 연습하는 웹앱입니다. 충남 관계회복 운영 자료를 참고했습니다. [자료와 적용 범위](docs/SOURCES.md)에 참고 링크를 정리했습니다. 학교급별 창작 사례 30개를 제공합니다.
 
@@ -35,6 +35,21 @@ Node.js 22 이상이 있으면 추가 패키지 설치 없이 실행됩니다. m
 
 Finder에서 `다시대화 실행.command`를 더블클릭해 서버를 시작할 수도 있습니다. 같은 포트에서 이미 실행 중이라면 기존 브라우저 주소를 열면 됩니다. 파일을 `file://`로 직접 열지 마세요.
 
+
+## v1.0에서 달라진 점
+
+화면을 처음부터 다시 지었습니다. 누르는 횟수와 스크롤을 줄이고 확인 단계를 없앴습니다.
+
+- 사례 카드(또는 조건 칩)를 한 번 누르면 바로 사전모임입니다. 신청서는 대화 맨 위와 노트에서 늘 볼 수 있습니다.
+- 제안 문장을 누르면 바로 말합니다. 잘못 보냈으면 "되돌리기", 고치고 싶으면 연필. 입력칸은 늘 있습니다(Enter 보내기). PC에서는 1–4 키로도 보냅니다.
+- 모든 연습은 자동으로 저장됩니다. 첫 화면의 "이어서 하기"나 기록에서 한 번 눌러 이어 갑니다.
+- 노트(확인할 것·다음 단계·합의 기록·코치 한마디·신청서)는 PC에서 늘 펼쳐져 있고, 좁은 화면에서는 "노트"로 엽니다.
+- 마치기를 누르면 곧바로 회고입니다. 결과는 회고 맨 위에서 고르고, 장면은 그 자리에서 다시 봅니다.
+- 첫 화면·연습실·회고는 PC와 휴대전화 모두 한 화면에 들어옵니다.
+
+![사례 목록(PC)](docs/screenshots/library.png)
+
+<img src="docs/screenshots/mobile.png" alt="휴대전화 연습실" width="320">
 
 ## v0.9에서 달라진 점
 
@@ -187,23 +202,15 @@ npm test
 
 Node 기본 테스트는 시나리오 분기·단계 조건·개별면담 분리·AI 응답 검증·각 제공사 요청 형식과 로컬 HTTP 서버를 검사합니다. 실제 API 키를 사용하지 않습니다.
 
-브라우저 검사는 Playwright와 Chrome이 있는 개발 환경에서 실행합니다. 앱 실행에는 필요하지 않습니다.
+브라우저 검사는 Playwright와 Chrome이 있는 개발 환경에서 실행합니다. 앱 실행에는 필요하지 않습니다. 서버(`npm start`)를 켠 뒤:
 
 ```sh
-PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node tests/browser.mjs
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node tests/ui-browser.mjs
 ```
 
-신청서에서 사전모임 안내·이야기로 이어지는 흐름은 같은 환경에서 `node tests/intake-browser.mjs`로 검사합니다.
+`ui-browser.mjs`는 v1.0 화면 전체를 검사합니다: 첫 화면(한 화면·3D 없음·검색·필터·한 번 시작), 연습실(한 화면·제안 4개 전체 글·누르면 보냄·되돌리기·고쳐 쓰기·Enter·숫자 키·학생별 분리와 초안·여러 PC 크기·태블릿 서랍), 단계 관문, 자동 저장·이어 하기·기록 삭제 되돌리기, 회고(세 칸·결과 칩·회고 자동 저장·장면 다시 보기·내려받기·인쇄), 설정과 세 제공사 AI 모의 응답·오류 시 문장 복구·키 비저장, 음성 입력 모의, 중단 조건, 큰 글자, 휴대전화 4가지 크기, 효과음·동작 줄이기. 배포 주소와 같은 보안 정책(CSP)으로 열어 콘솔 오류도 확인합니다. `UI_ONLY=room,phone`처럼 일부만 실행할 수 있습니다.
 
-기기별 화면·글자 확대·모바일 진행·동작 줄이기는 같은 환경에서 `node tests/responsive.mjs`로 검사합니다.
-
-v0.2의 초안·선택 복원, 준비 상태, 전체 대화, 회고 내보내기는 `node tests/v02-browser.mjs`로 검사합니다.
-
-PC 화면 안의 2×2 문항·상세 창·보내기 배치와 진행 노트 전환은 `node tests/desktop-room.mjs`로 검사합니다. 효과음과 음소거 유지는 `node tests/sounds-browser.mjs`로 검사합니다.
-
-학생 답변별 선택지와 모바일 선택·전송·오류 후 복구는 `node tests/followups-browser.mjs`로 검사합니다.
-
-3D 대화 장면(캐릭터 7종×감정, 자막·말하기 순서·끼어들기, 그림 무대·문맥 손실, 긴 답, 화면 크기, 느린 기기, 사례 목록 미리보기, 연습실 흐름)은 `node tests/stage-browser.mjs`로 검사합니다. `STAGE_ONLY=director,room`처럼 일부만, `STAGE_QUICK=1`로 짧게 실행할 수 있습니다. Google Chrome이 없는 환경에서는 `PW_CHANNEL=chromium`으로 Playwright의 Chromium을 씁니다.
+3D 대화 장면(캐릭터 7종×감정, 자막·말하기 순서·끼어들기, 그림 무대·문맥 손실, 긴 답, 화면 크기, 느린 기기, 연습실 흐름)은 `node tests/stage-browser.mjs`로 검사합니다. `STAGE_ONLY=director,room`처럼 일부만, `STAGE_QUICK=1`로 짧게 실행할 수 있습니다. Google Chrome이 없는 환경에서는 `PW_CHANNEL=chromium`으로 Playwright의 Chromium을 씁니다.
 
 `public/vendor/`의 Three.js 묶음과 Pretendard 글꼴은 `node tools/vendor-three.mjs`로 다시 만듭니다(npm 레지스트리 접속 필요, 앱 실행에는 불필요).
 
