@@ -2,6 +2,7 @@ import {roleName,phases,variants} from './scenarios.js';
 import {newApplication,applicationRecord} from './application.js';
 
 import {preStepFor} from './premeeting.js';
+import {demoMood} from './stage/mood.js';
 
 export const prompts={
  pre:['무슨 일이 있었는지 네가 기억하는 대로 이야기해 줄래?','그 일이 시작되기 전부터 차근차근 들려줄래?','그때 어떤 생각이 들었고 어떤 마음이었니?'],
@@ -51,7 +52,7 @@ export function demoReply(s,c,text) {
  if(s.phase==='pre'&&preStepFor(s)==='intro'&&intent!=='pressure') {
   const answer=s.variant==='unsafe'?(s.target==='v'?'설명은 들었어요. 하지만 오늘은 만나지 않을래요. 따로 이야기하면서 도움받고 싶어요.':s.target==='g'?'설명해 주셔서 감사합니다. 아이가 만나고 싶지 않다고 해서, 그 뜻을 먼저 들어 주세요.':'따로 이야기하는 거군요. 상대가 원하지 않으면 함께 만나지 않을게요.'):
    s.variant==='resistant'?'설명은 들었어요. 아직 이야기하기는 망설여져요. 제 말도 끝까지 들어 주실 건가요?':s.target==='g'?'먼저 설명해 주셔서 감사합니다. 학생의 뜻을 따로 확인하며 이야기를 들어 주세요.':'모임이 어떤 자리인지 조금 알겠어요. 말하기 어려우면 잠깐 쉬어도 되는 거죠?';
-  return {messages:[{speaker:s.target,text:answer}],observation:s.variant==='unsafe'?'참여 거절이 표현됐습니다. 원하지 않는 대면을 진행하지 않고 학생의 선택을 들어 주세요.':'안내에 대한 반응입니다. 다음에는 무슨 일이 있었는지 그 사람의 말로 들어 보세요.',risk:s.variant==='unsafe'?'stop':s.variant==='resistant'?'tension':'none',coaching:{strength:'설명에 대한 반응을 확인하고 궁금한 점을 더 물어봐 주세요.',nextQuestion:s.target==='g'?'어떤 일이 있었다고 학생에게 들으셨나요?':s.variant==='unsafe'?'말하고 싶다면, 어떤 일이 불편했는지 들려줄래? 원하지 않으면 멈춰도 돼.':'무슨 일이 있었는지 네가 기억하는 대로 이야기해 줄래?'}};
+  return {messages:[{speaker:s.target,text:answer,mood:demoMood({intent,variant:s.variant,phase:s.phase,preStep:'intro',role:s.target,turn:n})}],observation:s.variant==='unsafe'?'참여 거절이 표현됐습니다. 원하지 않는 대면을 진행하지 않고 학생의 선택을 들어 주세요.':'안내에 대한 반응입니다. 다음에는 무슨 일이 있었는지 그 사람의 말로 들어 보세요.',risk:s.variant==='unsafe'?'stop':s.variant==='resistant'?'tension':'none',coaching:{strength:'설명에 대한 반응을 확인하고 궁금한 점을 더 물어봐 주세요.',nextQuestion:s.target==='g'?'어떤 일이 있었다고 학생에게 들으셨나요?':s.variant==='unsafe'?'말하고 싶다면, 어떤 일이 불편했는지 들려줄래? 원하지 않으면 멈춰도 돼.':'무슨 일이 있었는지 네가 기억하는 대로 이야기해 줄래?'}};
  }
 
  const messages=targets.map(role=>{
@@ -75,7 +76,7 @@ export function demoReply(s,c,text) {
     open:role==='v'?['조금 더 구체적으로 물어봐 주실래요? 지금은 무슨 말을 해야 할지 모르겠어요.',c.victim.opening][n%2]:['제 생각을 어디서부터 말하면 될까요?',c.actor.opening][n%2]
    }; answer=lines[intent];
   }
-  return {speaker:role,text:answer};
+  return {speaker:role,text:answer,mood:demoMood({intent,variant:s.variant,phase:s.phase,preStep:s.phase==='pre'?preStepFor(s):undefined,role,turn:n})};
  });
  const next=intent==='pressure'?'원하지 않으면 멈출 수 있어. 지금 무엇이 필요할까?':intent==='story'?'그 뒤 일상에서 가장 힘들어진 것은 무엇이니?':intent==='feeling'?'내일 무엇이 달라져 있으면 좋겠니?':intent==='need'?'그 변화를 위해 누가 언제 어떤 행동을 할 수 있을까?':prompts[s.phase][n%3];
  return {messages,observation:intent==='pressure'?'압박으로 받아들일 수 있는 표현이 감지되었습니다. 체험 모드는 단어를 바탕으로 분기하므로 문맥을 직접 확인하세요.':s.variant==='unsafe'?'참여 거부와 안전 우려가 표현되었습니다. 대면을 보류하고 개별 지원을 확인할 수 있습니다.':'응답은 준비된 시나리오 분기입니다. 자유로운 대화를 연습하려면 AI를 연결하세요.',risk:intent==='pressure'||s.variant==='unsafe'?'stop':s.variant==='resistant'?'tension':'none',coaching:{strength:'학생의 실제 반응을 읽고 다음 질문을 조절해 보세요.',nextQuestion:next}};
