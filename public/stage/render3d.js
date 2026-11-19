@@ -40,7 +40,7 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
   }
   if(focus&&cast.has(focus)){
    const h=headOf(focus)||new T.Vector3();
-   wantPos.set(h.x*.18,1.2,SEAT_R+.42);wantLook.set(h.x*.92,h.y-.1,h.z*.92);wantFov=46;minV=32;return;
+   wantPos.set(h.x*.2,1.24,SEAT_R+.6);wantLook.set(h.x*.85,h.y-.06,h.z*.9);wantFov=50;minV=36;return;
   }
   wantPos.set(0,1.32,SEAT_R+.62);wantLook.set(-.12,.92,-.5);wantFov=72;minV=40;
  }
