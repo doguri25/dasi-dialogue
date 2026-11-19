@@ -43,7 +43,7 @@
 .stage-slot{position:absolute;inset:0}
 .stage-slot .stage-host{border-radius:22px}
 .stage-controls{position:absolute;z-index:3;top:10px;right:10px;display:flex;gap:6px}
-.stage-chip{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.82);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:var(--ink-2);font-size:.8rem;font-weight:750;box-shadow:0 4px 14px -8px rgba(18,48,41,.5);transition:background .2s,color .2s}
+.stage-chip{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:48px;min-width:48px;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.82);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:var(--ink-2);font-size:.8rem;font-weight:750;box-shadow:0 4px 14px -8px rgba(18,48,41,.5);transition:background .2s,color .2s}
 .stage-chip:hover{background:#fff}
 .stage-chip .icon{width:19px;height:19px}
 .stage-chip.on,.stage-chip[aria-pressed=true]{background:var(--primary);color:#fff}
@@ -204,7 +204,7 @@
  :root[data-practice=active] .stage-card{flex:2.3 1 0;min-height:0}
  :root[data-practice=active] .stage-top{flex:none;padding:10px 12px 8px;gap:6px 8px;flex-wrap:wrap}
  :root[data-practice=active] .target-chip-row{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
- :root[data-practice=active] .target-chip{min-height:46px;padding:4px 12px 4px 4px;gap:7px;flex:none}
+ :root[data-practice=active] .target-chip{min-height:48px;padding:4px 12px 4px 4px;gap:7px;flex:none}
  :root[data-practice=active] .target-chip .avatar,:root[data-practice=active] .target-chip .avatar.portrait{width:36px;height:36px}
  :root[data-practice=active] .target-name small{display:none}
  :root[data-practice=active] .stage-top .pre-meeting-guide p{display:none}
@@ -261,7 +261,7 @@
 @media(min-width:901px) and (min-height:560px) and (max-height:680px){
  :root[data-practice=active] .steps{margin:6px 0}
  :root[data-practice=active] .stage-top{padding:6px 10px 6px}
- :root[data-practice=active] .target-chip{min-height:44px}
+ :root[data-practice=active] .target-chip{min-height:48px}
 }
 @media(min-width:901px) and (min-height:560px) and (max-width:1150px){
  :root[data-practice=active] .room-head .text-button{font-size:0;width:44px;padding:8px;gap:0}
@@ -299,11 +299,13 @@
  .room-layout.pane-notes .conversation{display:none}
  .conversation{border-radius:24px}
  .stage-top{padding:12px 12px 10px}
- .target-chip-row{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+ /* 휴대전화: 얼굴 버튼이 모두 보이도록 줄을 바꿉니다(숨은 가로 스크롤 없음). */
+ .target-chip-row{flex-wrap:wrap}
  .target-chip{flex:none}
  .stage-top .pre-meeting-guide{margin-left:0;width:100%}
  .stage-frame{aspect-ratio:16/10;max-height:45vh;margin:0 10px;width:auto}
- .stage-chip{min-height:44px;padding:8px 10px}
+ .stage-frame:has(.stage-host[data-stage-mode="2d"]){aspect-ratio:1/1;max-height:62vh}
+ .stage-chip{min-height:48px;padding:8px 10px}
  .stage-chip>span{display:none}
  .transcript{height:300px;max-height:44vh;min-height:180px;padding:20px 16px}
  .mode-sub{display:none}

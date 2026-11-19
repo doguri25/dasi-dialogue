@@ -6,6 +6,9 @@ import {normalizeMood,moodIntensity} from './mood.js';
 import {lookFor} from './looks.js';
 import {roleName} from '../scenarios.js';
 
+// 무대의 어떤 오류도 앱으로 번지지 않게 합니다(설계 5.6): 렌더러 호출과 공개 함수를 감쌉니다.
+const warn=err=>{try{console.warn('다시, 대화 무대:',err);}catch{}};
+const guard=r=>new Proxy(r,{get(t,k){const v=t[k];return typeof v==='function'?(...a)=>{try{return v.apply(t,a);}catch(err){warn(err);}}:v;}});
 const wait=(ms,alive)=>new Promise(res=>{const end=performance.now()+ms;(function tick(){if(!alive()||performance.now()>=end)return res();setTimeout(tick,Math.min(50,end-performance.now()));})();});
 
 export function createDirector({mode='3d',reducedMotion=false,load3D,createFlat,onNotice,slowFallback=true}={}) {
@@ -24,6 +27,7 @@ export function createDirector({mode='3d',reducedMotion=false,load3D,createFlat,
 
  function setHost(){element.dataset.stageState=state;}
  function setSpeaker(role,mood){if(role){element.dataset.speaker=role;element.dataset.mood=mood;}else{delete element.dataset.speaker;delete element.dataset.mood;}}
+ function hideCaption(){caption.hidden=true;capText.textContent='';capName.textContent='';}
  function show(name,text){caption.hidden=false;capName.textContent=name;capText.textContent=text;capText.scrollTop=capText.scrollHeight;}
  function apply(role){const r=roleState.get(role);if(r&&renderer)renderer.setState(role,r.state,{mood:r.mood,intensity:r.intensity});}
  function setRole(role,st,extra={}){const r={...(roleState.get(role)||{mood:'calm',intensity:.55}),...extra,state:st};roleState.set(role,r);apply(role);}
@@ -33,22 +37,26 @@ export function createDirector({mode='3d',reducedMotion=false,load3D,createFlat,
   for(const role of cast.seats)apply(role);
  }
 
+ let generation=0;
  async function useRenderer(kind){
+  // 나중에 요청한 무대가 이깁니다. 3D를 불러오는 사이 그림 무대로 바꾸면 늦게 끝난 3D는 버립니다.
+  const gen=++generation;
   const container=document.createElement('div');container.className='stage-render';
   let next;
   if(kind==='3d'){
-   try{const create=await load3D();next=await create(container,{reducedMotion,onSlow:()=>{if(slowFallback)fallback('slow');}});}
+   try{const create=await load3D();if(gen!==generation)return renderer;next=await create(container,{reducedMotion,onSlow:()=>{if(slowFallback)fallback('slow');}});}
    catch{next=null;}
+   if(gen!==generation){next?.dispose();return renderer;}
    if(!next){onNotice?.('이 기기에서는 3D 장면을 열 수 없어 그림 무대로 보여 드려요.');kind='2d';}
   }
   if(kind==='2d')next=createFlat(container);
-  const old=renderer;renderer=next;
+  const old=renderer;renderer=guard(next);
   view.replaceChildren(container);element.dataset.stageMode=kind;
   old?.dispose();
   if(next.onLost)next.onLost(()=>fallback('lost'));
   applyAll();
-  if(detached)next.pause();
-  return next;
+  if(detached)renderer.pause();
+  return renderer;
  }
  function fallback(reason){
   if(swapping||element.dataset.stageMode==='2d')return;
@@ -132,9 +140,10 @@ export function createDirector({mode='3d',reducedMotion=false,load3D,createFlat,
    if(element.parentNode!==slot)slot.appendChild(element);
    detached=false;renderer?.resume();renderer?.resize?.();
   },
-  detach(){interrupt();state='idle';setHost();setSpeaker(null);detached=true;renderer?.pause();element.remove();},
-  setCast({scenario,phase='pre',target='v',moods={}}={}){
-   const key=[scenario?.id,phase,target].join('|');
+  detach(){interrupt();clearTimeout(thinkTimer);state='idle';setHost();setSpeaker(null);hideCaption();detached=true;renderer?.pause();element.remove();},
+  setCast({scenario,phase='pre',target='v',moods={},sessionId=''}={}){
+   // 같은 사례라도 다른 연습(새 연습·재개)이면 출연진을 새로 앉힙니다.
+   const key=[sessionId,scenario?.id,phase,target].join('|');
    if(key===cast.key)return;
    interrupt();
    const seats=seatsFor(phase,target);
@@ -175,10 +184,16 @@ export function createDirector({mode='3d',reducedMotion=false,load3D,createFlat,
    if(my===token){state='idle';setHost();setSpeaker(null);renderer?.setFocus(null);}
   },
   skip(){if(state==='speaking')skipLine=true;},
+  // 응답 실패 등으로 방금 일을 없던 것으로 할 때: 멈추고, 대기 자세로, 자막을 비웁니다.
+  reset(){interrupt();clearTimeout(thinkTimer);state='idle';setHost();setSpeaker(null);for(const role of cast.seats)setRole(role,'idle');hideCaption();},
   interrupt(){interrupt();if(state!=='idle'){state='idle';setHost();setSpeaker(null);for(const role of cast.seats)setRole(role,'idle');}},
   setMode(kind){if(kind!==element.dataset.stageMode){loading=useRenderer(kind);}return loading;},
   setReducedMotion(b){reducedMotion=!!b;},
   setSlowFallback(b){slowFallback=!!b;}
  };
+ for(const [name,desc] of Object.entries(Object.getOwnPropertyDescriptors(api))){
+  const fn=desc.value;if(typeof fn!=='function')continue;
+  api[name]=fn.constructor.name==='AsyncFunction'?async(...a)=>{try{return await fn(...a);}catch(err){warn(err);}}:(...a)=>{try{return fn(...a);}catch(err){warn(err);}};
+ }
  return api;
 }

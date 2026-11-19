@@ -105,6 +105,7 @@ try{
   const nocache=await page.context().newCDPSession(page);await nocache.send('Network.enable');await nocache.send('Network.setCacheDisabled',{cacheDisabled:true});
   await page.goto(base);
   await page.waitForSelector('.hero-stage .stage-host[data-stage-mode="3d"]',{timeout:60000});
+  await page.waitForFunction(()=>document.querySelector('.hero-stage canvas'),null,{timeout:60000});
   const timing=await page.evaluate(()=>({three:performance.getEntriesByType('resource').find(r=>/three-stage\.js/.test(r.name))?.startTime,fcp:performance.getEntriesByName('first-contentful-paint')[0]?.startTime}));
   assert.ok(timing.fcp>0&&timing.three>timing.fcp,`3D files load only after first paint ${JSON.stringify(timing)}`);
   await page.waitForFunction(()=>document.querySelector('.hero-stage canvas'),null,{timeout:60000});
@@ -131,7 +132,7 @@ try{
  // 5. 다듬기: 아주 긴 답, 화면 크기 바꾸기, 느린 기기
  if(run('polish')){
   let {page,errors}=await labPage('director=1&mode=3d&noslow=1',{width:1366,height:768,scale:1});
-  const long='말하기 어려웠던 장면을 천천히 들어 주셨으면 좋겠어요. '.repeat(60).trim().slice(0,3000);
+  const long='말하기 어려웠던 장면을 천천히 들어 주셨으면 좋겠어요. '.repeat(100).slice(0,3000);assert.equal(long.length,3000);
   const done=page.evaluate(long=>window.__lab.director.speak([{speaker:'v',text:long,mood:'hesitant'}],{tts:false}),long).catch(e=>e);
   await page.waitForFunction(()=>document.querySelector('.stage-host').dataset.stageState==='speaking');
   await page.waitForTimeout(1500);await page.evaluate(()=>window.__lab.director.skip());
@@ -207,6 +208,71 @@ try{
   assert.equal(await page.locator('.flat-seat').count(),1);
   await page.screenshot({path:'.test-artifacts/room-2d.png'});
   assert.deepEqual(errors,[]);await ctx.close();results.push('room: listen→speak→idle, caption = transcript, target switch, leave, 3D off');
+ }
+
+ // 7. 최종 검토에서 찾은 문제(같은 사례 새 연습, 3D 불러오는 중 그림 무대 전환, 그림 무대 얼굴, AI 오류, 목소리 시작, 무대 오류 격리, 누르기 크기)
+ if(run('review')){
+  const roomCtx=async(pref,{width=1366,height=768,init}={})=>{const ctx=await browser.newContext({viewport:{width,height},locale:'ko-KR'});await ctx.addInitScript(p=>{if(!sessionStorage.getItem('pref-set')){localStorage.setItem('dasi.stage',p);sessionStorage.setItem('pref-set','1');}},pref);if(init)await ctx.addInitScript(init);const page=await ctx.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());return {ctx,page,errors};};
+  const enter=async page=>{await page.goto(base);await page.locator('[data-action="quick"]').first().click();await page.locator('#start-form button[type="submit"]').click();await page.locator('#application-continue').click();await page.locator('#stage-slot .stage-host').waitFor({timeout:60000});};
+  const sendFirst=async page=>{await page.locator('.choice-card').first().click();await page.locator('#modal [data-action="choose-example"]').click();await page.locator('#compose button[type="submit"]').click();};
+  // F1: 같은 사례로 새 연습을 시작하면 이전 자막·감정을 이어받지 않음
+  {const {ctx,page,errors}=await roomCtx('off');await enter(page);await sendFirst(page);
+   await page.waitForFunction(()=>document.querySelector('.stage-host').dataset.stageState==='speaking',null,{timeout:30000});
+   await page.locator('nav [data-action="library"]').click();await page.locator('[data-action="quick"]').first().click();await page.locator('#start-form button[type="submit"]').click();await page.locator('#application-continue').click();
+   await page.locator('#stage-slot .stage-host').waitFor();
+   assert.equal(await page.locator('.stage-caption').isHidden(),true,'a new session starts without the old caption');
+   assert.equal(await page.locator('.flat-seat').first().getAttribute('data-mood'),'calm','a new session starts with fresh moods');
+   assert.deepEqual(errors,[]);await ctx.close();}
+  // F2: 3D를 불러오는 중에 그림 무대로 바꾸면 늦게 끝난 3D가 덮어쓰지 않음
+  {const {ctx,page,errors}=await roomCtx('on');await ctx.route('**/vendor/three-stage.js',async r=>{await new Promise(res=>setTimeout(res,6000));await r.continue();});
+   await enter(page);await page.locator('[data-action="stage-mode"]').click();
+   await page.waitForFunction(()=>document.querySelector('.stage-host')?.dataset.stageMode==='2d',null,{timeout:5000});
+   await page.waitForTimeout(12000);
+   assert.equal(await page.locator('.stage-host').getAttribute('data-stage-mode'),'2d','late 3D load must not replace the chosen 2D stage');
+   assert.ok(await page.locator('.flat-seat').count()>0);assert.equal(await page.locator('.stage-host canvas').count(),0);
+   assert.deepEqual(errors,[]);await ctx.close();}
+  // F3: 그림 무대의 얼굴은 무대 안에 다 보이고 버튼·자막에 가리지 않음
+  for(const [w,h] of [[1366,768],[1280,720],[390,844],[360,740]]){
+   const {ctx,page,errors}=await roomCtx('off',{width:w,height:h});await enter(page);await sendFirst(page);
+   await page.waitForFunction(()=>document.querySelector('.stage-host').dataset.stageState==='speaking',null,{timeout:30000});await page.waitForTimeout(1500);
+   const r=await page.evaluate(()=>{const b=s=>{const x=document.querySelector(s).getBoundingClientRect();return {l:x.left,r:x.right,t:x.top,b:x.bottom};};return {face:b('.flat-face'),frame:b('.stage-frame'),controls:b('.stage-controls'),caption:b('.stage-caption')};});
+   const inside=(a,o)=>a.l>=o.l-1&&a.r<=o.r+1&&a.t>=o.t-1&&a.b<=o.b+1,overlap=(a,o)=>a.l<o.r&&a.r>o.l&&a.t<o.b&&a.b>o.t;
+   assert.ok(inside(r.face,r.frame),`face inside the stage at ${w}x${h} ${JSON.stringify(r)}`);
+   assert.ok(!overlap(r.face,r.controls),`controls do not cover the face at ${w}x${h}`);
+   assert.ok(!overlap(r.face,r.caption),`caption does not cover the face at ${w}x${h}`);
+   assert.deepEqual(errors,[]);await ctx.close();
+  }
+  // F4: AI 오류가 나면 무대는 대기 상태로 돌아가고 지운 문장을 자막에 남기지 않음
+  {const {ctx,page,errors}=await roomCtx('off');await enter(page);
+   await page.locator('.topbar [data-action="settings"]').click();await page.locator('input[name="mode"][value="ai"]').check();await page.locator('#api-key').fill('dummy-review-key');await page.locator('#settings-form button[type="submit"]').click();
+   await page.route('**/api/reply',async route=>{await new Promise(res=>setTimeout(res,1500));await route.fulfill({status:502,json:{error:'테스트 서비스 오류: 고른 문장은 유지됩니다.'}});});
+   await sendFirst(page);await page.locator('#reply-error').waitFor({timeout:15000});await page.waitForTimeout(400);
+   assert.equal(await page.locator('.stage-host').getAttribute('data-stage-state'),'idle','stage returns to idle after an AI error');
+   assert.equal(await page.locator('.stage-caption').isHidden(),true,'the removed line is not left in the caption');
+   assert.deepEqual(errors,[]);await ctx.close();}
+  // F5: 목소리를 켜면 보내기를 누른 바로 그때 음성이 준비됨(아이패드 자동 재생 제한)
+  {const {ctx,page,errors}=await roomCtx('off',{init:()=>{window.__speakAt=[];const orig=speechSynthesis.speak.bind(speechSynthesis);speechSynthesis.speak=u=>{window.__speakAt.push(performance.now());return orig(u);};document.addEventListener('click',e=>{if(e.target.closest('#compose button[type="submit"]'))window.__clickAt=performance.now();},true);}});
+   await enter(page);await page.locator('[data-action="tts-toggle"]').click();await page.evaluate(()=>{window.__speakAt=[];});
+   await sendFirst(page);await page.waitForTimeout(300);
+   const t=await page.evaluate(()=>({click:window.__clickAt,first:window.__speakAt[0]}));
+   assert.ok(t.first!==undefined&&t.first-t.click<100,`speech is unlocked inside the send click ${JSON.stringify(t)}`);
+   assert.deepEqual(errors,[]);await ctx.close();}
+  // F6: 무대 안의 오류는 앱으로 번지지 않음
+  {const {page,errors}=await labPage('director=1&mode=2d',{width:960,height:600,scale:1});
+   const res=await page.evaluate(async()=>{const d=window.__lab.director;d.renderer.setState=()=>{throw new Error('stage boom');};d.renderer.setMouth=()=>{throw new Error('stage boom');};
+    const out=[];for(const f of [()=>d.teacherSaid('질문'),()=>d.think(),()=>d.listen(true),()=>d.interrupt()]){try{f();out.push('ok');}catch(e){out.push('threw');}}
+    try{await d.speak([{speaker:'v',text:'네.',mood:'calm'}],{tts:false});out.push('ok');}catch{out.push('threw');}return out;});
+   assert.deepEqual(res,['ok','ok','ok','ok','ok'],'director methods never throw into the app');
+   await page.close();}
+  // F7: 무대·얼굴 버튼은 48px 이상이고 휴대전화에서도 모두 보임
+  for(const [w,h] of [[1366,768],[390,844]]){
+   const {ctx,page,errors}=await roomCtx('off',{width:w,height:h});await enter(page);
+   const m=await page.evaluate(()=>{const top=document.querySelector('.stage-top').getBoundingClientRect();return {sizes:[...document.querySelectorAll('.stage-chip,.target-chip')].map(e=>Math.round(e.getBoundingClientRect().height)),clipped:[...document.querySelectorAll('.target-chip')].filter(e=>{const r=e.getBoundingClientRect();return r.right>top.right+1||r.left<top.left-1;}).length};});
+   assert.ok(m.sizes.every(x=>x>=48),`touch targets at least 48px at ${w}x${h} ${m.sizes}`);
+   assert.equal(m.clipped,0,`all face chips are visible at ${w}x${h}`);
+   assert.deepEqual(errors,[]);await ctx.close();
+  }
+  results.push('review: new session, late 3D, 2D faces, AI error, voice unlock, stage errors, touch targets');
  }
  await writeFile('.test-artifacts/stage-browser.json',JSON.stringify({passed:true,results},null,2));
  console.log(JSON.stringify({passed:true,results}));

@@ -67,7 +67,7 @@ const heroAllowed=()=>innerWidth>900&&!matchMedia('(prefers-reduced-motion: redu
 function castMoods(){const out={};for(const m of state.session?.messages||[])if(m.kind==='participant')out[m.speaker]={mood:m.mood,risk:m.risk};return out;}
 function syncStage(){
  const slot=$('#stage-slot');
- if(slot&&state.view==='room'&&state.session){stage=getStage();stage.attach(slot);stage.setCast({scenario:scenario(),phase:state.session.phase,target:state.session.target,moods:castMoods()});return;}
+ if(slot&&state.view==='room'&&state.session){stage=getStage();stage.attach(slot);stage.setCast({scenario:scenario(),phase:state.session.phase,target:state.session.target,moods:castMoods(),sessionId:state.session.id});return;}
  const hero=$('#hero-stage-slot');
  if(hero&&heroAllowed()){
   const show=()=>{heroWait=0;const slot=$('#hero-stage-slot');if(!slot||state.view!=='library')return;stage=getStage();stage.attach(slot);stage.setCast({scenario:scenarios[0],phase:'lobby',target:'all'});};
@@ -163,17 +163,19 @@ function sessionForAI(s){
  const messages=s.messages.map(({kind,speaker,target,phase,text,preStep,inputMethod})=>({kind,speaker,target,phase,text,preStep,inputMethod}));
  return {scenarioId,phase,variant,target,preSteps,agreement,outcome,messages};
 }
+// iPad·iPhone WebKit은 사용자의 누름 안에서 시작하지 않은 첫 음성을 막습니다. 누르는 순간 소리 없는 문장으로 음성을 열어 둡니다.
+function primeVoice(){if(!('speechSynthesis'in window)||typeof SpeechSynthesisUtterance!=='function')return;try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;u.lang='ko-KR';speechSynthesis.speak(u);}catch{}}
 async function sendMessage(){
  if(state.busy||recording||!state.session||state.session.finished||state.session.phase==='intake')return;
  const fromChoice=state.inputMode==='choices',text=(fromChoice?state.selectedChoice?.text||'':state.draft).trim();if(!text)return;
  if(state.mode==='ai'&&!state.apiKey){settingsDialog();notify('API 키를 입력하거나 시나리오 체험을 선택해 주세요.');return;}
  if(state.session.messages.length>154){state.error='이 연습의 대화 한도에 가까워졌습니다. 기록을 저장하고 모임을 마쳐 주세요.';render();return;}
- sounds.play('send');state.error='';const s=state.session,preStep=s.phase==='pre'?preStepFor(s):undefined;if(preStep)s.preSteps={...s.preSteps,[s.target]:preStep};const turn={preStep,kind:'teacher',phase:s.phase,target:s.target,text,inputMethod:fromChoice?'choice':'write'};s.messages.push(turn);if(!fromChoice)state.draft='';state.busy=true;render();scrollToDialogue();stage?.teacherSaid(text);stage?.think();
+ if(state.tts)primeVoice();sounds.play('send');state.error='';const s=state.session,preStep=s.phase==='pre'?preStepFor(s):undefined;if(preStep)s.preSteps={...s.preSteps,[s.target]:preStep};const turn={preStep,kind:'teacher',phase:s.phase,target:s.target,text,inputMethod:fromChoice?'choice':'write'};s.messages.push(turn);if(!fromChoice)state.draft='';state.busy=true;render();scrollToDialogue();stage?.teacherSaid(text);stage?.think();
  try {const result=state.mode==='demo'?demoReply(s,scenario(),text):await api('reply',{provider:state.provider,model:state.model,apiKey:state.apiKey,session:sessionForAI(s)});
   for(const m of result.messages)s.messages.push({kind:'participant',phase:s.phase,target:s.target,...m,risk:result.risk,source:state.mode==='ai'?'ai':'scenario'});
   const lastReply=s.messages.at(-1);if(state.mode==='ai')lastReply.nextQuestions=result.teacherChoices;
   if(!state.tts)sounds.play('reply');s.coach=result;resetChoices();if(preStep==='intro')markIntroductionSent(s);stage?.speak(result.messages,{tts:state.tts,risk:result.risk});
- }catch(err){stage?.listen(false);s.messages.splice(s.messages.indexOf(turn),1);if(!fromChoice)state.draft=text;state.error=err.message;}
+ }catch(err){stage?.reset();s.messages.splice(s.messages.indexOf(turn),1);if(!fromChoice)state.draft=text;state.error=err.message;}
  finally{state.busy=false;render();scrollToDialogue();if(!isMobile())$('#draft')?.focus({preventScroll:true});}
 }
 function saveIndicator(){
@@ -206,7 +208,7 @@ document.addEventListener('click',async event=>{
  const b=event.target.closest('[data-action]');if(!b)return;event.preventDefault();const action=b.dataset.action;
  if((state.busy||keyChecking)&&!['close','sound-toggle'].includes(action))return;
  if(['library','history','guide','room'].includes(action)){stopSpeech();state.view=action;state.error='';render();window.scrollTo(0,0);return;}
- if(action==='tts-toggle'){state.tts=!state.tts;if(!state.tts&&'speechSynthesis'in window)speechSynthesis.cancel();render();notify(state.tts?'답변을 목소리로 들려 드려요.':'목소리를 껐어요. 자막으로 보여 드려요.');return;}
+ if(action==='tts-toggle'){state.tts=!state.tts;if(state.tts)primeVoice();else if('speechSynthesis'in window)speechSynthesis.cancel();render();notify(state.tts?'답변을 목소리로 들려 드려요.':'목소리를 껐어요. 자막으로 보여 드려요.');return;}
  if(action==='stage-skip'){stage?.skip();return;}
  if(action==='stage-mode'){const next=(stage?.mode||stageMode())==='3d'?'off':'on';writeStagePreference(next);render();notify(next==='off'?'그림 무대로 바꿨어요. 설정에서 언제든 3D를 켤 수 있어요.':'3D 장면을 켰어요.');return;}
  if(action==='sound-toggle'){sounds.setEnabled(!sounds.enabled);render();if(sounds.enabled)sounds.play('select');}

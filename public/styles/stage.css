@@ -12,16 +12,22 @@
 .stage-host[data-stage-state="speaking"] .stage-caption-name::after{content:"";display:inline-block;width:6px;height:6px;margin-left:8px;border-radius:50%;background:#9fe0b4;vertical-align:middle;animation:stage-pulse 1s ease-in-out infinite}
 @keyframes stage-pulse{50%{opacity:.25}}
 /* 그림 무대(2D) */
-.flat-stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:clamp(12px,4vw,48px);padding:6% 6% 22%}
-.flat-seat{position:relative;flex:0 1 auto;width:clamp(96px,26%,240px);aspect-ratio:1;transition:transform .6s cubic-bezier(.2,.7,.2,1),opacity .4s}
-.flat-stage[data-count="1"] .flat-seat{width:clamp(140px,38%,280px)}
+.stage-host[data-stage-mode="2d"]{display:flex;flex-direction:column}
+.stage-host[data-stage-mode="2d"] .stage-view{position:relative;inset:auto;flex:1 1 auto;min-height:0}
+.stage-host[data-stage-mode="2d"] .stage-caption{position:relative;left:auto;bottom:auto;transform:none;width:auto;max-height:45%;margin:0 10px 10px;flex:none}
+/* 그림 무대(2D): 위 버튼 띠 · 얼굴 · 자막이 겹치지 않도록 세로로 나누고, 얼굴은 남은 높이(여럿이면 폭)에 맞춥니다. */
+.flat-stage{position:absolute;inset:0;container-type:size;display:flex;align-items:center;justify-content:center;gap:clamp(10px,3vw,40px);padding:var(--flat-top,14px) 12px 14px}
+.stage-frame .flat-stage{--flat-top:62px}
+.flat-seat{position:relative;flex:none;height:min(100%,240px);aspect-ratio:1;transition:transform .6s cubic-bezier(.2,.7,.2,1),opacity .4s}
+.flat-stage[data-count="2"] .flat-seat{height:min(100%,240px,44cqw)}
+.flat-stage[data-count="3"] .flat-seat{height:min(100%,240px,29cqw)}
 .flat-face{position:absolute;inset:0;border-radius:50%;overflow:hidden;background:#e3efde;box-shadow:0 14px 34px -18px rgba(30,60,50,.55);animation:flat-breathe 3.8s ease-in-out infinite;transform-origin:50% 90%}
 .flat-face img{width:100%;height:100%;object-fit:cover;display:block}
 .flat-initial{display:grid;place-items:center;width:100%;height:100%;font-size:2.4rem;font-weight:800;color:#1e4d43;background:#ece8f7}
 .flat-ring{position:absolute;inset:-6px;border-radius:50%;border:4px solid #7fbf96;opacity:0;transform:scale(calc(1 + var(--open, 0) * .06));transition:opacity .2s}
 .flat-seat[data-state="speaking"] .flat-ring{opacity:1}
 .flat-seat[data-state="thinking"]{transform:translateY(2px) rotate(-3deg)}
-.flat-seat[data-mood="withdrawn"],.flat-seat[data-mood="upset"]{transform:translateY(8px) scale(.96)}
+.flat-seat[data-mood="withdrawn"],.flat-seat[data-mood="upset"]{transform:translateY(6px) scale(.94)}
 .flat-seat[data-mood="defensive"]{transform:rotate(4deg)}
 .flat-seat[data-mood="anxious"] .flat-face{animation-duration:2.2s}
 .flat-seat.focused{z-index:1}
