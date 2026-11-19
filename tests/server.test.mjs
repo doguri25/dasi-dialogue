@@ -14,6 +14,8 @@ test('HTTP app serves assets, protects API origin, validates roles, and preserve
  assert.equal((await fetch(base+'/server.mjs')).status,404);
  assert.equal((await fetch(base+'/assets/scene-support.png')).headers.get('content-type'),'image/png');
  assert.equal((await fetch(base+'/assets/scene-support.webp')).headers.get('content-type'),'image/webp');
+ const font=await fetch(base+'/vendor/pretendard/woff2-dynamic-subset/PretendardVariable.subset.0.woff2');assert.equal(font.status,200);assert.equal(font.headers.get('content-type'),'font/woff2');
+ assert.equal((await fetch(base+'/vendor/pretendard/pretendardvariable-dynamic-subset.css')).status,200);
  const payload={provider:'anthropic',model:'claude-sonnet-4-6',apiKey:'dummy-secret-test'};
  const post=(endpoint,data,origin=base)=>fetch(base+endpoint,{method:'POST',headers:{'Content-Type':'application/json',Origin:origin},body:JSON.stringify(data)});
  assert.equal((await post('/api/check',payload,'https://other.example')).status,403);assert.equal(captured.length,0);
