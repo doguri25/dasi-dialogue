@@ -46,10 +46,13 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
  }
  function applyFov(){const aspect=camera.aspect||1.6,f=2*Math.atan(Math.tan(hFov*Math.PI/360)/aspect)*180/Math.PI;camera.fov=Math.max(24,Math.min(64,f));camera.updateProjectionMatrix();}
 
+ // 무대가 문서에 붙어 있지 않거나 크기가 없으면 그리지 않습니다(크기 0 버퍼는 그래픽 오류를 쏟아냅니다).
+ const hasSize=()=>container.isConnected&&container.clientWidth>1&&container.clientHeight>1;
  function resize(){
-  const w=Math.max(1,container.clientWidth),h=Math.max(1,container.clientHeight),max=(matchMedia('(max-width: 900px)').matches?1.25:1.5);
+  if(!hasSize())return;
+  const w=container.clientWidth,h=container.clientHeight,max=(matchMedia('(max-width: 900px)').matches?1.25:1.5);
   renderer.setPixelRatio(Math.min(devicePixelRatio||1,max)*QUALITY_LEVELS[level].scale);
-  renderer.setSize(w,h,false);post.setSize(w,h);camera.aspect=w/h;applyFov();
+  renderer.setSize(w,h,false);post.setSize(w,h);camera.aspect=w/h;applyFov();sized=w+'x'+h;
  }
  const ro=new ResizeObserver(()=>resize());ro.observe(container);
 
@@ -80,11 +83,13 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
  function setFocus(role){focus=role&&cast.has(role)?role:null;shot();if(reducedMotion){camPos.copy(wantPos);camLook.copy(wantLook);hFov=wantFov;}}
 
  // 그리기 반복: 아무도 말하지 않으면 초당 30프레임, 프레임 시간 중앙값으로 화질을 조절합니다.
- let raf=0,last=0,lastDraw=0,started=false,time=0,samples=[],evalT=0,slowT=0;
+ let raf=0,last=0,lastDraw=0,started=false,time=0,samples=[],evalT=0,slowT=0,sized='';
  const debug={fps:0,level:0,paused:false};
  function frame(now){
+  if(paused||lost||disposed){raf=0;return;}
   raf=requestAnimationFrame(frame);
-  if(paused||lost)return;
+  if(!hasSize()){lastDraw=0;return;}
+  if(sized!==container.clientWidth+'x'+container.clientHeight)resize();
   const speaking=[...cast.values()].some(c=>c.state==='speaking'),target=speaking?1000/60:1000/30;
   if(lastDraw&&now-lastDraw<target-4)return;
   const interval=lastDraw?now-lastDraw:target;lastDraw=now;
@@ -116,8 +121,8 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
   kind:'3d',canvas,debug,
   setCast,setState,setMouth,setFocus,resize,
   get frames(){return started;},
-  pause(){paused=true;debug.paused=true;},
-  resume(){paused=false;debug.paused=false;lastDraw=0;},
+  pause(){paused=true;debug.paused=true;if(raf){cancelAnimationFrame(raf);raf=0;}},
+  resume(){paused=false;debug.paused=false;lastDraw=0;resize();if(!raf&&!lost&&!disposed)raf=requestAnimationFrame(frame);},
   onLost(fn){lostFns.push(fn);},
   dispose(){if(disposed)return;disposed=true;cancelAnimationFrame(raf);ro.disconnect();for(const c of cast.values())c.char.dispose();cast.clear();room.dispose();post.dispose();env.texture.dispose();pmrem.dispose();renderer.dispose();canvas.remove();}
  };

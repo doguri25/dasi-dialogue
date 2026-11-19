@@ -113,6 +113,15 @@ try{
   assert.equal(await page.locator('.hero-stage img').isVisible(),true);
   await page.evaluate(()=>localStorage.removeItem('dasi.stage'));
   assert.deepEqual(errors,[]);await page.close();results.push('library: no early 3D request, hero preview, preference off');
+  // 3D를 불러오는 중에 화면을 떠나도 크기 0인 화면에 그리지 않음(그래픽 오류 폭주 → 탐색 멈춤 회귀 방지)
+  const quick=await browser.newPage({viewport:{width:1440,height:900},locale:'ko-KR'});
+  const gl=[];quick.on('console',m=>{if(/GL_INVALID|incomplete/i.test(m.text()))gl.push(m.text());});
+  await quick.goto(base);await quick.waitForTimeout(250);
+  await quick.locator('[data-action="quick"]').first().click();await quick.locator('#start-form button[type="submit"]').click();await quick.locator('#application-continue').click();
+  await quick.waitForTimeout(9000);
+  assert.deepEqual(gl.slice(0,2),[],'no WebGL errors while the stage waits off-screen');
+  const t0=Date.now();await quick.reload({timeout:15000});assert.ok(Date.now()-t0<15000);
+  await quick.close();results.push('library: leaving during 3D load causes no GL errors');
  }
  await writeFile('.test-artifacts/stage-browser.json',JSON.stringify({passed:true,results},null,2));
  console.log(JSON.stringify({passed:true,results}));
