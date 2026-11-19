@@ -60,3 +60,5 @@
 @media(min-width:901px) and (max-width:1240px){.review-grid{grid-template-columns:1fr}.review-side{position:static}.review-side .button,.review-side .text-button{width:auto;margin-top:0;margin-right:10px}}
 @media(max-width:900px){.review-header h1{font-size:2.1rem}.review-grid{grid-template-columns:1fr}.review-side{position:static}.review-main{padding:26px}.review-columns{grid-template-columns:1fr}.review-evidence>div{grid-template-columns:1fr}.review-buttons .button{flex:1;min-width:45%}}
 @media(max-width:600px){.review-main{padding:22px 18px}.review-header h1{font-size:1.85rem}.review-buttons .button{flex-basis:100%}.archive-turn{margin-right:8px}.archive-turn.archive-teacher{margin-left:8px}}
+/* 인쇄할 때만 보이는 머리말과 회고 글(styles/print.css) */
+.print-head,.print-reflection{display:none}

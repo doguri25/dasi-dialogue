@@ -65,6 +65,44 @@ try{
   assert.deepEqual(errors,[]);await context.close();
   results.push('keys: 1–4 open a sentence, Enter chooses then sends, Esc closes, typing and Ctrl untouched');
  }
+ // 2. 회고 인쇄·PDF: 메뉴·버튼은 빠지고, 머리말·나의 회고(글로)·전체 대화가 펼쳐져 인쇄됨. 인쇄 뒤에는 화면이 그대로.
+ if(run('print')){
+  const {context,page,errors,action}=await open();
+  await startPractice(page,action);
+  await page.locator('#input-write').click();await page.locator('#draft').fill('오늘 어떤 일이 있었는지 들려줄래?');await page.locator('#compose button[type="submit"]').click();
+  await page.waitForFunction(()=>document.querySelectorAll('.message.teacher').length===1&&!document.querySelector('.thinking')&&!document.querySelector('#compose textarea[disabled]'));
+  await action('finish').click();await page.locator('#finish-form button[type="submit"]').click();
+  await page.locator('.review-header').waitFor();
+  await page.locator('#reflection').fill('다음에는 대답을 더 기다려 주고 싶어요.');
+  assert.match(await action('print').innerText(),/인쇄/,'review has a print button');
+  await page.evaluate(()=>{window.__seen=null;addEventListener('beforeprint',()=>{window.__seen={open:document.querySelector('.all-transcript').open,reflection:document.querySelector('.print-reflection')?.textContent||'',moving:document.getAnimations().filter(a=>a.playState!=='finished'&&a.effect?.getComputedTiming().iterations!==Infinity).length};});});
+  await page.emulateMedia({media:'print'});
+  const looks=await page.evaluate(()=>{const d=el=>el?getComputedStyle(el).display:'missing';return {
+   rail:d(document.querySelector('.topbar')),footer:d(document.querySelector('footer')),skip:d(document.querySelector('a[href="#main"]')),
+   buttons:[...document.querySelectorAll('.review-buttons,.review-side .button,.review-side .text-button,.review-save-state')].map(d),
+   textarea:d(document.querySelector('#reflection')),printReflection:d(document.querySelector('.print-reflection')),head:d(document.querySelector('.print-head')),
+   main:d(document.querySelector('.review-main')),evidence:d(document.querySelector('.review-evidence')),
+   overflow:document.documentElement.scrollWidth<=document.documentElement.clientWidth+1};});
+  assert.equal(looks.rail,'none','no menu rail on paper');assert.equal(looks.skip,'none','no skip link on paper');assert.equal(looks.footer,'none');
+  assert.ok(looks.buttons.length>=3&&looks.buttons.every(v=>v==='none'),`no buttons on paper ${looks.buttons}`);
+  assert.equal(looks.textarea,'none','the reflection box is printed as text');assert.notEqual(looks.printReflection,'none');
+  assert.notEqual(looks.head,'none','a print header names the case and date');assert.notEqual(looks.main,'none');assert.notEqual(looks.evidence,'none');
+  const pdf=await page.pdf({format:'A4',printBackground:true});await writeFile('.test-artifacts/review-print.pdf',pdf);
+  const pages=(pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g)||[]).length;
+  assert.ok(pages>=1&&pages<=6,`review fits on a few A4 pages (${pages})`);
+  const seen=await page.evaluate(()=>window.__seen);
+  assert.equal(seen?.moving,0,'screen-change effects are finished before printing (a half-faded page prints blank)');
+  assert.equal(seen?.open,true,'the full conversation is unfolded for printing');
+  assert.equal(seen?.reflection,'다음에는 대답을 더 기다려 주고 싶어요.','the typed reflection is printed');
+  assert.equal(await page.evaluate(()=>document.querySelector('.all-transcript').open),false,'unfolded conversation closes again after printing');
+  await page.emulateMedia({media:'screen'});
+  // 버튼은 브라우저 인쇄 창을 엽니다(검사에서는 창 대신 횟수를 셉니다).
+  await page.evaluate(()=>{window.__printed=0;window.print=()=>{window.__printed++;};});
+  await action('print').click();assert.equal(await page.evaluate(()=>window.__printed),1);
+  await page.screenshot({path:'.test-artifacts/review-print-screen.png'});
+  assert.deepEqual(errors,[]);await context.close();
+  results.push(`print: menu and buttons hidden, header, reflection as text, conversation unfolded, ${pages} A4 page(s)`);
+ }
  await writeFile('.test-artifacts/features-browser.json',JSON.stringify({passed:true,results},null,2));
  console.log(JSON.stringify({passed:true,results}));
 }finally{await browser.close();}

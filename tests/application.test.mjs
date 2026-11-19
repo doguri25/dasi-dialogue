@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {scenarios,variants} from '../public/scenarios.js';
 import {newSession,completeApplication,canAdvance,exportText} from '../public/engine.js';
-import {applicationFor} from '../public/application.js';
+import {applicationFor,applicationRecord} from '../public/application.js';
 import {portraitFor,sceneFor} from '../public/artwork.js';
 import {prepareContext,rolePrompt} from '../lib/prompts.mjs';
 import {preStepFor,markIntroductionSent} from '../public/premeeting.js';
@@ -44,4 +44,9 @@ test('prior review data is preserved without blocking entry; refusal still block
  const unsafe=completeApplication(newSession(c,'unsafe'));unsafe.checks={v:true,a:true,g:true,safe:true};assert.equal(canAdvance(unsafe),false);
  assert.match(demoReply(unsafe,c,questionOptions(unsafe,c)[0].text).messages[0].text,/오늘은 만나지/);
  delete s.application;delete s.preSteps;s.messages=[{kind:'teacher',target:'v',phase:'pre',text:'이전 대화'}];assert.equal(preStepFor(s),'story');assert.equal(preStepFor(s,'a'),'intro');assert.match(exportText(s,c),/이전 버전/);
+});
+test('the application record shows when it was read in plain Korean, not a machine timestamp',()=>{
+ const text=applicationRecord({application:{readAt:'2026-11-19T12:04:12.887Z'}});
+ assert.match(text,/2026년 11월 19일/);
+ assert.doesNotMatch(text,/T12:04|\.887Z/);
 });

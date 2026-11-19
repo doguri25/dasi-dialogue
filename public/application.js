@@ -45,10 +45,12 @@ export function applicationFor(c,variant) {
   concern:withdrawn?'참여 의사 변경과 안전 우려가 있습니다.':missing?'학생 본인의 동의 확인이 빠져 있습니다.':'서류는 접수됐지만, 지금의 참여 의사와 대면 준비는 아직 확인 전입니다.'
  };
 }
+// 기록에는 사람이 읽는 날짜·시각으로 적습니다(예: 2026년 11월 19일 오후 9:04).
+function readableTime(iso){const d=new Date(iso);if(Number.isNaN(d.getTime()))return String(iso||'');try{return d.toLocaleString('ko-KR',{year:'numeric',month:'long',day:'numeric',hour:'numeric',minute:'2-digit'});}catch{return d.toISOString();}}
 export function applicationRecord(s) {
  const r=s.application;
  if(!r)return '이전 버전에서 시작한 연습입니다. 신청서 열람 기록이 없습니다.';
- const current=r.readAt?`신청서 열람: ${r.readAt}\n신청서를 읽고 사전모임으로 이동했습니다.`:'신청서 열람 중';
+ const current=r.readAt?`신청서 열람: ${readableTime(r.readAt)}\n신청서를 읽고 사전모임으로 이동했습니다.`:'신청서 열람 중';
  if(!r.checks)return current;
  return current+`\n\n이전 버전의 검토 기록\n검토 시각: ${r.completedAt||'완료 전'}\n당시 선택: ${decisions[r.decision]?.label||'선택 전'}\n먼저 확인할 것: ${r.question||'기록 없음'}\n확인 항목: ${Object.entries(reviewChecks).map(([k,v])=>`${v} (${r.checks?.[k]?'확인':'미확인'})`).join(' / ')}\n진행자 메모: ${r.notes||'없음'}`;
 }
