@@ -215,6 +215,55 @@ try{
   await writeFile('.test-artifacts/phone-hero.json',JSON.stringify(report,null,2));
   results.push(`hero: first screen buttons clear of the bottom menu on ${phones.length} phone sizes`);
  }
+ // 6. 휴대전화 연습실 한 화면: 스크롤 없이 무대·대화·질문 카드·보내기가 한 번에 보이고, 카드를 누르면 그 자리에서 고르고 보냄.
+ if(run('mroom')){
+  const inView=(r,h)=>r&&r.height>0&&r.top>=-1&&r.bottom<=h+1;
+  for(const [w,h,name] of [[440,800,'iPhone 16 Pro Max Safari'],[390,664,'iPhone 14 Safari'],[375,553,'iPhone SE Safari'],[360,640,'Android Chrome']]){
+   const {context,page,errors,action}=await open({width:w,height:h});
+   await startPractice(page,action);
+   const look=()=>page.evaluate(()=>{const r=s=>{const e=document.querySelector(s);if(!e)return null;const b=e.getBoundingClientRect();return b.width&&b.height?{top:b.top,bottom:b.bottom,height:b.height}:null;};
+    return {scroll:document.documentElement.scrollHeight-innerHeight,stage:r('.stage-frame'),transcript:r('#transcript'),cards:[...document.querySelectorAll('.choice-card')].map(c=>{const b=c.getBoundingClientRect();return b.height?{top:b.top,bottom:b.bottom,height:b.height}:null;}),
+     dock:getComputedStyle(document.querySelector('.app-nav')).display,back:r('.room-title [data-action="library"]'),save:r('.room-actions [data-action="save"]'),finish:r('.room-actions [data-action="finish"]'),notes:r('[data-action="show-notes"]'),menu:r('[data-action="room-menu"]'),send:r('#send-selected'),modal:document.querySelector('#modal').open};});
+   let m=await look();
+   assert.ok(m.scroll<=1,`${name}: the practice room fits one screen (scrolls ${m.scroll}px)`);
+   assert.equal(m.dock,'none',`${name}: the bottom menu steps aside while practising`);
+   // 아주 작은 화면(높이 600 미만)에서는 대화 기록과 카드가 먼저라 무대를 더 낮게 둡니다.
+   assert.ok(m.stage&&m.stage.height>=(h<600?80:100)&&inView(m.stage,h),`${name}: stage visible (${JSON.stringify(m.stage)})`);
+   assert.ok(m.transcript&&m.transcript.height>=90&&inView(m.transcript,h),`${name}: conversation visible (${JSON.stringify(m.transcript)})`);
+   assert.equal(m.cards.length,4);assert.ok(m.cards.every(c=>inView(c,h)&&c.height>=48),`${name}: all four cards on screen and easy to tap`);
+   for(const k of ['back','save','finish','notes','menu'])assert.ok(inView(m[k],h),`${name}: ${k} reachable on screen`);
+   // 카드를 누르면 창 없이 그 자리에서 고른 문장과 보내기가 나옵니다.
+   const full=await page.locator('.choice-card').nth(2).locator('.choice-text').textContent();
+   await page.locator('.choice-card').nth(2).click();
+   m=await look();
+   assert.equal(m.modal,false,`${name}: no dialog in the way`);
+   assert.equal((await page.locator('.mobile-selection .selection-text').textContent()).trim(),full.trim(),`${name}: the whole chosen sentence is shown`);
+   assert.ok(inView(m.send,h)&&m.send.height>=48,`${name}: send is right there`);
+   assert.ok(m.scroll<=1&&m.transcript&&m.transcript.height>=90,`${name}: choosing keeps one screen and the conversation in view`);
+   await action('choose-again').click();assert.equal(await page.locator('.choice-card').count(),4,'choose again returns to the cards');
+   await page.locator('.choice-card').first().click();const sent=await page.locator('.mobile-selection .selection-text').textContent();
+   await page.locator('#send-selected').click();await settled(page);
+   m=await look();
+   assert.ok(m.scroll<=1,`${name}: still one screen after sending`);
+   const last=await page.evaluate(()=>{const t=document.querySelector('#transcript'),msgs=[...t.querySelectorAll('.message')],l=msgs.at(-1).getBoundingClientRect(),b=t.getBoundingClientRect();return {inside:l.bottom<=b.bottom+2&&l.bottom>=b.top+24,teacher:[...t.querySelectorAll('.message.teacher')].at(-1)?.innerText||'',height:b.height};});
+   assert.ok(last.inside,`${name}: the end of the newest message is in view in the conversation`);
+   assert.ok(last.height>=90,`${name}: the conversation keeps its room after sending (${Math.round(last.height)})`);
+   assert.ok(last.teacher.includes(sent.trim().slice(0,15)),`${name}: my sentence was sent`);
+   // 진행 확인은 한 번에 열고 닫습니다.
+   await action('show-notes').click();assert.equal(await page.locator('#facilitator-notes').isVisible(),true);assert.equal(await page.locator('#conversation').isVisible(),false);
+   await page.locator('#facilitator-notes [data-action="room-pane"][data-pane="chat"]').click();assert.equal(await page.locator('#conversation').isVisible(),true);
+   // 메뉴: 글자 크기·효과음·AI 연결·전체 대화
+   await action('room-menu').click();await page.locator('#modal[open]').waitFor();
+   for(const a of ['text-size','sound-toggle','settings','view-transcript'])assert.equal(await page.locator(`#modal [data-action="${a}"]`).count(),1,`${name}: menu offers ${a}`);
+   await page.keyboard.press('Escape');
+   // 직접 입력도 한 화면 안에서
+   await page.locator('#input-write').click();m=await page.evaluate(()=>{const d=document.querySelector('#draft').getBoundingClientRect(),b=document.querySelector('#compose button[type="submit"]').getBoundingClientRect();return {draft:d.bottom<=innerHeight&&d.height>=44,send:b.bottom<=innerHeight&&b.height>=48,scroll:document.documentElement.scrollHeight-innerHeight};});
+   assert.ok(m.draft&&m.send&&m.scroll<=1,`${name}: writing fits too ${JSON.stringify(m)}`);
+   if(name==='iPhone 14 Safari'){await page.locator('#input-choices').click();await page.screenshot({path:'.test-artifacts/mobile-room-one-screen.png'});}
+   assert.deepEqual(errors,[]);await context.close();
+  }
+  results.push('mroom: phone practice room fits one screen; tap a card, send, newest message in view, notes and menu');
+ }
  await writeFile('.test-artifacts/features-browser.json',JSON.stringify({passed:true,results},null,2));
  console.log(JSON.stringify({passed:true,results}));
 }finally{await browser.close();}

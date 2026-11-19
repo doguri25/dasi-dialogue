@@ -1,4 +1,4 @@
-import {reviewApplication,setRoomPane,chooseQuestion,chooseTarget} from './helpers.mjs';
+import {reviewApplication,setRoomPane,chooseQuestion,chooseTarget,tool} from './helpers.mjs';
 // Run with PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node tests/browser.mjs.
 import assert from 'node:assert/strict';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
@@ -93,7 +93,7 @@ try{
  await page.setViewportSize({width:390,height:844});await page.screenshot({path:'.test-artifacts/meeting-mobile.png',fullPage:true});
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Mobile meeting should not overflow');
  await page.locator('#input-choices').click();await page.screenshot({path:'.test-artifacts/choices-mobile.png',fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Mobile choices should not overflow');
- await click('library');await page.screenshot({path:'.test-artifacts/library-mobile.png',fullPage:false});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Mobile catalog should not overflow');
+ await tool(page,'library');await page.screenshot({path:'.test-artifacts/library-mobile.png',fullPage:false});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Mobile catalog should not overflow');
  await click('history');const oldCount=await page.locator('.history-item').count();await click('delete');await click('confirm-delete');assert.equal(await page.locator('.history-item').count(),oldCount-1);
  assert.deepEqual(errors,[]);
  const result={passed:true,cases:scenarios.length,providerChecks:requests.filter(r=>r.path==='/api/check').map(r=>r.data.provider),flows:['four visible question choices','selection does not auto-send','change options and edit selected text','choice resets on target or phase change','choices in all three phases','chosen question through all provider mocks','choice preserved on API error','mobile choice layout','filters','three phases','consent gate','agreement gate','save/resume/delete/export','safety pause','three provider mock calls','API error preserves draft','AI review mock','keys excluded from storage and reload','speech input mock without automatic send','speech permission error and fallback','mobile overflow','no page errors'],limits:'No real API key or physical microphone used.'};

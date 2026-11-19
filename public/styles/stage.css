@@ -46,3 +46,9 @@
 .stage-host[data-hover]{cursor:pointer}
 .flat-seat.hovered{transform:translateY(-4px) scale(1.05)}
 .flat-seat.hovered .flat-ring{opacity:.55;border-color:var(--ink,#172033)}
+/* 휴대전화 연습실 한 화면: 바로 아래 대화 기록에 같은 말이 곧바로 나오므로 무대의 자막은 숨기고 장면만 보여 줍니다. */
+@media(max-width:900px) and (min-height:520px){
+ :root[data-practice=active] .stage-frame .stage-caption{display:none!important}
+ :root[data-practice=active] .stage-frame .stage-host[data-stage-mode="3d"]{display:block}
+ :root[data-practice=active] .stage-frame .stage-host[data-stage-mode="3d"] .stage-view{position:absolute;inset:0}
+}

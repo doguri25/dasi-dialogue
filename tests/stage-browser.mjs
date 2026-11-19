@@ -218,7 +218,8 @@ try{
  if(run('review')){
   const roomCtx=async(pref,{width=1366,height=768,init}={})=>{const ctx=await browser.newContext({viewport:{width,height},locale:'ko-KR'});await ctx.addInitScript(p=>{if(!sessionStorage.getItem('pref-set')){localStorage.setItem('dasi.stage',p);sessionStorage.setItem('pref-set','1');}},pref);if(init)await ctx.addInitScript(init);const page=await ctx.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());return {ctx,page,errors};};
   const enter=async page=>{await page.goto(base);await page.locator('[data-action="quick"]').first().click();await page.locator('#start-form button[type="submit"]').click();await page.locator('#application-continue').click();await page.locator('#stage-slot .stage-host').waitFor({timeout:60000});};
-  const sendFirst=async page=>{await page.locator('.choice-card').first().click();await page.locator('#modal [data-action="choose-example"]').click();await page.locator('#compose button[type="submit"]').click();};
+  // PC는 문장 창에서 고르고, 휴대전화(v0.9)는 카드를 누르면 바로 고른 뒤 카드 자리의 보내기로 보냅니다.
+  const sendFirst=async page=>{await page.locator('.choice-card').first().click();if(await page.locator('#modal').evaluate(d=>d.open))await page.locator('#modal [data-action="choose-example"]').click();const phone=page.locator('#send-selected');if(await phone.isVisible())await phone.click();else await page.locator('#compose button[type="submit"]').click();};
   // F1: 같은 사례로 새 연습을 시작하면 이전 자막·감정을 이어받지 않음
   {const {ctx,page,errors}=await roomCtx('off');await enter(page);await sendFirst(page);
    await page.waitForFunction(()=>document.querySelector('.stage-host').dataset.stageState==='speaking',null,{timeout:30000});
@@ -271,7 +272,7 @@ try{
   // F7: 무대·얼굴 버튼은 48px 이상이고 휴대전화에서도 모두 보임
   for(const [w,h] of [[1366,768],[390,844]]){
    const {ctx,page,errors}=await roomCtx('off',{width:w,height:h});await enter(page);
-   const m=await page.evaluate(()=>{const top=document.querySelector('.stage-top').getBoundingClientRect();return {sizes:[...document.querySelectorAll('.stage-chip,.target-chip')].map(e=>Math.round(e.getBoundingClientRect().height)),clipped:[...document.querySelectorAll('.target-chip')].filter(e=>{const r=e.getBoundingClientRect();return r.right>top.right+1||r.left<top.left-1;}).length};});
+   const m=await page.evaluate(()=>{const top=document.querySelector('.stage-top').getBoundingClientRect();return {sizes:[...document.querySelectorAll('.stage-chip,.target-chip')].map(e=>Math.round(e.getBoundingClientRect().height)).filter(h=>h>0),   /* 휴대전화는 무대 버튼을 메뉴로 옮겨 숨깁니다 */clipped:[...document.querySelectorAll('.target-chip')].filter(e=>{const r=e.getBoundingClientRect();return r.right>top.right+1||r.left<top.left-1;}).length};});
    assert.ok(m.sizes.every(x=>x>=48),`touch targets at least 48px at ${w}x${h} ${m.sizes}`);
    assert.equal(m.clipped,0,`all face chips are visible at ${w}x${h}`);
    assert.deepEqual(errors,[]);await ctx.close();

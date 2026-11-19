@@ -443,3 +443,164 @@
 @media(max-width:900px){.retry-turn{margin:2px 14px 14px}}
 @media(max-width:600px){.retry-turn>span{display:none}}
 
+
+/* ===== 휴대전화 연습실 한 화면(v0.9) =====
+   스크롤 없이 한 화면에: 맨 위 한 줄(나가기·제목·저장·마치기·메뉴) → 단계와 진행 확인 → 얼굴 버튼 → 무대 → 대화 기록(안에서만 스크롤)
+   → 질문 칸(고르기·직접 입력, 카드 4장, 다른 질문). 카드를 누르면 카드 자리에 고른 문장과 보내기가 나와 대화 기록은 그대로 보입니다.
+   연습하는 동안 앱의 위 막대·아래 메뉴는 숨기고, 그 도구는 메뉴(⋯)에 모읍니다. 가로로 눕힌 낮은 화면은 예전처럼 스크롤합니다. */
+.room-menu-button{display:none}
+.room-menu{display:grid;gap:8px;margin-top:6px}
+.room-menu .button,.room-menu .text-button{justify-content:flex-start;gap:10px;min-height:52px}
+@media(max-width:900px) and (min-height:520px){
+ :root[data-practice=active] .topbar,:root[data-practice=active] .app-nav,:root[data-practice=active] footer,:root[data-practice=active] .skip{display:none}
+ :root[data-practice=active] .workspace{display:block;height:100vh;height:100svh;min-height:0;overflow:hidden}
+ :root[data-practice=active] main{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:"title actions" "steps ready" "layout layout";gap:4px 8px;height:100%;min-height:0;max-width:none;padding:6px 10px max(8px,env(safe-area-inset-bottom))}
+ /* 맨 위 한 줄 */
+ :root[data-practice=active] .room-head{display:contents}
+ :root[data-practice=active] .room-title{grid-area:title;display:flex;align-items:center;gap:4px;min-width:0;margin:0}
+ :root[data-practice=active] .room-title .text-button{flex:none;width:44px;min-height:44px;padding:0;justify-content:center;font-size:0;gap:0;border-radius:14px}
+ :root[data-practice=active] .room-title .text-button .icon{width:22px;height:22px}
+ :root[data-practice=active] .room-title h1{min-width:0;margin:0;font-size:1.02rem;line-height:1.3;letter-spacing:-.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ :root[data-practice=active] .room-title p{display:none}
+ :root[data-practice=active] .room-actions{grid-area:actions;display:flex;align-items:center;gap:4px;margin:0;flex-wrap:nowrap}
+ :root[data-practice=active] .room-actions .save-indicator,:root[data-practice=active] .room-actions .desktop-notes-toggle{display:none}
+ :root[data-practice=active] .room-actions>.button{flex:none;width:44px;min-height:44px;padding:0;justify-content:center;font-size:0;gap:0;border-radius:14px}
+ :root[data-practice=active] .room-actions>.button .icon{width:21px;height:21px;margin:0}
+ :root[data-practice=active] .room-menu-button{display:inline-flex}
+ /* 단계와 진행 확인: 얇은 한 줄 */
+ :root[data-practice=active] .room-head .stepper,:root[data-practice=active] .room-head .steps{grid-area:steps;min-width:0;margin:0}
+ :root[data-practice=active] .steps{padding:2px 0;gap:0}
+ :root[data-practice=active] .steps li{font-size:.72rem;padding:0 2px;gap:2px;min-width:0}
+ :root[data-practice=active] .steps li>span{width:24px;height:24px;font-size:.72rem}
+ :root[data-practice=active] .steps li:not(.current){font-size:0}
+ :root[data-practice=active] .steps li:not(:last-child)::after{top:12px;left:calc(50% + 15px);right:calc(-50% + 15px)}
+ :root[data-practice=active] .readiness.compact{grid-area:ready;align-self:center;margin:0;padding:0;background:none;box-shadow:none}
+ :root[data-practice=active] .readiness.compact .readiness-heading{display:none}
+ :root[data-practice=active] .readiness.compact .text-button{min-height:40px;padding:6px 12px;font-size:.84rem;border-radius:12px;background:var(--paper);box-shadow:inset 0 0 0 1.5px var(--line),0 2px 0 var(--edge)}
+ :root[data-practice=active] .mobile-room-tabs{display:none}
+ /* 연습 칸 */
+ :root[data-practice=active] .room-layout{grid-area:layout;margin:0;min-height:0;display:block}
+ :root[data-practice=active] .conversation{display:flex;flex-direction:column;gap:6px;height:100%;min-height:0;padding:0;border-radius:0;background:none;box-shadow:none}
+ :root[data-practice=active] .room-layout.pane-notes .conversation{display:none}
+ :root[data-practice=active] .room-layout.pane-notes .facilitator-notes{display:block;height:100%;overflow-y:auto;overscroll-behavior:contain;border-radius:20px}
+ :root[data-practice=active] .listening-panel{display:contents}
+ :root[data-practice=active] .stage-card{flex:none;display:flex;flex-direction:column;gap:6px;padding:0;margin:0;background:none;box-shadow:none;border-radius:0}
+ :root[data-practice=active] .stage-top{display:flex;flex-wrap:nowrap;align-items:center;gap:6px;padding:0;overflow-x:auto;scrollbar-width:none}
+ :root[data-practice=active] .stage-top::-webkit-scrollbar{display:none}
+ :root[data-practice=active] .target-chips{flex:none;margin:0;padding:0;border:0;min-width:0}
+ :root[data-practice=active] .target-chips legend{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+ :root[data-practice=active] .target-chip-row{flex-wrap:nowrap;gap:5px}
+ :root[data-practice=active] .target-chip{min-height:48px;padding:4px 10px 4px 4px;gap:6px}
+ :root[data-practice=active] .target-chip .avatar{width:36px;height:36px}
+ :root[data-practice=active] .target-name small{display:none}
+ :root[data-practice=active] .target-name strong{font-size:.86rem}
+ :root[data-practice=active] .stage-top .pre-meeting-guide{flex:none;width:auto;margin:0;padding:0;background:none;box-shadow:none}
+ :root[data-practice=active] .pre-meeting-guide p{display:none}
+ :root[data-practice=active] .pre-meeting-guide ol{display:flex;flex-direction:row;gap:4px;margin:0}
+ :root[data-practice=active] .pre-meeting-guide li{display:flex;font-size:.76rem;white-space:nowrap;padding:4px 8px;min-height:32px}
+ :root[data-practice=active] .pre-meeting-guide li.done{display:none}
+ :root[data-practice=active] .stage-wrap{flex:none}
+ :root[data-practice=active] .stage-frame{height:clamp(96px,22svh,210px);aspect-ratio:auto;max-height:none;margin:0;width:auto;border-radius:18px}
+ :root[data-practice=active] .stage-controls,:root[data-practice=active] .conversation-tools{display:none}
+ /* 대화 기록: 남는 높이를 모두 쓰고 안에서만 스크롤 */
+ :root[data-practice=active] .transcript{flex:1 1 auto;height:auto;min-height:0;max-height:none;margin:0;padding:12px 10px;border-radius:18px;background:var(--paper);box-shadow:inset 0 0 0 1px var(--line);overscroll-behavior:contain}
+ :root[data-practice=active] .bubble{padding:10px 13px;font-size:.98rem;line-height:1.6}
+ :root[data-practice=active] .message{gap:8px;margin-bottom:10px}
+ :root[data-practice=active] .message .avatar.portrait,:root[data-practice=active] .teacher-avatar{width:32px;height:32px}
+ :root[data-practice=active] .speaker{font-size:.78rem}
+ :root[data-practice=active] .retry-turn{flex:none;margin:0}
+ :root[data-practice=active] .retry-turn .text-button{min-height:40px;padding:6px 11px;font-size:.82rem}
+ :root[data-practice=active] .reply-error{flex:none;max-height:22%;overflow:auto;margin:0;padding:10px 12px;font-size:.88rem}
+ /* 질문 칸 */
+ :root[data-practice=active] .composer-wrap{flex:none;margin:0;padding:8px;border-radius:20px;background:var(--paper-2);box-shadow:inset 0 0 0 1px var(--line)}
+ :root[data-practice=active] .input-methods{margin:0 0 6px;padding:3px;gap:3px}
+ :root[data-practice=active] .input-method{min-height:40px;padding:6px 4px;font-size:.86rem}
+ :root[data-practice=active] #compose{display:flex;flex-direction:column;gap:6px}
+ :root[data-practice=active] .question-choices legend{float:none;width:100%;margin:0 0 6px;font-size:.84rem;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ :root[data-practice=active] .choice-help,:root[data-practice=active] .choice-guidance,:root[data-practice=active] .desktop-choice-hint,:root[data-practice=active] .desktop-examples{display:none}
+ :root[data-practice=active] .choice-grid{gap:6px}
+ :root[data-practice=active] .choice-card{min-height:56px;padding:8px 10px;align-items:center}
+ :root[data-practice=active] .choice-card .choice-label{font-size:14.5px;line-height:1.35}
+ :root[data-practice=active] .choice-open{display:none}
+ :root[data-practice=active] .choice-pagination{margin:0;gap:6px;flex-wrap:nowrap;justify-content:space-between}
+ :root[data-practice=active] .choice-pagination>span{font-size:.74rem}
+ :root[data-practice=active] .choice-pagination .text-button{min-height:40px;padding:6px 10px;font-size:.82rem}
+ :root[data-practice=active] #compose:has(.question-choices) .composer-bottom{display:none}
+ /* 고른 문장: 카드 자리에 나와 바로 보냄 */
+ :root[data-practice=active] .composer-wrap:has(.mobile-selection) .question-choices,:root[data-practice=active] .composer-wrap:has(.mobile-selection) .choice-pagination{display:none}
+ :root[data-practice=active] .mobile-selection{display:block;margin:0;padding:10px 12px;border-radius:16px;background:var(--pebble-soft);box-shadow:inset 0 0 0 1.5px var(--ink)}
+ :root[data-practice=active] .mobile-selection strong{font-size:.84rem;margin:0 0 4px}
+ :root[data-practice=active] .mobile-selection .selection-text{max-height:4.95em;overflow-y:auto;margin:0;font-size:.98rem;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
+ :root[data-practice=active] .mobile-selection>div{display:flex;flex-wrap:nowrap;gap:6px;margin-top:8px}
+ :root[data-practice=active] .mobile-selection .button{min-height:52px;padding:8px 10px;font-size:.92rem}
+ /* 직접 입력 */
+ :root[data-practice=active] .prompt-row{margin:0;gap:6px}
+ :root[data-practice=active] .prompt-row .hint-button{min-height:40px;padding:6px 10px;font-size:.82rem}
+ :root[data-practice=active] #draft{min-height:64px;height:clamp(64px,14svh,140px);font-size:1rem;padding:10px 12px}
+ :root[data-practice=active] .speech-status:empty{display:none}
+ :root[data-practice=active] .composer-bottom{flex-direction:row;gap:6px}
+ :root[data-practice=active] .composer-bottom>.button{width:auto;flex:1;min-height:48px;font-size:.92rem;padding:8px 10px}
+ :root[data-practice=active] .composer-bottom>.button:last-child{order:0}
+ /* 단계 한 줄: 지금 단계만 이름을 옆에 붙이고 나머지는 점으로 */
+ :root[data-practice=active] .steps li{flex-direction:row;align-items:center;justify-content:center;white-space:nowrap}
+ :root[data-practice=active] .steps li.current{gap:5px;font-size:.8rem;font-weight:800}
+ :root[data-practice=active] .steps li:not(:last-child)::after{display:none}
+ :root[data-practice=active] .steps{justify-content:flex-start;gap:6px}
+ :root[data-practice=active] .steps li{flex:none}
+ /* 사전모임 진행 순서는 무대 왼쪽 위에 작게 얹습니다 */
+ :root[data-practice=active] .stage-card{position:relative}
+ :root[data-practice=active] .stage-top .pre-meeting-guide{position:absolute;z-index:4;left:8px;top:62px;pointer-events:none}
+ :root[data-practice=active] .pre-meeting-guide li{background:rgba(23,32,51,.72);color:#fff;border-radius:999px;box-shadow:none;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+ :root[data-practice=active] .pre-meeting-guide li span{background:var(--pebble);color:var(--ink);width:20px;height:20px;font-size:.72rem}
+ /* 다른 질문 보기는 안내 문구와 같은 줄 오른쪽 */
+ :root[data-practice=active] .composer-wrap{position:relative}
+ :root[data-practice=active] .question-choices legend{padding-right:112px}
+ :root[data-practice=active] .choice-pagination{position:absolute;right:8px;top:52px}
+ :root[data-practice=active] .choice-pagination>span{display:none}
+ :root[data-practice=active] .choice-pagination .text-button{min-height:30px;padding:3px 9px;font-size:.78rem;border-radius:10px}
+ /* 무대는 조금 낮게 */
+ :root[data-practice=active] .stage-frame{height:clamp(96px,19svh,200px)}
+ /* 모임 마치기는 아이콘만으로는 뜻이 흐려 글자로 보여 줍니다 */
+ :root[data-practice=active] .room-actions>[data-action="finish"]{width:auto;padding:0 10px;font-size:.8rem;gap:4px}
+ :root[data-practice=active] .room-actions>[data-action="finish"] .icon{display:none}
+ /* 단계 한 줄(덮어쓰기): 격자 대신 이어 붙인 점, 지금 단계만 이름 */
+ :root[data-practice=active] .room-head .steps{display:flex;align-items:center;gap:5px;padding:0;margin:0;background:none;box-shadow:none}
+ :root[data-practice=active] .room-head .steps li{display:flex;flex:none;padding:0;gap:5px;font-size:.8rem}
+ :root[data-practice=active] .room-head .steps li>div{padding:0;background:none;white-space:nowrap}
+ :root[data-practice=active] .room-head .steps li:not(.current)>div,:root[data-practice=active] .room-head .steps small{display:none}
+ :root[data-practice=active] .room-head .steps li>span{width:24px;height:24px}
+ :root[data-practice=active] .room-head .steps .icon{width:14px;height:14px}
+ :root[data-practice=active] .choice-pagination{top:56px}
+ :root[data-practice=active] .pre-meeting-guide li:not(.current){opacity:.62}
+ :root[data-practice=active] .mobile-selection{padding:8px 10px}
+ :root[data-practice=active] .mobile-selection strong{font-size:.8rem;margin:0 0 2px}
+ :root[data-practice=active] .mobile-selection>div{margin-top:6px}
+ /* 방금 질문 다시 해 보기: 기록 칸 오른쪽 아래에 떠 있는 작은 단추(자리를 차지하지 않음). 기록 끝에는 그만큼 여백 */
+ :root[data-practice=active] .conversation{display:grid;grid-template-rows:auto minmax(0,1fr) auto auto;grid-template-columns:minmax(0,1fr)}
+ :root[data-practice=active] .stage-card{grid-row:1}
+ :root[data-practice=active] .transcript{grid-row:2}
+ :root[data-practice=active] .conversation:has(.retry-turn) .transcript{padding-bottom:56px}
+ :root[data-practice=active] .conversation>*,:root[data-practice=active] .listening-panel>*{grid-column:1}   /* 떠 있는 단추를 같은 칸에 겹쳐도 새 열이 생기지 않게 */
+ :root[data-practice=active] .retry-turn{grid-row:2;grid-column:1;align-self:end;justify-self:end;z-index:2;margin:0 8px 8px 0}
+ :root[data-practice=active] .retry-turn>span{display:none}
+ :root[data-practice=active] .retry-turn .text-button{min-height:40px;box-shadow:inset 0 0 0 1.5px var(--line-strong),0 2px 0 var(--edge),0 6px 16px -8px rgba(23,32,51,.4)}
+ :root[data-practice=active] .reply-error{grid-row:3}
+ :root[data-practice=active] .composer-wrap{grid-row:4}
+}
+/* 작은 폰(높이 600 미만): 무대·카드·단계 줄을 조금 더 줄여 대화 기록 자리를 지킵니다(누르는 곳은 48px 이상 유지). */
+@media(max-width:900px) and (min-height:520px) and (max-height:599px){
+ :root[data-practice=active] .stage-frame{height:clamp(80px,15svh,120px)}
+ :root[data-practice=active] .choice-card{min-height:48px;padding:6px 10px}
+ :root[data-practice=active] .readiness.compact .text-button{min-height:36px;padding:4px 10px}
+ :root[data-practice=active] .input-method{min-height:38px}
+ :root[data-practice=active] .composer-wrap{padding:6px}
+ :root[data-practice=active] .question-choices legend{margin-bottom:4px}
+ :root[data-practice=active] .choice-pagination{top:50px}
+ :root[data-practice=active] .mobile-selection strong{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+ :root[data-practice=active] .mobile-selection .selection-text{max-height:3.3em}
+}
+/* 높이 680 미만: 고른 문장 상자를 두 줄로 줄여 대화 기록 자리를 지킵니다(머리말은 화면 낭독기에만). */
+@media(max-width:900px) and (min-height:520px) and (max-height:679px){
+ :root[data-practice=active] .mobile-selection strong{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+ :root[data-practice=active] .mobile-selection .selection-text{max-height:3.3em}
+}

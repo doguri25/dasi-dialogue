@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {VERSION} from '../public/version.js';
-import {reviewApplication,chooseQuestion,chooseTarget} from './helpers.mjs';
+import {reviewApplication,chooseQuestion,chooseTarget,tool,sendChoice} from './helpers.mjs';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
 const browser=await chromium.launch({channel:process.env.PW_CHANNEL||'chrome',headless:true});
 const context=await browser.newContext({viewport:{width:1440,height:1050},locale:'ko-KR'}),page=await context.newPage(),errors=[];
@@ -19,7 +19,7 @@ try{
  await page.locator('#compose button[type="submit"]').click();assert.match(await page.locator('.save-indicator').innerText(),/바뀐 내용/);await action('view-transcript').click();assert.match(await page.locator('#modal').innerText(),/진행자 → 민서/);assert.ok(!(await page.locator('#modal').innerText()).includes('아직 보내지 않은 질문'));await action('close').click();
  await chooseTarget(page,'a');await page.locator('#input-write').click();assert.match(await page.locator('#draft').inputValue(),/지우에게만/);await chooseTarget(page,'v');await page.locator('#input-choices').click();
  for(const width of [320,390,768,1024,1440]){
-  await page.setViewportSize({width,height:900});await overflow(`v0.2 room ${width}`);await action('text-size').click();await overflow(`v0.2 large ${width}`);await action('text-size').click();
+  await page.setViewportSize({width,height:900});await overflow(`v0.2 room ${width}`);await tool(page,'text-size');await overflow(`v0.2 large ${width}`);await tool(page,'text-size');
  }
  await page.setViewportSize({width:390,height:900});await action('show-notes').click();assert.equal(await page.locator('#facilitator-notes').isVisible(),true);assert.match(await page.locator('.facilitator-notes .readiness').innerText(),/4가지를/);
  await page.locator('[data-check="v"]').check();assert.match(await page.locator('.facilitator-notes .readiness').innerText(),/3가지를/);await screenshot('v02-progress-mobile','.facilitator-notes .readiness');
@@ -27,7 +27,7 @@ try{
  await action('show-notes').click();await page.locator('[data-check="main"]').check();await page.locator('[data-agreement="action"]').fill('서로 동의한 도움을 금요일에 따로 확인');await page.locator('[data-agreement="review"]').fill('금요일 담임이 각각 만나 확인');assert.match(await page.locator('.facilitator-notes .readiness').innerText(),/준비가 됐어요/);await action('advance').click();
  await page.locator('#input-write').click();await page.locator('#draft').fill('약속을 지킨 뒤 어떤 변화가 있었니?');await page.locator('#compose button[type="submit"]').click();await screenshot('v02-conversation-mobile','#transcript');await action('finish').click();await page.locator('#finish-form button[type="submit"]').click();assert.match(await page.locator('.review-evidence').innerText(),/약속을 지킨 뒤/);
  await page.locator('#reflection').fill('더 기다려 주고 싶어요.');await action('save').click();const filePromise=page.waitForEvent('download');await action('export').click();const dl=await filePromise;await dl.saveAs('.test-artifacts/v02-local-review.md');const local=await readFile('.test-artifacts/v02-local-review.md','utf8');assert.match(local,/## 체험 회고/);assert.match(local,/더 기다려/);
- for(const width of [320,390,768,1024,1440]){await page.setViewportSize({width,height:1000});await overflow(`v0.2 review ${width}`);await action('text-size').click();await overflow(`v0.2 large review ${width}`);await action('text-size').click();}
+ for(const width of [320,390,768,1024,1440]){await page.setViewportSize({width,height:1000});await overflow(`v0.2 review ${width}`);await tool(page,'text-size');await overflow(`v0.2 large review ${width}`);await tool(page,'text-size');}
  await screenshot('v02-review-desktop','.review-evidence');
  await page.route('**/api/review',route=>route.fulfill({json:{title:'새로운 AI 회고',summary:'답변을 기다린 장면을 살펴봅니다.',strengths:['학생의 선택을 확인함'],improvements:['대화 속도를 늦추기'],nextPractice:'같은 사례로 다시 듣기'}}));
  await page.locator('.topbar [data-action="settings"]').click();await page.locator('input[name="mode"][value="ai"]').check();await page.locator('#api-key').fill('dummy-v02-browser-key');await page.locator('#settings-form button[type="submit"]').click();await action('ai-review').click();await page.getByRole('heading',{name:'새로운 AI 회고'}).waitFor();const aiFile=page.waitForEvent('download');await action('export').click();const aiDownload=await aiFile;await aiDownload.saveAs('.test-artifacts/v02-ai-review.md');const aiText=await readFile('.test-artifacts/v02-ai-review.md','utf8');assert.match(aiText,/## AI 심층 회고/);assert.match(aiText,/대화 속도를 늦추기/);assert.ok(!aiText.includes('dummy-v02-browser-key'));

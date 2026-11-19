@@ -277,3 +277,12 @@
 - `npm test` 68개, `responsive.mjs`, `browser.mjs`, `v02-browser.mjs`, `intake-browser.mjs`, `followups-browser.mjs`, `desktop-room.mjs`, `features-browser.mjs`, `stage-browser.mjs` "library" 통과.
 - 한계: Chromium으로 휴대전화 크기를 흉내 냈을 뿐, 실제 아이폰 Safari에서는 확인하지 않았습니다. Safari 주소창이 커졌다 작아질 때의 높이 변화는 svh(작은 쪽 높이) 기준으로 맞췄습니다.
 
+## v0.9.0 — 휴대전화 연습실 한 화면
+
+- 바꾸기 전 390×664에서 연습실 길이 2,534px: 무대는 879px, 대화 기록은 1,345px, 질문 카드는 1,813px에서 시작했습니다.
+- `features-browser.mjs`에 "mroom" 항목 추가(고치기 전 실패 확인: 1,733px 넘침). 아이폰 16 Pro Max Safari(440×800), 아이폰 14 Safari(390×664), 아이폰 SE Safari(375×553), 안드로이드(360×640)에서: 페이지 스크롤 없음, 아래 메뉴 숨김, 무대 100px 이상(높이 600 미만은 80px), 대화 기록 90px 이상, 카드 4장이 화면 안에 48px 이상, ←·저장·마치기·진행 확인·메뉴가 화면 안. 카드를 누르면 창 없이 고른 문장 전체와 보내기(48px 이상), 고른 뒤·보낸 뒤에도 한 화면에 대화 기록 90px 이상, 가장 새로운 말의 끝이 기록 안에 보임. 진행 확인 열고 닫기, 메뉴의 도구, 직접 입력도 한 화면.
+- 만드는 동안 이 검사가 잡은 것: 단계 이름이 두 줄로 꺾여 단계 줄이 65px, 고른 문장 상자가 카드 자리보다 커서 대화 기록이 줄어듦, 보낸 뒤 "방금 질문 다시 해 보기" 줄이 대화 기록을 107px로 줄임, 이 단추를 기록 위에 띄우면서 격자 열을 지정하지 않아 화면 전체가 절반 폭으로 접힘(답을 받은 뒤에만 나타남). 처음 쓴 "가장 새로운 말이 통째로 보임" 조건은 기록 칸보다 긴 답에서는 이룰 수 없어 "끝이 보임"으로 고쳤습니다.
+- 예전 휴대전화 배치를 전제로 한 검사를 새 구성에 맞게 고쳤습니다: `helpers.mjs`(휴대전화는 카드를 누르면 바로 고름, 도구는 메뉴에서, 고른 문장은 카드 자리의 보내기), `followups-browser.mjs`(대화 기록 맨 위로 스크롤 대신 "한 화면에 대화와 보내기", 긴 문장 펼치기 대신 문장 전체), `responsive.mjs`(탭 대신 진행 확인 열기, 위 막대 대신 메뉴, 휴대전화 보내기 높이는 고른 문장의 보내기로 측정), `browser.mjs`·`intake-browser.mjs`·`v02-browser.mjs`(휴대전화 구간의 글자 크기·설정·사례 목록은 메뉴로), `stage-browser.mjs`(숨긴 무대 버튼은 크기 검사에서 제외, 휴대전화 보내기).
+- 통과: `npm test` 68개, `features-browser.mjs`(keys·print·undo·replay·hero·mroom), `responsive.mjs`, `followups-browser.mjs`, `browser.mjs`, `v02-browser.mjs`, `intake-browser.mjs`, `desktop-room.mjs`, `sounds-browser.mjs`, `stage-browser.mjs` review·polish·room·pick.
+- 한계: Chromium으로 휴대전화 크기를 흉내 냈을 뿐 실제 아이폰 Safari에서는 확인하지 않았습니다. 화면 낭독기로 새 메뉴를 써 보지 않았습니다. 가로로 눕힌 낮은 화면(높이 520 미만)은 예전처럼 스크롤합니다.
+
