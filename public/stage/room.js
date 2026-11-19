@@ -1,6 +1,7 @@
 // 관계회복 대화실: 밝은 나무 원탁, 의자, 오후 햇빛이 드는 창, 책장과 화분.
 // 원탁 가운데가 원점이고 교사(카메라)는 +z 쪽에 앉습니다.
-export const TABLE_Y=.74,SEAT_Y=.45,SEAT_R=.86,TABLE_R=.62;
+// 2등신 캐릭터에 맞춘 낮은 원탁(찻상)과 푹신한 안락의자. 기존 삽화(scene-support)의 대화 자리와 같은 구성입니다.
+export const TABLE_Y=.34,SEAT_Y=.32,SEAT_R=.82,TABLE_R=.44;
 const deg=Math.PI/180;
 // 각도는 +z(교사)에서 +x 쪽으로 잰 값입니다.
 const LAYOUTS={
@@ -69,25 +70,27 @@ export function buildRoom(T) {
  const tableWood=clay('#e6c9a3',{roughness:.62});
  mesh(table,geo(new T.CylinderGeometry(TABLE_R,TABLE_R,.045,64)),tableWood,{p:[0,TABLE_Y,0]});
  mesh(table,geo(new T.TorusGeometry(TABLE_R,.024,12,64)),tableWood,{p:[0,TABLE_Y,0],r:[Math.PI/2,0,0]});
- mesh(table,CYL,clay('#d8b78f'),{p:[0,TABLE_Y/2,0],s:[.06,TABLE_Y,.06]});
- mesh(table,CYL,clay('#d8b78f'),{p:[0,.02,0],s:[.32,.04,.32]});
+ for(let i=0;i<3;i++){const a=i/3*Math.PI*2+.5;mesh(table,CYL,clay('#d8b78f'),{p:[Math.cos(a)*.26,TABLE_Y/2,Math.sin(a)*.26],r:[Math.sin(a)*.08,0,-Math.cos(a)*.08],s:[.03,TABLE_Y,.03]});}
  // 탁자 위: 작은 다육 화분, 이야기 돌, 교사의 수첩
- const succ=new T.Group();succ.position.set(.28,TABLE_Y+.022,-.12);table.add(succ);
+ const succ=new T.Group();succ.position.set(.2,TABLE_Y+.022,-.1);table.add(succ);
  mesh(succ,geo(new T.CylinderGeometry(.05,.04,.07,20)),clay('#f2c6a5'),{p:[0,.035,0]});
  for(let i=0;i<6;i++){const a=i/6*Math.PI*2;mesh(succ,SPH,clay('#8db37c'),{p:[Math.cos(a)*.02,.08,Math.sin(a)*.02],r:[Math.cos(a)*.7,0,Math.sin(a)*.7],s:[.016,.03,.016]});}
  const stone=mesh(table,SPH,clay('#bfb3a6',{roughness:.5}),{p:[-.06,TABLE_Y+.04,.02],s:[.06,.026,.045]});
- const pad=new T.Group();pad.position.set(.1,TABLE_Y+.03,.42);pad.rotation.y=-.18;table.add(pad);
+ const pad=new T.Group();pad.position.set(.08,TABLE_Y+.03,.3);pad.rotation.y=-.18;table.add(pad);
  mesh(pad,BOX,clay('#fbf8f2'),{s:[.2,.012,.27]});mesh(pad,BOX,clay('#9db697'),{p:[0,-.004,0],s:[.205,.008,.275]});
  mesh(pad,geo(new T.CylinderGeometry(.006,.006,.17,10)),clay('#d6a14f'),{p:[.13,.008,0],r:[Math.PI/2,0,.1]});
 
  // 의자
- const chairColors={v:'#f2c6a5',a:'#c9bfe6',g:'#c9d6bf',solo:'#f2c6a5'};
+ // 피부색과 헷갈리지 않는 차분한 천 색
+ const chairColors={v:'#a9c4a2',a:'#b8afd9',g:'#a7c3d6',solo:'#a9c4a2'};
  function chair(color){
   const ch=new T.Group(),seatMat=clay(color),legMat=clay('#e2c49f');
-  mesh(ch,SPH,seatMat,{p:[0,SEAT_Y-.03,0],s:[.24,.05,.23]});
-  mesh(ch,SPH,seatMat,{p:[0,SEAT_Y+.3,-.21],r:[-.12,0,0],s:[.23,.22,.05]});
-  for(const [x,z] of [[-.17,-.16],[.17,-.16],[-.17,.16],[.17,.16]])mesh(ch,CYL,legMat,{p:[x,(SEAT_Y-.05)/2,z],s:[.02,SEAT_Y-.05,.02]});
-  for(const x of [-.17,.17])mesh(ch,CYL,legMat,{p:[x,SEAT_Y+.12,-.2],r:[-.12,0,0],s:[.016,.32,.016]});
+  // 둥글고 푹신한 안락의자: 방석, 등받이, 팔걸이, 짧은 다리
+  mesh(ch,SPH,seatMat,{p:[0,SEAT_Y-.05,.02],s:[.27,.09,.25]});
+  mesh(ch,SPH,seatMat,{p:[0,SEAT_Y-.11,0],s:[.29,.08,.27]});
+  mesh(ch,SPH,seatMat,{p:[0,SEAT_Y+.2,-.2],r:[-.18,0,0],s:[.27,.26,.09]});
+  for(const x of [-.27,.27])mesh(ch,SPH,seatMat,{p:[x,SEAT_Y+.01,-.04],s:[.05,.08,.2]});
+  for(const [x,z] of [[-.2,-.17],[.2,-.17],[-.2,.17],[.2,.17]])mesh(ch,CYL,legMat,{p:[x,(SEAT_Y-.16)/2,z],s:[.018,SEAT_Y-.16,.018]});
   return ch;
  }
  function anchorFor(angle,radius=SEAT_R){

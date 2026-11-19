@@ -8,7 +8,8 @@ import {poseFor} from './acting.js';
 import {QUALITY_LEVELS,nextQualityLevel,isTooSlow} from './support.js';
 
 const TENSION={calm:0,open:-.2,hesitant:.25,anxious:.6,defensive:.55,upset:.5,withdrawn:.7,relieved:-.6};
-const HEAD_Y={elementary:1.08,middle:1.13,high:1.17,adult:1.2,undefined:1.12};
+// 앉은 2등신 캐릭터의 머리 가운데 높이(바닥 기준)
+const HEAD_Y={elementary:.68,middle:.7,high:.72,adult:.74,undefined:.7};
 
 export async function createRenderer3D(container,{reducedMotion=false,preserveDrawingBuffer=false,onSlow}={}) {
  const canvas=document.createElement('canvas');canvas.className='stage-canvas-3d';container.appendChild(canvas);
@@ -27,22 +28,22 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
 
  const cast=new Map();let phase='pre',focus=null,level=0,disposed=false,paused=false,lost=false;
  const lostFns=[];
- const camPos=new T.Vector3(0,1.12,1.05),camLook=new T.Vector3(0,1,-.8),wantPos=camPos.clone(),wantLook=camLook.clone();let hFov=46,wantFov=46,minV=30,seed=1;
- const teacherHead=new T.Vector3(0,1.15,SEAT_R+.15);
+ const camPos=new T.Vector3(0,.8,1.05),camLook=new T.Vector3(0,.6,-.8),wantPos=camPos.clone(),wantLook=camLook.clone();let hFov=46,wantFov=46,minV=30,seed=1;
+ const teacherHead=new T.Vector3(0,.78,SEAT_R+.15);
 
  function headOf(role){const c=cast.get(role);if(!c)return null;const v=new T.Vector3();c.char.head.getWorldPosition(v);return v;}
  function shot(){
   const roles=[...cast.keys()];
-  if(phase==='lobby'){wantPos.set(.0,1.42,2.15);wantLook.set(0,.95,-.45);wantFov=58;minV=36;return;}
+  if(phase==='lobby'){wantPos.set(0,1.02,1.85);wantLook.set(0,.5,-.3);wantFov=60;minV=38;return;}
   if(roles.length<=1){
    const c=cast.get(roles[0]),y=HEAD_Y[c?.look.age]??1.12;
-   wantPos.set(0,1.13,SEAT_R+.2);wantLook.set(0,y-.24,-SEAT_R);wantFov=38;minV=30;return;
+   wantPos.set(0,.8,SEAT_R+.25);wantLook.set(0,y-.13,-SEAT_R);wantFov=40;minV=34;return;
   }
   if(focus&&cast.has(focus)){
    const h=headOf(focus)||new T.Vector3();
-   wantPos.set(h.x*.2,1.24,SEAT_R+.6);wantLook.set(h.x*.85,h.y-.06,h.z*.9);wantFov=50;minV=36;return;
+   wantPos.set(h.x*.2,.9,SEAT_R+.55);wantLook.set(h.x*.85,h.y-.1,h.z*.9);wantFov=50;minV=38;return;
   }
-  wantPos.set(0,1.32,SEAT_R+.62);wantLook.set(-.12,.92,-.5);wantFov=72;minV=40;
+  wantPos.set(0,1.0,SEAT_R+.7);wantLook.set(-.1,.5,-.4);wantFov=72;minV=42;
  }
  // 가로 화각을 맞추되, 아주 넓고 낮은 무대에서도 얼굴이 잘리지 않도록 세로 화각의 하한을 둡니다.
  function applyFov(){const aspect=camera.aspect||1.6,f=2*Math.atan(Math.tan(hFov*Math.PI/360)/aspect)*180/Math.PI;camera.fov=Math.max(minV,Math.min(64,f));camera.updateProjectionMatrix();}
@@ -67,7 +68,7 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
   const anchors=room.arrange(ph==='pre'?'pre':ph==='lobby'?'lobby':'main',roles);
   for(const s of seats){
    let c=cast.get(s.role);
-   if(!c){const look=LOOKS[s.lookKey]||LOOKS['elementary-a'];c={char:createCharacter(T,look,{tableY:TABLE_Y+.025-SEAT_Y,tableZ:SEAT_R-TABLE_R+.06,seed:seed++}),look,lookKey:s.lookKey,state:'idle',mood:s.mood||'calm',intensity:s.intensity??.55};scene.add(c.char.group);cast.set(s.role,c);}
+   if(!c){const look=LOOKS[s.lookKey]||LOOKS['elementary-a'];c={char:createCharacter(T,look,{seed:seed++}),look,lookKey:s.lookKey,state:'idle',mood:s.mood||'calm',intensity:s.intensity??.55};scene.add(c.char.group);cast.set(s.role,c);}
    const a=anchors[s.role];c.char.group.position.copy(a.position);c.char.group.rotation.y=a.facing;
    c.mood=s.mood||c.mood;c.intensity=s.intensity??c.intensity;c.state='idle';c.char.setPose(poseFor(c.mood,{state:'idle',intensity:c.intensity}),'idle');
   }

@@ -94,3 +94,14 @@ test('stage mode and quality ladder',()=>{
  assert.equal(nextQualityLevel(40,0),1);assert.equal(nextQualityLevel(15,2),1);assert.equal(nextQualityLevel(25,2),2);assert.equal(nextQualityLevel(60,4),4);assert.equal(nextQualityLevel(10,0),0);
  assert.equal(isTooSlow(55,4),true);assert.equal(isTooSlow(55,3),false);assert.equal(isTooSlow(45,4),false);
 });
+test('characters are about two heads tall with short one-piece soft arms',async()=>{
+ const T=await import('../public/vendor/three-stage.js');const {createCharacter}=await import('../public/stage/character.js');
+ for(const [key,look] of Object.entries(LOOKS)){
+  const c=createCharacter(T,look,{seed:1}),m=c.measure();
+  const ratio=(m.head+m.body)/m.head;
+  assert.ok(ratio>=1.8&&ratio<=2.3,`${key}: ${ratio.toFixed(2)} heads tall`);
+  assert.equal(m.armPieces,1,`${key}: arms bend as one soft piece, not jointed segments`);
+  assert.ok(m.arm<m.head,`${key}: arms shorter than the head`);
+  c.dispose();
+ }
+});
