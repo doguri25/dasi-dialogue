@@ -21,7 +21,9 @@ const $=s=>document.querySelector(s);
 const defaults={anthropic:'claude-sonnet-4-6',gemini:'gemini-3.8-flash',openai:'gpt-5.4-mini'};
 const providers={anthropic:'Claude',gemini:'Gemini',openai:'ChatGPT · OpenAI'};
 const storageKey='dasi.sessions.v1';
-let saved=[];try{const v=JSON.parse(localStorage.getItem(storageKey)||'[]');if(Array.isArray(v))saved=v.filter(x=>x&&scenarios.some(c=>c.id===x.scenarioId)&&Array.isArray(x.messages)&&x.checks&&x.agreement).slice(0,20);}catch{}
+// 기록은 저장할 때마다 새로 읽습니다(두 탭에서 열어도 서로의 기록을 지우지 않게).
+function readRecords(){try{const v=JSON.parse(localStorage.getItem(storageKey)||'[]');return Array.isArray(v)?v.filter(x=>x&&scenarios.some(c=>c.id===x.scenarioId)&&Array.isArray(x.messages)&&x.checks&&x.agreement).slice(0,20):[];}catch{return null;}}
+let saved=readRecords()||[];
 const state={view:'home',query:'',grade:'전체',category:'전체',difficulty:'전체',session:null,draft:'',page:0,busy:false,error:'',review:null,mode:'demo',provider:'anthropic',model:defaults.anthropic,apiKey:'',tts:false,largeText:false,notesOpen:false,replay:null,replayState:'',replayText:''};
 try{state.largeText=localStorage.getItem('dasi.large-text')==='true';}catch{}
 let saveState='ok',saveTimer=0,toastTimer=0,lastDeleted=null;
@@ -35,9 +37,9 @@ const options=()=>questionOptions(state.session,scenario());
 const inRoom=()=>state.view==='room'&&state.session&&!state.session.finished;
 const connected=()=>state.mode==='ai'&&!!state.apiKey;
 
-function notify(text,{undo=false}={}){
+function notify(text,{undo=''}={}){
  const t=$('#toast');t.replaceChildren();const span=document.createElement('span');span.textContent=text;t.append(span);
- if(undo){const b=document.createElement('button');b.type='button';b.className='link';b.dataset.action='undo-delete';b.textContent='되돌리기';t.append(b);}
+ if(undo){const b=document.createElement('button');b.type='button';b.className='link';b.dataset.action=undo;b.textContent='되돌리기';t.append(b);}
  t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),undo?7000:3200);
 }
 
@@ -96,7 +98,7 @@ function persist(){
  clearTimeout(saveTimer);saveTimer=0;const s=state.session;if(!s)return;
  rememberWorkspace(s,{draft:state.draft,inputMode:'write',selectedChoice:null,choicePage:state.page});
  if(!worthKeeping(s)&&!saved.some(x=>x.id===s.id))return;
- const next=upsertRecord(saved,s,state.review);
+ const next=upsertRecord(readRecords()??saved,s,state.review);
  try{localStorage.setItem(storageKey,JSON.stringify(next));saved=next;setSaveState('ok');}catch{saved=next;setSaveState('failed');}
 }
 function persistSoon(){clearTimeout(saveTimer);saveTimer=setTimeout(persist,450);}
@@ -110,13 +112,13 @@ function go(view){
 function start(id,variant='cooperative'){
  const c=scenarios.find(x=>x.id===id);if(!c||state.busy)return;
  persist();stopSpeech();endReplay();
- state.session=startSession(c,variant);state.draft='';state.page=0;state.error='';state.review=null;state.notesOpen=false;state.view='room';
+ state.session=startSession(c,variant);state.draft='';state.page=0;state.error='';speechInfo='';state.review=null;state.notesOpen=false;state.view='room';
  greetTarget();render();$('#main')?.focus({preventScroll:true});
 }
 function open(record){
  if(!record||state.busy)return;persist();stopSpeech();endReplay();
  state.session=JSON.parse(JSON.stringify(record));state.review=state.session.savedReview||null;
- const w=restoreWorkspace(state.session,scenario());state.draft=w.draft;state.page=w.choicePage;state.error='';state.notesOpen=false;state.view='room';
+ const w=restoreWorkspace(state.session,scenario());state.draft=w.draft;state.page=w.choicePage;state.error='';speechInfo='';state.notesOpen=false;state.view='room';
  if(state.session.phase==='intake'){state.session.phase='pre';state.session.application={...state.session.application,readAt:state.session.application?.readAt||new Date().toISOString()};greetTarget();}
  render();$('#main')?.focus({preventScroll:true});
 }
@@ -124,7 +126,7 @@ function greetTarget(){const s=state.session,c=scenario();if(s.phase!=='pre'||s.
 function chooseTarget(value){
  const s=state.session;if(!s||s.target===value)return;
  stopSpeech();rememberWorkspace(s,{draft:state.draft,inputMode:'write',selectedChoice:null,choicePage:state.page});
- s.target=value;state.draft=s.workspace?.drafts?.[`${s.phase}:${value}`]||'';state.page=0;s.coach=null;state.error='';greetTarget();render();
+ s.target=value;speechInfo='';state.draft=s.workspace?.drafts?.[`${s.phase}:${value}`]||'';state.page=0;s.coach=null;state.error='';greetTarget();render();
 }
 function pickTarget(role){
  const s=state.session;if(!inRoom()||state.busy||recording||keyChecking||$('#modal').open||s.target===role)return;
@@ -152,7 +154,7 @@ async function sendMessage(raw,method){
  if(state.busy||recording||!inRoom()||!text)return;
  if(state.mode==='ai'&&!state.apiKey){openSettings();notify('AI 역할 대화에는 API 키가 필요해요. 키를 넣거나 시나리오 체험으로 바꿔 주세요.');$('#api-key')?.focus();return;}
  if(s.messages.length>154){state.error='이 연습의 대화 한도에 가까워졌어요. 마치기를 눌러 회고해 주세요.';render();return;}
- if(state.tts)primeVoice();sounds.play('send');state.error='';
+ if(state.tts)primeVoice();sounds.play('send');state.error='';speechInfo='';
  const preStep=s.phase==='pre'?preStepFor(s):undefined;if(preStep)s.preSteps={...s.preSteps,[s.target]:preStep};
  const turn={preStep,kind:'teacher',phase:s.phase,target:s.target,text,inputMethod:method};
  s.messages.push(turn);if(method==='write')state.draft='';state.busy=true;render();stage?.teacherSaid(text);stage?.think();
@@ -162,15 +164,20 @@ async function sendMessage(raw,method){
   if(state.mode==='ai')s.messages.at(-1).nextQuestions=result.teacherChoices;
   if(!state.tts)sounds.play('reply');s.coach=result;state.page=0;if(preStep==='intro')markIntroductionSent(s);
   stage?.speak(result.messages,{tts:state.tts,risk:result.risk});
- }catch(err){stage?.reset();s.messages.splice(s.messages.indexOf(turn),1);if(preStep)s.preSteps={...s.preSteps,[s.target]:preStep};state.draft=text;state.error=err.message;}
- finally{state.busy=false;persist();render();if(!isPhone()||state.error)$('#draft')?.focus({preventScroll:true});}
+ }catch(err){stage?.reset();s.messages.splice(s.messages.indexOf(turn),1);if(preStep)s.preSteps={...s.preSteps,[s.target]:preStep};if(method==='write'||!state.draft.trim())state.draft=text;state.error=err.message;}
+ finally{
+  state.busy=false;persist();render();
+  // 직접 쓴 말이나 오류 뒤에는 입력칸으로, 제안을 누른 뒤에는 제안으로 초점을 둡니다(숫자 키를 이어서 쓰고, 태블릿 자판이 저절로 뜨지 않게).
+  if(isPhone())return;
+  if(method==='write'||state.error)$('#draft')?.focus({preventScroll:true});else document.querySelector('.sug-say')?.focus({preventScroll:true});
+ }
 }
 function say(id){const q=options().find(q=>q.id===id);if(q){stage?.attend?.();sendMessage(q.text,'choice');}}
 function undoTurn(){
  const s=state.session;if(!s||state.busy||recording||!canRetry(s))return;
  stopSpeech();stage?.reset();const turn=retryLastTurn(s);if(!turn)return;
- s.coach=null;state.page=0;state.error='';state.draft=turn.text;persist();render();
- notify('방금 말과 답을 지웠어요. 고쳐서 다시 보내 보세요.');$('#draft')?.focus({preventScroll:true});
+ const keep=!!state.draft.trim();s.coach=null;state.page=0;state.error='';if(!keep)state.draft=turn.text;persist();render();
+ notify(keep?'방금 말과 답을 지웠어요. 쓰던 글은 그대로 두었어요.':'방금 말과 답을 지웠어요. 고쳐서 다시 보내 보세요.');$('#draft')?.focus({preventScroll:true});
 }
 function advance(){
  const s=state.session;if(!s||state.busy||!canAdvance(s))return;
@@ -184,6 +191,13 @@ function finish(){
  const s=state.session;if(!s||state.busy)return;
  stopSpeech();rememberWorkspace(s,{draft:state.draft,inputMode:'write',selectedChoice:null,choicePage:state.page});
  s.finished=true;s.outcome=defaultOutcome(s);state.review=null;state.notesOpen=false;state.error='';persist();render();$('#main')?.focus({preventScroll:true});
+ notify('연습을 마치고 회고로 왔어요.',{undo:'unfinish'});
+}
+// 마치기 되돌리기: 확인 창 대신, 마친 연습을 그 자리에서 다시 이어 갑니다.
+function reopen(){
+ const s=state.session;if(!s||!s.finished||state.busy)return;
+ stopSpeech();endReplay();s.finished=false;s.outcome='';state.review=null;state.error='';state.view='room';$('#toast').classList.remove('show');
+ persist();render();$('#main')?.focus({preventScroll:true});
 }
 
 // ── 음성 입력 ───────────────────────────────────────────────
@@ -241,8 +255,8 @@ const actions={
  start:b=>start(b.dataset.id,b.dataset.variant),
  resume:b=>{if(state.session?.id===b.dataset.id&&!state.session.finished){go('room');}else open(saved.find(x=>x.id===b.dataset.id));},
  'open-record':b=>open(saved.find(x=>x.id===b.dataset.id)),
- 'delete-record':b=>{const i=saved.findIndex(x=>x.id===b.dataset.id);if(i<0)return;const record=saved[i];if(writeRecords(saved.filter(x=>x.id!==record.id))){lastDeleted={record,i};if(state.session?.id===record.id&&!state.busy)state.session=null;render();notify('기록을 삭제했어요.',{undo:true});}},
- 'undo-delete':()=>{if(!lastDeleted)return;const next=[...saved];next.splice(Math.min(lastDeleted.i,next.length),0,lastDeleted.record);if(writeRecords(next.slice(0,20))){lastDeleted=null;$('#toast').classList.remove('show');render();}},
+ 'delete-record':b=>{saved=readRecords()??saved;const i=saved.findIndex(x=>x.id===b.dataset.id);if(i<0)return;const record=saved[i];if(writeRecords(saved.filter(x=>x.id!==record.id))){lastDeleted={record,i};if(state.session?.id===record.id&&!state.busy)state.session=null;render();notify('기록을 삭제했어요.',{undo:'undo-delete'});}},
+ 'undo-delete':()=>{if(!lastDeleted)return;const next=[...(readRecords()??saved)];next.splice(Math.min(lastDeleted.i,next.length),0,lastDeleted.record);if(writeRecords(next.slice(0,20))){lastDeleted=null;$('#toast').classList.remove('show');render();}},
  filter:b=>{state[b.dataset.key]=b.dataset.value;render();},
  'clear-filters':()=>{state.query='';state.grade=state.category=state.difficulty='전체';render();$('#search')?.focus({preventScroll:true});},
  say:b=>say(b.dataset.id),
@@ -267,16 +281,21 @@ const actions={
  'check-key':async b=>{const status=$('#connection-status'),apiKey=$('#api-key').value.trim();if(!apiKey){status.textContent='API 키를 먼저 넣어 주세요.';return;}keyChecking=true;b.disabled=true;status.textContent='짧은 요청으로 연결을 확인하는 중…';try{await api('check',{provider:state.provider,model:state.model,apiKey});status.textContent='연결을 확인했어요. 바로 쓸 수 있어요.';}catch(err){status.textContent=err.message;}finally{keyChecking=false;b.disabled=false;}},
  outcome:b=>{state.session.outcome=b.dataset.value;persist();render();},
  again:()=>start(state.session.scenarioId,state.session.variant),
+ unfinish:reopen,
+ reopen,
  print:()=>{preparePrint();window.print();},
  export:()=>{const s=state.session,c=scenario(),blob=new Blob([exportText(s,c,state.review||s.savedReview||localReview(s,c))],{type:'text/markdown;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`다시대화-${s.scenarioId}-${new Date().toISOString().slice(0,10)}.md`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);},
  'ai-review':async()=>{if(state.mode!=='ai'||!state.apiKey){openSettings();notify('AI를 연결한 뒤 심층 회고를 요청해 주세요.');return;}state.busy=true;state.error='';render();try{state.review=await api('review',{provider:state.provider,model:state.model,apiKey:state.apiKey,session:sessionForAI(state.session)});}catch(err){state.error=err.message;}finally{state.busy=false;persist();render();}},
  replay:b=>playReplay(Number(b.dataset.index))
 };
 const ALWAYS=new Set(['close','sound-toggle','tts-toggle','text-size','settings','stage-skip','notes','check-key','forget-key']);
+// 두 번 누르기(더블클릭)의 두 번째 누름은 무시합니다. 첫 누름으로 화면이 바뀐 뒤 새 단추를 잘못 누르지 않게.
+const ONCE=new Set(['say','start','quick','resume','open-record','delete-record','undo-delete','finish','advance','undo','again','unfinish','reopen','more','edit-suggestion','go']);
 document.addEventListener('click',event=>{
  const b=event.target.closest('[data-action]');if(!b||b.disabled)return;
  const a=b.dataset.action,fn=actions[a];if(!fn)return;
  event.preventDefault();
+ if(event.detail>1&&ONCE.has(a))return;
  if((state.busy||keyChecking)&&!ALWAYS.has(a))return;
  fn(b);
 });
@@ -309,7 +328,7 @@ function refreshChecks(){
 // 키보드: 입력칸에서 Enter는 보내기, Shift+Enter는 줄바꿈. 입력칸 밖에서 1–4는 그 제안을 바로 보냅니다.
 const writing=t=>t?.closest?.('input,textarea,select,[contenteditable]:not([contenteditable="false"]),dialog');
 document.addEventListener('keydown',event=>{
- if(event.key==='Escape'&&state.notesOpen&&!$('#modal').open){state.notesOpen=false;render();return;}
+ if(event.key==='Escape'&&state.notesOpen&&!$('#modal').open){state.notesOpen=false;render();$('.notes-toggle')?.focus({preventScroll:true});return;}
  if(event.target.id==='draft'&&event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();sendMessage(state.draft,'write');return;}
  if(event.defaultPrevented||event.isComposing||event.ctrlKey||event.metaKey||event.altKey||event.repeat)return;
  if(!inRoom()||state.busy||recording||$('#modal').open||writing(event.target))return;
@@ -322,5 +341,6 @@ $('#modal').addEventListener('pointerdown',event=>{backdropPress=outsideDialog(e
 $('#modal').addEventListener('click',event=>{if(backdropPress&&outsideDialog(event))closeDialog();backdropPress=false;});
 addEventListener('resize',()=>{if(state.notesOpen&&isWide()){state.notesOpen=false;render();}});
 matchMedia('(max-width: 719px)').addEventListener('change',()=>{if(inRoom())render();});
+addEventListener('storage',event=>{if(event.key!==storageKey)return;const fresh=readRecords();if(!fresh)return;saved=fresh;if(['home','history'].includes(state.view))render();});
 addEventListener('pagehide',()=>{persist();sounds.stop();stopSpeech();state.apiKey='';abortController?.abort();});
 render();

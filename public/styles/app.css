@@ -377,6 +377,9 @@ dialog.sheet{margin:0 0 0 auto;width:min(430px,100vw);height:100dvh;max-height:1
 #toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
 #toast .link{color:var(--now);min-height:36px}
 
+/* 좁은 PC·태블릿 머리줄: 제목이 눌리지 않게 단계 이름을 줄이고 저장 표시·글자 단추 이름을 숨깁니다. */
+.ps-suffix{font-style:normal}
+@media (max-width:1023px){.ps-suffix,.save-state{display:none}.room-bar .wide-only{display:none}.phase-steps li{padding-right:9px}}
 /* 가로 720~1099: 노트는 머리줄의 노트 단추로 여닫는 옆 서랍 */
 @media (max-width:1099px){
  .room{grid-template-columns:minmax(0,1fr) minmax(0,1.12fr);grid-template-areas:"bar bar" "stage talk" "composer composer"}
@@ -463,6 +466,29 @@ dialog.sheet{margin:0 0 0 auto;width:min(430px,100vw);height:100dvh;max-height:1
  .radio-cards.three{grid-template-columns:1fr 1fr 1fr}
  #toast{bottom:auto;top:64px;transform:translate(-50%,-12px)}
  #toast.show{transform:translate(-50%,0)}
+}
+/* 휴대전화를 가로로 눕힌 낮은 화면: 무대와 대화는 나란히, 제안은 한 줄로 밀어 보는 카드. */
+@media (max-height:540px) and (min-width:720px){
+ .frame{min-height:0}
+ .room-bar{height:48px}
+ .room-title p{display:none}
+ .stage-area{padding-top:6px}
+ .stage-frame .flat-stage{--flat-top:50px}
+ .faces{top:12px;left:24px}
+ .face span:not(.avatar){display:none}.face{padding:0 4px;gap:0}.face.on{padding-right:11px;gap:6px}.face.on span{display:inline}
+ .stage-tools{top:auto;bottom:8px;right:8px;flex-direction:row}
+ .stage-tools [data-action="stage-skip"]{display:none}
+ .stage-frame .stage-caption{display:none!important}
+ .composer{gap:4px;padding:4px 12px 6px}
+ .sug-head{min-height:24px}
+ .pre-steps,.keys-hint,.sug-head .source{display:none}
+ .sug-head .more{margin-left:auto}
+ .suggestions-track{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
+ .suggestions-track::-webkit-scrollbar{display:none}
+ .sug{flex:0 0 46%;scroll-snap-align:start}
+ .sug-say{padding:6px 10px 7px;min-height:0}
+ .sug-text{font-size:.82rem;line-height:1.4}
+ .compose textarea{min-height:36px;padding:6px 10px}
 }
 @media (max-width:359px){
  .phase-short{display:none}

@@ -21,7 +21,7 @@ function caseCard(c){
 }
 export function homeView(state,{continuing,continuingCase,continuingLive}){
  const list=filterCases(state),filtered=state.query||state.grade!=='전체'||state.category!=='전체'||state.difficulty!=='전체';
- const resume=continuing&&continuingCase?`<article class="resume-card"><span class="kicker">이어서 하기</span><strong>${e(continuingCase.title)}</strong><span>${phases[continuing.phase]} · ${e(variants[continuing.variant].label)} · 나눈 말 ${continuing.messages.filter(m=>m.kind==='teacher').length}개</span>${btn('resume',`${continuingLive?'연습실로 돌아가기':'이어서 하기'}${icon('arrow')}`,'btn primary',`data-id="${continuing.id}"`)}</article>`:'';
+ const resume=continuing&&continuingCase?`<article class="resume-card"><span class="kicker">이어서 하기</span><strong>${e(continuingCase.title)}</strong><span>${phases[continuing.phase]} · ${e(variants[continuing.variant].label)} · 나눈 말 ${continuing.messages.filter(m=>m.kind==='teacher').length}개</span>${btn('resume',`${continuingLive?'연습실로 돌아가기':'이어서 하기'}${icon('arrow')}`,'btn primary',`data-id="${e(continuing.id)}"`)}</article>`:'';
  return `<main id="main" class="home" tabindex="-1">
   <section class="home-side" aria-label="시작하기">
    <div class="home-intro"><span class="kicker">관계회복 대화 연습실</span><h1>다음 만남을 위한<br>한 번의 연습</h1><p>가상 학생의 이야기를 듣고 사전·본·사후모임 질문을 연습해요. 마이크나 AI 없이도 바로 시작할 수 있어요.</p></div>

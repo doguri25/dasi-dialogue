@@ -19,8 +19,8 @@ function roomBar(s,c,{saveState,connected},left){
  const at=STEPS.findIndex(([k])=>k===s.phase);
  return `<header class="room-bar">
   <button type="button" class="icon-btn back" data-action="go" data-view="home" aria-label="사례 목록으로">${icon('back')}<span class="wide-only">사례</span></button>
-  <div class="room-title"><h1>${e(c.title)}</h1><p>${c.grade} · ${c.difficulty} · <span class="variant v-${s.variant}">${e(variants[s.variant].label)}</span></p></div>
-  <ol class="phase-steps" aria-label="모임 단계">${STEPS.map(([k,label],i)=>`<li class="${i<at?'done':i===at?'now':''}" ${i===at?'aria-current="step"':''}><span>${i<at?icon('check'):i+1}</span>${label}모임</li>`).join('')}</ol>
+  <div class="room-title"><h1>${e(c.title)}</h1><p>${e(c.grade)} · ${e(c.difficulty)} · <span class="variant v-${s.variant}">${e(variants[s.variant].label)}</span></p></div>
+  <ol class="phase-steps" aria-label="모임 단계">${STEPS.map(([k,label],i)=>`<li class="${i<at?'done':i===at?'now':''}" ${i===at?'aria-current="step"':''}><span>${i<at?icon('check'):i+1}</span>${label}<i class="ps-suffix">모임</i></li>`).join('')}</ol>
   <span class="phase-short" aria-hidden="true">${STEPS[at]?.[1]||''} ${at+1}/3</span>
   <span class="save-state ${saveState==='failed'?'failed':''}" role="status">${saveState==='failed'?'저장 공간을 쓸 수 없어요':icon('check')+'자동 저장'}</span>
   <button type="button" class="icon-btn notes-toggle" data-action="notes" aria-controls="notes" aria-label="노트 열기 — 확인할 것 ${left}개">${icon('note')}<span class="wide-only">노트</span>${left?`<span class="badge">${left}</span>`:''}</button>
@@ -51,7 +51,7 @@ function suggestionHead(s,c,options){
  const intro=s.phase==='pre'&&preStepFor(s)==='intro',source=options[0]?.source;
  const step=s.phase==='pre'?`<span class="pre-steps"><b class="${intro?'now':'done'}">1 모임 안내</b><b class="${intro?'':'now'}">2 이야기 듣기</b></span>`:`<span class="pre-steps"><b class="now">${phases[s.phase]} · ${s.target==='all'?'모두에게':e(roleName(c,s.target))+'에게'}</b></span>`;
  const from=source==='ai'?'<span class="source ai">AI 제안 · 방금 답에 이어서</span>':source==='context'?'<span class="source">방금 말에 이어서</span>':'';
- return `<div class="sug-head"><strong>${intro?'먼저 모임을 안내해요':'제안 문장'}</strong>${step}${from}<span class="keys-hint" aria-hidden="true"><kbd>1</kbd>–<kbd>4</kbd> 바로 보내기</span>${btn('more',icon('refresh')+'<span>다른 제안</span>','link more',`aria-label="다른 제안 보기" ${options.length<=4?'disabled':''}`)}</div>`;
+ return `<div class="sug-head"><strong>${intro?'먼저 모임을 안내해요':'제안 문장'}</strong>${step}${from}<span class="keys-hint" aria-hidden="true"><kbd>1</kbd>–<kbd>4</kbd> 바로 보내기</span>${btn('more',icon('refresh')+'<span>다른 제안</span>','link more',`id="more" aria-label="다른 제안 보기" ${options.length<=4?'disabled':''}`)}</div>`;
 }
 function composer(s,c,state,options,ctx){
  const {recording,interim,speechInfo}=ctx;
@@ -76,7 +76,7 @@ export function checksSection(s,c,state){
  const items=s.phase==='main'?r.items.slice(1):[];
  const next=s.phase==='pre'?'본모임으로':'사후모임으로';
  return `<section class="note checks-note ${r.ready?'ready':''}"><h3>이번 단계에서 확인할 것${r.items.length?`<span class="check-progress">${r.done} / ${r.items.length}</span>`:''}</h3>
-  ${boxes.map(([k,label])=>`<label class="check"><input type="checkbox" data-check="${k}" ${s.checks[k]?'checked':''} ${state.busy?'disabled':''}><span>${e(label)}</span></label>`).join('')}
+  ${boxes.map(([k,label])=>`<label class="check"><input type="checkbox" id="check-${k}" data-check="${k}" ${s.checks[k]?'checked':''} ${state.busy?'disabled':''}><span>${e(label)}</span></label>`).join('')}
   ${items.map(i=>`<p class="check-item ${i.done?'done':''}">${i.done?icon('check'):'<i aria-hidden="true"></i>'}${e(i.label)}<small>아래 합의 기록</small></p>`).join('')}
   ${s.phase==='post'?'<p>약속이 지켜졌는지와 지금 안전한지를 따로 묻고, 추가 지원을 정해요.</p>'+btn('finish','마치고 회고하기','btn primary full'):btn('advance',next+icon('arrow'),'btn primary full',(!canAdvance(s)||state.busy)?'disabled':'')}
   <small class="fine">${s.phase==='pre'?'직접 확인한 것만 표시해요. 서류나 침묵을 동의로 대신하지 않아요.':s.phase==='main'?'합의가 없어도 미합의 내용과 지원 계획을 적으면 이어갈 수 있어요.':''}</small>

@@ -24,8 +24,8 @@ export function reviewView(s,c,state,{replayScene}){
   <div class="print-head" aria-hidden="true"><img src="mark.svg" alt="" width="28" height="28"><strong>다시, 대화 · 연습 회고</strong><span>${e(c.title)} · ${e(variants[s.variant].label)} · ${e(dateText(s.startedAt))}</span></div>
   <header class="review-head">
    <div class="review-title"><span class="kicker">연습 돌아보기</span><h1>${e(c.title)}</h1><p>${e(variants[s.variant].label)} · ${phases[s.phase]}까지 · ${e(dateText(s.startedAt))}</p></div>
-   <div class="outcomes" role="group" aria-label="오늘 모임의 결과">${OUTCOMES.map(o=>`<button type="button" class="chip ${s.outcome===o?'on':''}" data-action="outcome" data-value="${e(o)}" aria-pressed="${s.outcome===o}">${e(o)}</button>`).join('')}</div>
-   <div class="review-actions">${btn('again',icon('refresh')+'<span>다시 연습</span>','btn outline')}${btn('print',icon('print')+'<span>인쇄</span>','btn outline')}${btn('export',icon('down')+'<span>내려받기</span>','btn outline')}${btn('ai-review',icon('spark')+`<span>${state.busy?'회고 만드는 중…':'AI 심층 회고'}</span>`,'btn outline',state.busy?'disabled':'')}</div>
+   <div class="outcomes" role="group" aria-label="오늘 모임의 결과">${OUTCOMES.map((o,i)=>`<button type="button" id="outcome-${i}" class="chip ${s.outcome===o?'on':''}" data-action="outcome" data-value="${e(o)}" aria-pressed="${s.outcome===o}">${e(o)}</button>`).join('')}</div>
+   <div class="review-actions">${btn('reopen',icon('undo')+'<span>이어서 연습</span>','btn outline','title="마친 연습을 그 자리에서 이어 가요"')}${btn('again',icon('refresh')+'<span>처음부터 다시</span>','btn outline')}${btn('print',icon('print')+'<span>인쇄</span>','btn outline')}${btn('export',icon('down')+'<span>내려받기</span>','btn outline')}${btn('ai-review',icon('spark')+`<span>${state.busy?'회고 만드는 중…':'AI 심층 회고'}</span>`,'btn outline',state.busy?'disabled':'')}</div>
    <p class="outcome-print">결과: ${e(s.outcome)}</p>
   </header>
   ${state.error?`<p class="error" role="alert">${e(state.error)}</p>`:''}

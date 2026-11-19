@@ -268,6 +268,44 @@ try{
   await done('large',t);
  }
 
+ // 8-2. 검토에서 찾은 것: 마치기 되돌리기, 두 번 누르기, 숫자 키 연달아, 쓰던 글 지키기, 두 탭, 휴대전화 가로, 음성 안내 지우기, 좁은 태블릿 제목, 체크 뒤 초점
+ if(want('fixes')){const t=await open(),{page}=t;
+  await quick(page);const first=await say(page,0);
+  await act(page,'finish').click();await page.locator('.review').waitFor();
+  await page.locator('#toast [data-action="unfinish"]').click();await page.locator('.room').waitFor();
+  assert.equal(await lastTeacher(page),first,'undoing 마치기 returns to the same practice');assert.equal((await stored(page))[0].finished,false);
+  await act(page,'finish').click();await page.locator('.review').waitFor();await act(page,'reopen').click();await page.locator('.room').waitFor();
+  assert.equal(await lastTeacher(page),first,'a finished practice can be continued from the review');
+  let n=await teacherCount(page);await page.locator('.sug .sug-say').first().dblclick();await settled(page);await page.waitForTimeout(300);
+  assert.equal(await teacherCount(page),n+1,'a double-click sends one line');
+  await act(page,'go','[data-view="home"]').click();await page.locator(`.case[data-id="${scenarios[2].id}"] .case-main`).dblclick();await page.locator('.room').waitFor();await page.waitForTimeout(300);
+  assert.equal(await teacherCount(page),0,'a double-click on a case only starts it');
+  await say(page,0);n=await teacherCount(page);await page.keyboard.press('2');await page.waitForFunction(n=>document.querySelectorAll('#transcript .msg.teacher').length===n+1,n);await settled(page);
+  assert.notEqual(await page.evaluate(()=>document.activeElement?.id),'draft','tapping a suggestion does not move focus into the input');
+  n=await teacherCount(page);await page.keyboard.press('3');await page.waitForFunction(n=>document.querySelectorAll('#transcript .msg.teacher').length===n+1,n);await settled(page);
+  // 쓰던 글: 되돌리기와 실패한 제안 보내기가 덮어쓰지 않음
+  await page.locator('#draft').fill('쓰고 있던 내 질문');await page.locator('#transcript .msg.teacher').last().locator('[data-action="undo"]').click();
+  assert.equal(await page.locator('#draft').inputValue(),'쓰고 있던 내 질문','undo keeps what the teacher is writing');
+  await act(page,'settings').click();await page.locator('#modal input[name="mode"][value="ai"]').check();await page.locator('#api-key').fill('dummy-key-for-browser-test');await page.keyboard.press('Escape');
+  await page.route('**/api/reply',route=>route.fulfill({status:502,json:{error:'테스트: 잠시 혼잡합니다.'}}));
+  await page.locator('.sug .sug-say').first().click();await page.locator('#reply-error').waitFor();
+  assert.equal(await page.locator('#draft').inputValue(),'쓰고 있던 내 질문','a failed suggestion does not replace a draft');await page.unroute('**/api/reply');
+  await act(page,'settings').click();await page.locator('#modal input[name="mode"][value="demo"]').check();await page.keyboard.press('Escape');
+  // 음성 안내는 보낸 뒤 사라짐
+  await page.evaluate(()=>{window.SpeechRecognition=undefined;window.webkitSpeechRecognition=undefined;});await act(page,'mic').click();assert.match(await page.locator('#speech-status').innerText(),/지원하지/);
+  await page.locator('#draft').fill('글로 묻기');await page.locator('#draft').press('Enter');await settled(page);assert.equal((await page.locator('#speech-status').innerText()).trim(),'','old speech notes clear after sending');
+  // 키보드로 체크해도 초점이 그 칸에 남음
+  await page.locator('#notes input[data-check="v"]').focus();await page.keyboard.press('Space');assert.equal(await page.evaluate(()=>document.activeElement?.dataset?.check),'v');
+  // 두 탭: 서로의 기록을 지우지 않음
+  const other=await t.context.newPage();await other.goto(base);await other.locator('.appbar').waitFor();await other.locator(`.case[data-id="${scenarios[4].id}"] .case-main`).click();await other.locator('.room').waitFor();await say(other,0);
+  await say(page,0);
+  const ids=(await stored(page)).map(x=>x.scenarioId);assert.ok(ids.includes(scenarios[4].id)&&ids.includes(scenarios[2].id),'both tabs keep their records '+ids);await other.close();
+  // 좁은 태블릿의 머리줄 제목, 휴대전화 가로
+  await page.setViewportSize({width:768,height:1024});assert.ok((await page.locator('.room-title h1').boundingBox()).width>=120,'the title stays readable at 768');
+  for(const [w,h] of [[844,390],[740,360],[932,430]]){await page.setViewportSize({width:w,height:h});assert.ok(await fitsScreen(page),`phone landscape ${w}x${h} fits`);const sb=await page.locator('#send').boundingBox(),tb=await page.locator('#transcript').boundingBox();assert.ok(sb.y+sb.height<=h&&tb.height>=70,`landscape ${w}x${h}: send ${sb.y+sb.height}, transcript ${tb.height}`);}
+  await done('fixes',t);
+ }
+
  // 9. 휴대전화: 첫 화면·연습실 한 화면, 가로로 미는 제안 카드(전체 글, 누르면 보냄), 노트 판(남은 확인 수), 누르기 크기
  if(want('phone'))for(const [width,height,name] of [[390,844,'iphone'],[440,956,'promax'],[320,568,'se1'],[360,740,'android']]){
   const t=await open({width,height,mobile:true}),{page}=t;
