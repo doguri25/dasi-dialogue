@@ -181,6 +181,40 @@ try{
   assert.deepEqual(errors,[]);await context.close();
   results.push('replay: review scenes replay on the stage (my line, then the answer), again, close, not printed');
  }
+ // 5. 휴대전화 첫 화면: 브라우저 주소창과 아래 메뉴를 뺀 높이 안에 첫 화면의 두 버튼이 메뉴에 가리지 않고 들어옴.
+ if(run('hero')){
+  // [가로, 실제로 보이는 높이, 이름] — Safari·Chrome의 주소창을 뺀 높이입니다.
+  const phones=[[440,800,'iPhone 16 Pro Max Safari'],[440,956,'iPhone 16 Pro Max full'],[430,739,'iPhone 15 Plus Safari'],[393,659,'iPhone 16 Safari'],[390,664,'iPhone 14 Safari'],[375,553,'iPhone SE Safari'],[360,640,'Android Chrome']];
+  const report=[];
+  for(const [w,h,name] of phones){
+   const {context,page,errors}=await open({width:w,height:h});
+   await page.goto(base);await page.waitForSelector('.hero');
+   await page.evaluate(async()=>{await Promise.all(document.getAnimations().filter(a=>a.effect.getTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{})));});
+   const m=await page.evaluate(()=>{const q=s=>document.querySelector(s).getBoundingClientRect();const dock=q('.app-nav'),quick=q('.hero [data-action="quick"]'),guide=q('.hero [data-action="guide"]'),stage=q('.hero-stage');
+    return {dock:dock.top,quick:quick.bottom,guide:guide.bottom,quickH:quick.height,guideH:guide.height,stage:stage.height,h1:parseFloat(getComputedStyle(document.querySelector('.hero h1')).fontSize),wide:document.documentElement.scrollWidth<=innerWidth};});
+   report.push({name,...Object.fromEntries(Object.entries(m).map(([k,v])=>[k,typeof v==='number'?Math.round(v):v]))});
+   assert.ok(m.quick<=m.dock-8,`${name}: 바로 연습 시작 is above the bottom menu (${Math.round(m.quick)} vs ${Math.round(m.dock)})`);
+   if(h>=640)assert.ok(m.guide<=m.dock-8,`${name}: 사용 방법 보기 is above the bottom menu (${Math.round(m.guide)} vs ${Math.round(m.dock)})`);
+   assert.ok(m.quickH>=48&&m.guideH>=48,`${name}: buttons stay easy to tap`);
+   assert.ok(m.stage>=120,`${name}: the picture keeps some room (${Math.round(m.stage)})`);
+   assert.ok(m.h1>=26,`${name}: the headline stays large (${m.h1})`);
+   assert.ok(m.wide,`${name}: no sideways scroll`);
+   if(name==='iPhone 16 Pro Max Safari')await page.screenshot({path:'.test-artifacts/phone-hero-16promax.png'});
+   assert.deepEqual(errors,[]);await context.close();
+  }
+  // 가장 좁은 화면과 큰 글씨에서도 버튼 글자가 잘리지 않고, 큰 글씨에서도 바로 연습 시작이 메뉴 위에 있음.
+  for(const [w,h,name] of [[320,568,'320px phone'],[375,553,'iPhone SE Safari'],[440,800,'iPhone 16 Pro Max Safari']])for(const large of [false,true]){
+   const {context,page,errors,action}=await open({width:w,height:h});
+   await page.goto(base);await page.waitForSelector('.hero');if(large)await action('text-size').click();
+   await page.evaluate(async()=>{await Promise.all(document.getAnimations().filter(a=>a.effect.getTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{})));});
+   const m=await page.evaluate(()=>{const bs=[...document.querySelectorAll('.hero-actions .button')];return {clipped:bs.map(b=>b.scrollWidth>b.clientWidth+1),quick:bs[0].getBoundingClientRect().bottom,dock:document.querySelector('.app-nav').getBoundingClientRect().top};});
+   assert.deepEqual(m.clipped,[false,false],`${name}${large?' large text':''}: button labels fit`);
+   assert.ok(m.quick<=m.dock-8,`${name}${large?' large text':''}: 바로 연습 시작 is above the bottom menu (${Math.round(m.quick)} vs ${Math.round(m.dock)})`);
+   assert.deepEqual(errors,[]);await context.close();
+  }
+  await writeFile('.test-artifacts/phone-hero.json',JSON.stringify(report,null,2));
+  results.push(`hero: first screen buttons clear of the bottom menu on ${phones.length} phone sizes`);
+ }
  await writeFile('.test-artifacts/features-browser.json',JSON.stringify({passed:true,results},null,2));
  console.log(JSON.stringify({passed:true,results}));
 }finally{await browser.close();}

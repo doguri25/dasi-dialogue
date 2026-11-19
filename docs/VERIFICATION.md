@@ -268,3 +268,12 @@
 - 전체 실행: `stage-browser.mjs`(빠른 실행, 15개 항목), `responsive.mjs`, `browser.mjs`, `v02-browser.mjs`, `intake-browser.mjs`, `followups-browser.mjs`, `sounds-browser.mjs`, `features-browser.mjs` 통과.
 - `desktop-room.mjs`는 3D 무대 검사를 30분 넘게 돌린 바로 뒤의 첫 실행에서 한 번 실패했습니다("카드 네 장이 칸 안에 2×2로 들어가야 함"). 같은 코드로 바로 세 번 다시 돌려 모두 통과했습니다. 이번 변경은 무대 코드뿐이고 카드 화면은 바뀌지 않았지만, 실패한 창 크기와 원인은 확인하지 못했습니다. 시간에 따라 흔들리는 실패로 남겨 둡니다.
 - 한계: 실제 그래픽 카드에서의 모양·속도는 확인하지 않았습니다.
+
+## v0.8.2 — 휴대전화 첫 화면
+
+- 아이폰 16 Pro Max Safari 크기(440×800, 주소창을 뺀 높이)로 재현: "사용 방법 보기" 아래 끝 720px, 아래 메뉴 시작 710px로 겹침. 아이폰 14(390×664)·SE(375×553)에서는 두 버튼이 모두 메뉴 뒤였음.
+- `features-browser.mjs`에 "hero" 항목 추가(고치기 전 실패 확인): 7가지 휴대전화 크기(16 Pro Max Safari·전체, 15 Plus, 16, 14, SE, 안드로이드 360×640)에서 "바로 연습 시작"이 메뉴보다 8px 이상 위, 높이 640 이상에서는 "사용 방법 보기"도, 버튼 높이 48px 이상, 그림 높이 120px 이상, 제목 26px 이상, 가로 스크롤 없음. 덧붙여 폭 320px과 큰 글씨에서 버튼 글자가 잘리지 않는지도 확인했고, 처음 고친 판은 320px에서 "바로 연습 시작" 글자가 잘려 실패했습니다.
+- 고친 뒤: 16 Pro Max Safari에서 두 버튼 아래 끝 644px(메뉴 710px), SE에서 437px(메뉴 463px).
+- `npm test` 68개, `responsive.mjs`, `browser.mjs`, `v02-browser.mjs`, `intake-browser.mjs`, `followups-browser.mjs`, `desktop-room.mjs`, `features-browser.mjs`, `stage-browser.mjs` "library" 통과.
+- 한계: Chromium으로 휴대전화 크기를 흉내 냈을 뿐, 실제 아이폰 Safari에서는 확인하지 않았습니다. Safari 주소창이 커졌다 작아질 때의 높이 변화는 svh(작은 쪽 높이) 기준으로 맞췄습니다.
+

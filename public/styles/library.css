@@ -236,3 +236,36 @@
 .entering .case-card:nth-child(2){animation-delay:.04s}.entering .case-card:nth-child(3){animation-delay:.08s}.entering .case-card:nth-child(4){animation-delay:.12s}.entering .case-card:nth-child(5){animation-delay:.16s}.entering .case-card:nth-child(n+6){animation-delay:.2s}
 @keyframes place{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){.case-card,.case-scene img{transition:none;transform:none!important}}
+/* 휴대전화 첫 화면(v0.8.2): 주소창과 아래 메뉴를 뺀 높이(svh) 안에 그림·소개·두 버튼이 모두 들어오게 합니다.
+   그림이 남는 높이를 나눠 가져 큰 폰에서는 크게, 작은 폰에서는 작게 보이고, 두 버튼은 한 줄에 나란히 둡니다.
+   위 막대(약 74px)와 아래 메뉴(약 88px)에 여유 14px을 더한 176px을 뺍니다. 가로로 눕힌 낮은 화면은 예전처럼 스크롤합니다. */
+@media(max-width:900px) and (min-height:520px){
+ .hero{height:calc(100vh - 176px);height:calc(100svh - 176px);max-height:780px}
+ .hero-stage{aspect-ratio:auto;flex:1 1 auto;min-height:120px}
+ .hero-copy{flex:none;margin:-40px 10px 0;padding:26px 18px 18px}
+ .hero .label{font-size:.78rem}
+ .hero h1{font-size:clamp(1.65rem,7.4vw,2.1rem);margin:8px 0 10px}
+ .hero p{font-size:.95rem;line-height:1.65}
+ .hero-actions{flex-direction:row;flex-wrap:nowrap;gap:8px;margin-top:16px}
+ .hero-actions .button{flex:1 1 0;width:auto;min-width:0;min-height:52px;padding:0 10px;font-size:.95rem;white-space:nowrap}
+ .hero-actions .button .icon{width:20px;height:20px}
+ .hero-meta{margin-top:12px;font-size:.78rem}
+}
+/* 작은 폰(높이 640 미만): 소개 글을 조금 더 줄여 두 버튼을 지킵니다. */
+@media(max-width:900px) and (min-height:520px) and (max-height:639px){
+ .hero-copy{padding:22px 16px 14px}
+ .hero h1{margin:6px 0 8px}
+ .hero p{font-size:.9rem;line-height:1.55}
+ .hero-actions{margin-top:12px}
+ .hero-meta{display:none}
+}
+/* 아주 좁은 폰(폭 360 미만): 나란한 버튼의 글자가 잘리지 않게 아이콘을 빼고 글자를 조금 줄입니다. */
+@media(max-width:359px) and (min-height:520px){
+ .hero-actions .button{padding:0 6px;font-size:.88rem}
+ .hero-actions .button .icon{display:none}
+}
+/* 작은 폰에서 큰 글씨를 켜면 그림을 조금 더 줄여 버튼을 메뉴 위에 둡니다. */
+@media(max-width:900px) and (min-height:520px) and (max-height:639px){
+ .hero-stage{min-height:84px}
+ :root[data-text-size=large] .hero .label{display:none}
+}
