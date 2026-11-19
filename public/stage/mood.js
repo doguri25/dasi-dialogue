@@ -34,7 +34,7 @@ export function inferMood({risk='none',speaker}={}) {
 export function normalizeMood(value,{risk,speaker}={}) {
  const key=typeof value==='string'?value.trim().toLowerCase():'';
  if(key){
-  if(ALIASES[key])return ALIASES[key];
+  if(Object.hasOwn(ALIASES,key))return ALIASES[key];
   const prefix=Object.keys(ALIASES).find(k=>k.length>1&&!/^[a-z]+$/.test(k)&&key.startsWith(k));
   if(prefix)return ALIASES[prefix];
  }

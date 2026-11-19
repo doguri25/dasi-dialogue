@@ -1,73 +1,77 @@
-/* 신청서 확인: 종이 문서처럼 읽고, 아래 막대에서 바로 사전모임으로 */
+/* 신청서 확인: 세 학생·보호자의 의자 색 띠가 있는 종이 문서. 아래 잉크색 막대에서 바로 사전모임으로 */
 .application-reading{max-width:980px;margin:0 auto}
-.intake-intro{display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:32px;background:linear-gradient(135deg,#fff 0%,#f3f8f0 100%);border-radius:var(--radius-l);padding:22px;margin-bottom:26px;box-shadow:var(--shadow-1)}
+.intake-intro{display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:32px;background:var(--paper);border-radius:var(--radius-l);padding:22px;margin:24px 0 26px;box-shadow:inset 0 0 0 1px var(--line)}
 .intake-intro>div{padding:12px 10px 12px 18px}
-.intake-intro h2{font-size:1.8rem;letter-spacing:-.05em;margin:12px 0 16px;line-height:1.45}
-.intake-intro p{font-size:1.04rem;line-height:1.9;color:var(--ink-2)}
+.intake-intro .label{color:var(--muted)}
+.intake-intro h2{font-size:1.9rem;letter-spacing:-.055em;margin:10px 0 16px;line-height:1.35}
+.intake-intro p{font-size:1.02rem;line-height:1.9;color:var(--ink-2)}
 .intake-scene img{max-height:330px}
 .art-disclaimer{display:block;font-size:.8rem;color:var(--muted);margin-top:16px;line-height:1.8}
 .intake-layout{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(330px,1fr);align-items:start;gap:24px}
 .intake-layout>section,.intake-layout>aside{min-width:0}
-.application-paper{position:relative;background:#fffefb;border-radius:var(--radius-l);padding:40px 42px;box-shadow:var(--shadow-2),inset 0 0 0 1px rgba(0,0,0,.03)}
-.application-paper::before{content:"";position:absolute;left:42px;right:42px;top:0;height:5px;border-radius:0 0 6px 6px;background:linear-gradient(90deg,var(--primary),#7fbf96)}
-.application-paper header .label{padding:6px 12px;border-radius:999px;background:var(--primary-soft)}
-.application-paper header p{font-size:.87rem;color:var(--muted);line-height:1.85;margin:12px 0 24px}
-.application-paper h2{font-size:1.55rem;margin-top:12px;letter-spacing:-.045em}
-.application-meta{margin:0 0 30px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.application-meta>div{background:var(--surface-2);border-radius:16px;padding:16px 18px}
-.application-meta dt{font-size:.82rem;color:var(--muted);margin-bottom:5px}
-.application-meta dd{margin:0;font-size:1rem;font-weight:750;overflow-wrap:anywhere}
-.application-section+.application-section{margin-top:34px;padding-top:30px;box-shadow:0 -1px 0 var(--line)}
-.application-section h3{font-size:1.15rem;display:flex;align-items:center;gap:12px;margin:0 0 16px}
-.application-section h3>span{display:grid;place-items:center;background:var(--lilac);color:#5a438f;width:34px;height:34px;border-radius:11px;flex:none;font-size:.92rem}
+.application-paper{position:relative;background:var(--paper);border-radius:var(--radius-l);padding:44px 44px 40px;box-shadow:inset 0 0 0 1px var(--line),0 4px 0 var(--edge);overflow:hidden}
+.application-paper::before{content:"";position:absolute;left:0;right:0;top:0;height:8px;background:linear-gradient(90deg,var(--v) 0 33.3%,var(--a) 33.3% 66.6%,var(--g) 66.6%)}
+.application-paper header .label{color:var(--muted)}
+.application-paper header p{font-size:.87rem;color:var(--ink-2);line-height:1.85;margin:12px 0 24px}
+.application-paper h2{font-size:1.6rem;margin-top:10px;letter-spacing:-.05em}
+.application-meta{margin:0 0 32px;display:grid;grid-template-columns:1fr 1fr;gap:1.5px;border-radius:18px;overflow:hidden;background:#d9dfe5;border:1.5px solid #d9dfe5}
+.application-meta>div{background:var(--paper);padding:16px 18px}
+.application-meta dt{font-size:.8rem;font-weight:650;color:var(--muted);margin-bottom:4px}
+.application-meta dd{margin:0;font-size:1rem;font-weight:740;overflow-wrap:anywhere}
+.application-section+.application-section{margin-top:34px;padding-top:30px;box-shadow:0 -1.5px 0 var(--line)}
+.application-section h3{font-size:1.16rem;display:flex;align-items:center;gap:12px;margin:0 0 16px}
+.application-section h3>span{display:grid;place-items:center;background:var(--paper);color:var(--ink);width:34px;height:34px;border-radius:50%;flex:none;font-size:.9rem;font-weight:820;box-shadow:inset 0 0 0 2px var(--ink)}
 .application-section h4{font-size:1rem;margin:22px 0 10px}
 .application-section p{font-size:1rem;line-height:1.95;overflow-wrap:anywhere}
-.application-request{background:var(--sage);border-radius:18px;padding:20px;margin-top:18px}
-.application-request strong{font-size:.9rem;color:var(--primary)}
+.application-request{background:var(--g-soft);border-radius:18px;padding:20px;margin-top:18px}
+.application-request strong{font-size:.9rem;color:var(--g-ink)}
 .application-request p{margin:8px 0 0}
-.application-student{display:flex;align-items:flex-start;gap:16px;padding:20px;background:var(--surface-2);border-radius:20px;margin:12px 0}
-.application-student:nth-last-child(1){background:#f6f0e2}
-.application-student .avatar{width:74px;height:74px;border-radius:24px}
+.application-student{display:flex;align-items:flex-start;gap:16px;padding:20px;background:var(--v-soft);border-radius:20px;margin:12px 0}
+.application-student:has(.avatar.a){background:var(--a-soft)}
+.application-student:has(.avatar.g){background:var(--g-soft)}
+.application-student .avatar{width:72px;height:72px}
 .application-student>div{min-width:0}
 .application-student strong{font-size:1.12rem}
 .application-student p{margin:6px 0 0;font-size:.95rem}
-.document-list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
-.document-list li{background:var(--surface-2);border-radius:16px;padding:16px 18px;display:grid;gap:6px}
+.document-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.document-list li{background:var(--paper-2);border-radius:16px;padding:15px 18px;display:grid;gap:5px;box-shadow:inset 0 0 0 1px var(--line)}
 .document-list strong{font-size:.94rem}
-.document-list span{font-size:.87rem;color:var(--muted)}
-.document-list .needs-attention{background:var(--peach)}
-.document-list .needs-attention span{color:#864221;font-weight:700}
+.document-list span{font-size:.87rem;color:var(--ink-2)}
+.document-list .needs-attention{background:var(--pebble-soft);box-shadow:inset 4px 0 0 var(--pebble-deep)}
+.document-list .needs-attention span{color:var(--pebble-ink);font-weight:720}
 .application-caption{font-size:.85rem!important;color:var(--muted);margin:15px 0 0}
-.application-caution{background:var(--peach);border-radius:18px;padding:20px;color:#754625}
+.application-caution{background:var(--danger-soft);border-radius:18px;padding:20px;color:var(--danger-ink);box-shadow:inset 4px 0 0 var(--danger)}
 .application-caution strong{font-size:1rem}
 .application-caution p{font-size:.94rem;margin:9px 0 0;line-height:1.85}
-.application-record{margin:24px 0;padding:22px;background:var(--sage);border-radius:20px}
-.application-record h3{font-size:1rem;margin-bottom:14px}
-.application-record p{font-size:.9rem;line-height:1.95;white-space:pre-wrap;overflow-wrap:anywhere}
-.application-reading-next{position:sticky;bottom:16px;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px 18px 18px 26px;margin-top:22px;border-radius:24px;background:rgba(30,77,67,.94);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:#fff;box-shadow:0 20px 44px -18px rgba(18,48,41,.7)}
-.application-reading-next p{font-size:1rem;line-height:1.7;margin:0;color:#e5f0e8}
+.application-record{margin:24px 0;padding:22px;background:var(--paper-2);border-radius:20px;box-shadow:inset 0 0 0 1px var(--line)}
+.application-record h3{font-size:1rem;margin:0 0 12px}
+.application-record p{font-size:.9rem;line-height:1.95;white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+.application-reading-next{position:sticky;bottom:16px;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:16px 16px 16px 26px;margin-top:22px;border-radius:24px;background:var(--ink);color:#fff;box-shadow:0 22px 44px -18px rgba(15,22,38,.7)}
+.application-reading-next p{font-size:1rem;line-height:1.7;margin:0;color:#d5dce8}
 .application-reading-next .button,.application-reading-next .button.full{width:auto;min-height:58px;font-size:1.02rem;flex:none}
-.application-reading-next .button.primary{background:#fff;color:var(--primary-ink);box-shadow:none}
-.application-reading-next .button.primary:hover:not(:disabled){background:#eef6f0}
-dialog .application-paper{padding:6px 0;box-shadow:none;background:transparent}
+/* 읽은 다음은 선생님 차례: 조약돌 색 버튼 */
+.application-reading-next .button.primary{--btn-bg:var(--pebble);--btn-ink:var(--ink);--btn-edge:var(--pebble-deep)}
+.application-reading-next .button.primary:hover:not(:disabled){--btn-bg:#ffd261}
+.application-reading-next :focus-visible{outline-color:var(--pebble)}
+dialog .application-paper{padding:6px 0;box-shadow:none;background:transparent;overflow:visible}
 dialog .application-paper::before{display:none}
 dialog .application-meta{grid-template-columns:1fr}
-@media(min-width:901px) and (max-width:1240px){.intake-layout{grid-template-columns:1fr}.intake-intro{gap:16px}.intake-intro h2{font-size:1.55rem}}
+@media(min-width:901px) and (max-width:1240px){.intake-layout{grid-template-columns:1fr}.intake-intro{gap:16px}.intake-intro h2{font-size:1.6rem}}
 @media(max-width:900px){
  .intake-intro{grid-template-columns:1fr 1fr;gap:16px;padding:18px}.intake-intro h2{font-size:1.5rem}.intake-intro p{font-size:1rem}
  .intake-layout{display:block}
- .application-paper{padding:30px 26px}.application-paper::before{left:26px;right:26px}
+ .application-paper{padding:34px 24px 28px}
  .application-reading-next{bottom:92px;flex-direction:column;align-items:stretch;padding:18px}
  .application-reading-next .button,.application-reading-next .button.full{width:100%}
 }
 @media(max-width:600px){
  .intake-intro{grid-template-columns:1fr;padding:18px;gap:14px}.intake-intro>div{padding:0}.intake-intro h2{font-size:1.55rem;margin:10px 0 14px}.intake-intro p br{display:none}
  .intake-scene img{max-height:220px}
- .application-paper{padding:26px 20px}.application-paper h2{font-size:1.4rem}
- .application-meta{grid-template-columns:1fr;gap:8px}
+ .application-paper{padding:30px 18px 24px}.application-paper h2{font-size:1.4rem}
+ .application-meta{grid-template-columns:1fr}
  .application-section h3{font-size:1.1rem;gap:10px;line-height:1.6}
  .application-student{display:block;padding:18px}
- .application-student .avatar.portrait{float:left;margin:0 14px 6px 0;width:64px;height:64px;border-radius:21px}
+ .application-student .avatar.portrait{float:left;margin:0 14px 6px 0;width:62px;height:62px}
  .application-student::after{content:'';display:block;clear:both}
  .application-student p,.application-section p,.application-caution p{font-size:1rem}
  .document-list span{font-size:.94rem}

@@ -37,3 +37,10 @@ test('v0.3 sessions without mood still resume and get inferred moods',()=>{
  assert.equal(last.mood,undefined);
  assert.equal(normalizeMood(last.mood,{risk:last.risk,speaker:last.speaker}),'hesitant');
 });
+
+test('mood names that match built-in object keys fall back to a real mood',()=>{
+ for(const value of ['constructor','toString','__proto__','hasOwnProperty','valueOf']){
+  const mood=normalizeMood(value,{risk:'none',speaker:'v'});
+  assert.ok(MOODS.includes(mood),`${value} → ${String(mood)}`);
+ }
+});

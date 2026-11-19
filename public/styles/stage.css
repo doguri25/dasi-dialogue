@@ -1,15 +1,16 @@
 /* 무대: 3D/2D 렌더러가 들어가는 칸과 자막. 무대 자체는 장식(aria-hidden)이고 정보는 자막·대화 기록이 전합니다. */
-.stage-host{position:relative;width:100%;height:100%;min-height:0;overflow:hidden;border-radius:inherit;background:radial-gradient(120% 90% at 50% 20%,#f7f0e4 0%,#ece2d1 60%,#e1d5c0 100%);isolation:isolate}
+.stage-host{position:relative;width:100%;height:100%;min-height:0;overflow:hidden;border-radius:inherit;background:radial-gradient(120% 90% at 50% 20%,#f4f6f3 0%,#e3e9e6 60%,#d6dedb 100%);isolation:isolate}
 .stage-host,.stage-host *{box-sizing:border-box}
 .stage-view,.stage-render{position:absolute;inset:0}
 .stage-render canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .stage-host[data-stage-mode="3d"] .stage-view:empty::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.45) 50%,transparent 80%) 0 0/200% 100%;animation:stage-shimmer 1.6s linear infinite}
 @keyframes stage-shimmer{to{background-position:-200% 0}}
-.stage-caption{position:absolute;left:50%;bottom:clamp(10px,3%,22px);transform:translateX(-50%);width:min(92%,760px);max-height:34%;display:flex;flex-direction:column;gap:2px;padding:10px 16px 12px;border-radius:18px;background:rgba(24,46,41,.78);color:#fff;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 12px 30px -16px rgba(0,0,0,.5);z-index:2}
+.stage-caption{position:absolute;left:50%;bottom:clamp(10px,3%,22px);transform:translateX(-50%);width:min(92%,760px);max-height:34%;display:flex;flex-direction:column;gap:2px;padding:10px 18px 12px;border-radius:16px;background:rgba(15,22,38,.8);color:#fff;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 12px 30px -16px rgba(0,0,0,.55);z-index:2}
 .stage-caption[hidden]{display:none}
-.stage-caption-name{font-size:.78rem;font-weight:750;letter-spacing:-.01em;color:#cfe3d3}
+.stage-caption-name{display:flex;align-items:center;gap:8px;font-size:.78rem;font-weight:760;letter-spacing:-.01em;color:#d5dce8}
+.stage-caption-name::before{content:"";flex:none;width:11px;height:9px;background:var(--pebble,#ffc83d);border-radius:54% 46% 52% 48%/48% 54% 46% 52%}
 .stage-caption-text{margin:0;flex:1 1 auto;min-height:0;font-size:1.02rem;line-height:1.55;font-weight:600;overflow:hidden;word-break:keep-all;overflow-wrap:anywhere;min-height:1.55em}
-.stage-host[data-stage-state="speaking"] .stage-caption-name::after{content:"";display:inline-block;width:6px;height:6px;margin-left:8px;border-radius:50%;background:#9fe0b4;vertical-align:middle;animation:stage-pulse 1s ease-in-out infinite}
+.stage-host[data-stage-state="speaking"] .stage-caption-name::before{animation:stage-pulse 1s ease-in-out infinite}
 @keyframes stage-pulse{50%{opacity:.25}}
 /* 그림 무대(2D) */
 .stage-host[data-stage-mode="2d"]{display:flex;flex-direction:column}
@@ -21,10 +22,10 @@
 .flat-seat{position:relative;flex:none;height:min(100%,240px);aspect-ratio:1;transition:transform .6s cubic-bezier(.2,.7,.2,1),opacity .4s}
 .flat-stage[data-count="2"] .flat-seat{height:min(100%,240px,44cqw)}
 .flat-stage[data-count="3"] .flat-seat{height:min(100%,240px,29cqw)}
-.flat-face{position:absolute;inset:0;border-radius:50%;overflow:hidden;background:#e3efde;box-shadow:0 14px 34px -18px rgba(30,60,50,.55);animation:flat-breathe 3.8s ease-in-out infinite;transform-origin:50% 90%}
+.flat-face{position:absolute;inset:0;border-radius:50%;overflow:hidden;background:var(--v-soft,#e4eee0);box-shadow:0 14px 34px -18px rgba(23,32,51,.5);animation:flat-breathe 3.8s ease-in-out infinite;transform-origin:50% 90%}
 .flat-face img{width:100%;height:100%;object-fit:cover;display:block}
-.flat-initial{display:grid;place-items:center;width:100%;height:100%;font-size:2.4rem;font-weight:800;color:#1e4d43;background:#ece8f7}
-.flat-ring{position:absolute;inset:-6px;border-radius:50%;border:4px solid #7fbf96;opacity:0;transform:scale(calc(1 + var(--open, 0) * .06));transition:opacity .2s}
+.flat-initial{display:grid;place-items:center;width:100%;height:100%;font-size:2.4rem;font-weight:800;color:var(--g-ink,#2a5674);background:var(--g-soft,#e1ecf3)}
+.flat-ring{position:absolute;inset:-6px;border-radius:50%;border:4px solid var(--pebble,#ffc83d);opacity:0;transform:scale(calc(1 + var(--open, 0) * .06));transition:opacity .2s}
 .flat-seat[data-state="speaking"] .flat-ring{opacity:1}
 .flat-seat[data-state="thinking"]{transform:translateY(2px) rotate(-3deg)}
 .flat-seat[data-mood="withdrawn"],.flat-seat[data-mood="upset"]{transform:translateY(6px) scale(.94)}
@@ -32,5 +33,12 @@
 .flat-seat[data-mood="anxious"] .flat-face{animation-duration:2.2s}
 .flat-seat.focused{z-index:1}
 @keyframes flat-breathe{50%{transform:scale(1.015)}}
-@media (prefers-reduced-motion: reduce){.flat-face,.stage-host[data-stage-mode="3d"] .stage-view:empty::after,.stage-host[data-stage-state="speaking"] .stage-caption-name::after{animation:none}.flat-seat{transition:none}}
+@media (prefers-reduced-motion: reduce){.flat-face,.stage-host[data-stage-mode="3d"] .stage-view:empty::after,.stage-host[data-stage-state="speaking"] .stage-caption-name::before{animation:none}.flat-seat{transition:none}}
 .flat-seat[data-state="listening"]{transform:translateY(-4px) scale(1.03)}
+/* 휴대전화 3D: 자막은 장면 아래 고정된 띠에 나와 표정을 가리지 않습니다. 띠 높이가 늘 같아 장면이 흔들리지 않습니다. */
+@media(max-width:900px){
+ .stage-frame .stage-host[data-stage-mode="3d"]{display:flex;flex-direction:column}
+ .stage-frame .stage-host[data-stage-mode="3d"] .stage-view{position:relative;inset:auto;flex:1 1 auto;min-height:0}
+ .stage-frame .stage-host[data-stage-mode="3d"] .stage-caption{position:relative;left:auto;bottom:auto;transform:none;width:auto;flex:none;height:5.8em;max-height:none;margin:0 8px 8px;border-radius:14px}
+ .stage-frame .stage-host[data-stage-mode="3d"] .stage-caption[hidden]{display:flex;visibility:hidden}
+}

@@ -128,7 +128,7 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
  }
  resize();setCast({seats:[],phase:'pre'});raf=requestAnimationFrame(frame);
 
- document.addEventListener('visibilitychange',()=>{lastDraw=0;samples=[];evalT=0;});
+ const onVisibility=()=>{lastDraw=0;samples=[];evalT=0;};document.addEventListener('visibilitychange',onVisibility);
  canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();lost=true;lostFns.forEach(fn=>{try{fn();}catch{}});});
 
  return {
@@ -139,6 +139,6 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
   pause(){paused=true;debug.paused=true;if(raf){cancelAnimationFrame(raf);raf=0;}},
   resume(){paused=false;debug.paused=false;lastDraw=0;resize();if(!raf&&!lost&&!disposed)raf=requestAnimationFrame(frame);},
   onLost(fn){lostFns.push(fn);},
-  dispose(){if(disposed)return;disposed=true;cancelAnimationFrame(raf);ro.disconnect();io.disconnect();for(const c of cast.values())c.char.dispose();cast.clear();room.dispose();post.dispose();env.texture.dispose();pmrem.dispose();renderer.dispose();canvas.remove();}
+  dispose(){if(disposed)return;disposed=true;cancelAnimationFrame(raf);ro.disconnect();io.disconnect();document.removeEventListener('visibilitychange',onVisibility);for(const c of cast.values())c.char.dispose();cast.clear();room.dispose();post.dispose();env.texture.dispose();pmrem.dispose();renderer.dispose();canvas.remove();}
  };
 }

@@ -11,7 +11,7 @@ export function applicationDocument(s,c,{e,avatar}) {
 }
 export function applicationView(s,c,ui) {
  const {e,button,icon,sceneHtml,stepper,saveIndicator}=ui;
- return `<div class="room-head"><div>${button('library',icon('back')+'사례 목록','text-button')}<h1>신청서를 살펴보세요</h1><p>${e(c.title)} · 읽은 뒤 바로 사전모임을 시작해요.</p></div><div class="room-actions">${saveIndicator()}${button('save',icon('save')+'기록 저장','button outline')}${button('begin-pre','사전모임 시작하기 '+icon('arrow'),'button primary')}</div></div>${stepper(s)}
+ return `<div class="room-head intake-head"><div class="room-title">${button('library',icon('back')+'사례 목록','text-button')}<h1>신청서를 살펴보세요</h1><p>${e(c.title)} · 읽은 뒤 바로 사전모임을 시작해요.</p></div>${stepper(s)}<div class="room-actions">${saveIndicator()}${button('save',icon('save')+'기록 저장','button outline')}${button('begin-pre','사전모임 시작하기 '+icon('arrow'),'button primary')}</div></div>
  <section class="intake-intro"><div><span class="label">만나기 전에</span><h2>신청서를 읽고,<br>학생의 이야기를 만나요.</h2><p>사전모임에서는 대화모임을 먼저 안내하고<br>학생이 겪은 일을 듣습니다.</p><span class="art-disclaimer">인물과 신청서는 창작입니다. 삽화는 갈등 주제를 표현합니다.</span></div>${sceneHtml(c,'intake-scene')}</section>
  <section id="application-document" class="application-reading" aria-label="가상 신청서">${applicationDocument(s,c,ui)}<div class="application-reading-next"><p>신청서의 내용을 살펴보셨나요?<br>이제 학생에게 모임을 안내해 주세요.</p>${button('begin-pre','사전모임 시작하기 '+icon('arrow'),'button primary full','id="application-continue"')}</div></section>`;
 }
