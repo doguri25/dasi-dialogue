@@ -25,7 +25,9 @@ const storageKey='dasi.sessions.v1';
 function readRecords(){try{const v=JSON.parse(localStorage.getItem(storageKey)||'[]');return Array.isArray(v)?v.filter(x=>x&&scenarios.some(c=>c.id===x.scenarioId)&&Array.isArray(x.messages)&&x.checks&&x.agreement).slice(0,20):[];}catch{return null;}}
 let saved=readRecords()||[];
 const state={view:'home',query:'',grade:'전체',category:'전체',difficulty:'전체',session:null,draft:'',page:0,busy:false,error:'',review:null,mode:'demo',provider:'anthropic',model:defaults.anthropic,apiKey:'',tts:false,largeText:false,notesOpen:false,replay:null,replayState:'',replayText:''};
-try{state.largeText=localStorage.getItem('dasi.large-text')==='true';}catch{}
+// 글자 크기: 고른 적이 있으면 그 값, 없으면 PC(넓은 화면·마우스)는 크게, 휴대전화·태블릿은 기본.
+const pcDefault=()=>matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)').matches;
+try{const v=localStorage.getItem('dasi.large-text');state.largeText=v==null?pcDefault():v==='true';}catch{state.largeText=pcDefault();}
 let saveState='ok',saveTimer=0,toastTimer=0,lastDeleted=null;
 let recognition=null,recording=false,interim='',micBase='',micFinal='',speechInfo='';
 let abortController=null,keyChecking=false,stage=null;

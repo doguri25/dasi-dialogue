@@ -46,3 +46,20 @@ test('a quoted student question about breaks does not hijack the demo story ques
  assert.equal(classify('“무조건 사과해.”라고 말해 주었구나. 그때 어떤 마음이 들었니?'),'feeling');
  assert.equal(classify('“쉬고 싶어요.”라고 말해 주었구나. 그래도 무조건 사과해.'),'pressure');
 });
+// 사용자 요청: 제안 문장이 모두 "~라고 말해 주었구나"로 시작해 되짚기만 하는 말투가 됨 → 네 개 중 되짚기는 많아야 하나, 인용은 짧게.
+test('follow-up suggestions echo the student at most once, with a short quote',()=>{
+ const echo=/라고 (?:말해 주었구나|말씀하셨군요)|했구나|했군요/;
+ const long='제 그림을 허락 없이 가져갔어요. 그리고 다른 친구들한테도 보여 주면서 웃었는데 그게 제일 싫었어요. 다시는 안 그랬으면 좋겠어요.';
+ for(const phase of ['pre','main','post'])for(const target of ['v','a','g',...(phase==='pre'?[]:['all'])])for(const variant of ['cooperative','unsafe']){
+  const s={...session(phase,target),variant};s.messages.at(-1).text=long;
+  for(const intro of [false,true]){
+   if(intro){if(phase!=='pre')continue;s.messages[0].preStep='intro';}
+   const ctx=questionOptions(s,c).filter(q=>q.source==='context');assert.equal(ctx.length,4);
+   const echoes=ctx.filter(q=>echo.test(q.text));
+   assert.ok(echoes.length<=1,`${phase}/${target}/${variant}${intro?'/intro':''}: ${echoes.length} of 4 suggestions echo the student`);
+   for(const q of echoes){const quote=q.text.match(/“([^”]*)”/)?.[1]||'';assert.ok(quote.length<=31,`quote stays short (${quote.length}): ${quote}`);}
+  }
+ }
+ const prompt=rolePrompt(prepareContext(session())).system;
+ assert.match(prompt,/되짚[^.]*많아야 하나/,'the AI is told to echo at most one suggestion');
+});

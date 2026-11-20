@@ -49,6 +49,7 @@ async function done(name,{page,context,problems}){assert.deepEqual(problems,[],n
 try{
  // 1. 첫 화면: 한 화면, 3D를 받지 않음, 검색·필터, 카드나 조건 칩을 한 번 누르면 바로 연습실
  if(want('home')){const t=await open(),{page}=t;
+  assert.equal(await page.evaluate(()=>document.documentElement.dataset.textSize),'large','PC starts with large text');
   assert.equal(await page.locator('.case').count(),30);assert.ok(await fitsScreen(page),'home fits one screen');
   for(const v of ['home','history','help'])assert.ok(await page.locator(`.appbar nav [data-action="go"][data-view="${v}"]`).isVisible(),v);
   assert.ok(await page.locator('.appbar [data-action="settings"]').isVisible());
@@ -196,8 +197,8 @@ try{
  // 6. 설정 판(바로 적용)과 AI: 세 제공사, 이어지는 제안, 오류 시 문장이 입력칸으로, 키는 저장하지 않음, AI 회고
  if(want('ai')){const t=await open(),{page}=t;await quick(page);
   await act(page,'settings').click();await page.locator('#modal.sheet[open]').waitFor();
-  await page.locator('#modal [data-action="text-size"]').click();assert.equal(await page.evaluate(()=>document.documentElement.dataset.textSize),'large');
   await page.locator('#modal [data-action="text-size"]').click();assert.equal(await page.evaluate(()=>document.documentElement.dataset.textSize),'normal');
+  await page.locator('#modal [data-action="text-size"]').click();assert.equal(await page.evaluate(()=>document.documentElement.dataset.textSize),'large');
   await page.locator('#modal input[name="mode"][value="ai"]').check();await page.keyboard.press('Escape');
   const n=await teacherCount(page);await page.locator('.sug .sug-say').first().click();await page.locator('#modal.sheet[open] #api-key').waitFor();assert.equal(await teacherCount(page),n,'no key: nothing is sent');
   const requests=[];let fail=false;
@@ -257,7 +258,9 @@ try{
 
  // 8-1. 큰 글자: 연습실·회고·첫 화면이 어느 폭에서도 옆으로 넘치지 않음
  if(want('large')){const t=await open(),{page}=t;
-  await act(page,'settings').click();await page.locator('#modal [data-action="text-size"]').click();await page.keyboard.press('Escape');
+  // PC는 처음부터 큰 글자. 한 번 끄고 다시 켜서, 고른 값이 저장되는지도 봅니다.
+  await act(page,'settings').click();for(let i=0;i<2;i++)await page.locator('#modal [data-action="text-size"]').click();await page.keyboard.press('Escape');
+  assert.equal(await page.evaluate(()=>localStorage.getItem('dasi.large-text')),'true');
   for(const view of ['home','room','review']){
    if(view==='room'){await quick(page);await say(page,0);}
    if(view==='review'){await act(page,'finish').click();await page.locator('.review').waitFor();}
@@ -265,6 +268,8 @@ try{
    await page.setViewportSize({width:1440,height:900});
   }
   await page.reload();await page.locator('.appbar').waitFor();assert.equal(await page.evaluate(()=>document.documentElement.dataset.textSize),'large','text size is remembered');
+  await act(page,'settings').click();await page.locator('#modal [data-action="text-size"]').click();await page.keyboard.press('Escape');
+  await page.reload();await page.locator('.appbar').waitFor();assert.equal(await page.evaluate(()=>document.documentElement.dataset.textSize),'normal','choosing normal text on a PC is remembered');
   await done('large',t);
  }
 
@@ -309,6 +314,7 @@ try{
  // 9. 휴대전화: 첫 화면·연습실 한 화면, 가로로 미는 제안 카드(전체 글, 누르면 보냄), 노트 판(남은 확인 수), 누르기 크기
  if(want('phone'))for(const [width,height,name] of [[390,844,'iphone'],[440,956,'promax'],[320,568,'se1'],[360,740,'android']]){
   const t=await open({width,height,mobile:true}),{page}=t;
+  assert.equal(await page.evaluate(()=>document.documentElement.dataset.textSize),'normal',`${name}: phones start with normal text`);
   assert.ok(await fitsScreen(page),`${name}: home fits`);
   const bar=await page.locator('.appbar').boundingBox();assert.ok(bar.height<=64);
   for(const v of ['home','history','help'])assert.ok(await page.locator(`.appbar nav [data-action="go"][data-view="${v}"]`).isVisible());

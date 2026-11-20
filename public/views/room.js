@@ -20,7 +20,7 @@ function roomBar(s,c,{saveState,connected},left){
  return `<header class="room-bar">
   <button type="button" class="icon-btn back" data-action="go" data-view="home" aria-label="사례 목록으로">${icon('back')}<span class="wide-only">사례</span></button>
   <div class="room-title"><h1>${e(c.title)}</h1><p>${e(c.grade)} · ${e(c.difficulty)} · <span class="variant v-${s.variant}">${e(variants[s.variant].label)}</span></p></div>
-  <ol class="phase-steps" aria-label="모임 단계">${STEPS.map(([k,label],i)=>`<li class="${i<at?'done':i===at?'now':''}" ${i===at?'aria-current="step"':''}><span>${i<at?icon('check'):i+1}</span>${label}<i class="ps-suffix">모임</i></li>`).join('')}</ol>
+  <ol class="phase-steps" aria-label="모임 단계">${STEPS.map(([k,label],i)=>`<li class="${i<at?'done':i===at?'now':''}" ${i===at?'aria-current="step"':''}><span>${i<at?icon('check'):i+1}</span><b class="ps-name">${label}<i class="ps-suffix">모임</i></b></li>`).join('')}</ol>
   <span class="phase-short" aria-hidden="true">${STEPS[at]?.[1]||''} ${at+1}/3</span>
   <span class="save-state ${saveState==='failed'?'failed':''}" role="status">${saveState==='failed'?'저장 공간을 쓸 수 없어요':icon('check')+'자동 저장'}</span>
   <button type="button" class="icon-btn notes-toggle" data-action="notes" aria-controls="notes" aria-label="노트 열기 — 확인할 것 ${left}개">${icon('note')}<span class="wide-only">노트</span>${left?`<span class="badge">${left}</span>`:''}</button>
