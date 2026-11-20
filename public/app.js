@@ -10,6 +10,7 @@ import {createSounds} from './sounds.js';
 import {startSession,defaultOutcome,worthKeeping,upsertRecord,remainingChecks} from './flow.js';
 import {getStage,readStagePreference,writeStagePreference,stageMode,onStageNotice} from './stage/index.js';
 import {VERSION} from './version.js';
+import {navigate,flyFrom,popIn,fadeUp,ghostTo,bump,glow,stagger} from './motion.js';
 import {e} from './views/ui.js';
 import {homeView} from './views/home.js';
 import {roomView,checksSection,visibleMessages} from './views/room.js';
@@ -29,6 +30,8 @@ const state={view:'home',query:'',grade:'전체',category:'전체',difficulty:'�
 const pcDefault=()=>matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)').matches;
 try{const v=localStorage.getItem('dasi.large-text');state.largeText=v==null?pcDefault():v==='true';}catch{state.largeText=pcDefault();}
 let saveState='ok',saveTimer=0,toastTimer=0,lastDeleted=null;
+let flySource=null,pressedSuggestion=null,savePulseAt=0;
+let tipSeen=false;try{tipSeen=localStorage.getItem('dasi.tip.room')==='1';}catch{}
 let recognition=null,recording=false,interim='',micBase='',micFinal='',speechInfo='';
 let abortController=null,keyChecking=false,stage=null;
 const scenario=()=>scenarios.find(c=>c.id===state.session?.scenarioId);
@@ -41,8 +44,10 @@ const connected=()=>state.mode==='ai'&&!!state.apiKey;
 
 function notify(text,{undo=''}={}){
  const t=$('#toast');t.replaceChildren();const span=document.createElement('span');span.textContent=text;t.append(span);
- if(undo){const b=document.createElement('button');b.type='button';b.className='link';b.dataset.action=undo;b.textContent='되돌리기';t.append(b);}
- t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),undo?7000:3200);
+ if(undo){const b=document.createElement('button');b.type='button';b.className='link';b.dataset.action=undo;b.textContent='되돌리기';t.append(b);
+  // 되돌릴 수 있는 남은 시간을 줄어드는 막대로 보여 줍니다
+  const bar=document.createElement('i');bar.className='toast-timer';bar.setAttribute('aria-hidden','true');bar.style.animationDuration='7000ms';t.append(bar);}
+ t.classList.remove('show');void t.offsetWidth;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),undo?7000:3200);
 }
 
 // ── 그리기 ───────────────────────────────────────────────
@@ -58,7 +63,7 @@ function render(){
  root.dataset.view=inRoom()?'room':state.view==='room'&&s?'review':state.view;
  const key=[root.dataset.view,s?.id,s?.phase,s?.target].join(':');
  let html;
- if(inRoom()){const c=scenario();html=roomView(s,c,state,{options:options(),recording,interim,speechInfo,threeD:(stage?.mode||stageMode())==='3d',saveState,connected:connected(),phone:isPhone()});}
+ if(inRoom()){const c=scenario();html=roomView(s,c,state,{options:options(),recording,interim,speechInfo,threeD:(stage?.mode||stageMode())==='3d',saveState,connected:connected(),phone:isPhone(),tip:!tipSeen&&!s.messages.some(m=>m.kind==='teacher')});}
  else{
   const bar=appBar(state.view==='room'?'':state.view,{records:saved.length,connected:connected()});
   if(state.view==='room'&&s){const c=scenario();html=bar+reviewView(s,c,state,{replayScene:state.replay?sceneAt(s,state.replay.index):null});}
@@ -70,8 +75,12 @@ function render(){
  if(focused){const el=document.getElementById(focused);if(el&&!el.disabled){el.focus({preventScroll:true});if(typeof sel==='number'&&el.setSelectionRange)try{el.setSelectionRange(sel,sel);}catch{}}}
  const sameScreen=key===shownKey;
  if(sameScreen)for(const [id,v] of Object.entries(keep)){const el=document.getElementById(id);if(el&&el.dataset.keepScroll===v.key){el.scrollTop=v.top;el.scrollLeft=v.left;}}
- const t=$('#transcript');if(t){const count=t.querySelectorAll('.msg').length;t.scrollTop=!sameScreen||count!==shownMessages||state.busy||state.error?t.scrollHeight:oldTop;if(!reduced()&&sameScreen&&count>shownMessages)t.querySelectorAll('.msg').forEach((el,i)=>{if(i>=shownMessages)el.animate([{opacity:0,transform:`translateY(8px)`},{opacity:1,transform:'none'}],{duration:280,easing:'cubic-bezier(.2,.7,.2,1)'});});shownMessages=count;}
- if(!sameScreen&&!reduced())$('#main')?.animate([{opacity:0},{opacity:1}],{duration:200,easing:'ease-out'});
+ const t=$('#transcript');if(t){const count=t.querySelectorAll('.msg').length;t.scrollTop=!sameScreen||count!==shownMessages||state.busy||state.error?t.scrollHeight:oldTop;
+  // 새 말: 내 말은 누른 제안(입력칸) 자리에서 날아오고, 답은 그 사람 쪽에서 차례로 튀어나옵니다
+  if(sameScreen&&count>shownMessages){let k=0;for(const el of [...t.querySelectorAll('.msg')].slice(shownMessages)){if(el.classList.contains('teacher')){flyFrom(flySource,el.querySelector('.bubble'));flySource=null;}else if(el.classList.contains('participant'))popIn(el,k++);else fadeUp(el);}}
+  shownMessages=count;}
+ if(!sameScreen&&!reduced()&&typeof document.startViewTransition!=='function')$('#main')?.animate([{opacity:0},{opacity:1}],{duration:200,easing:'ease-out'});
+ if(!sameScreen&&root.dataset.view==='home')stagger(document.querySelectorAll('.case'));
  shownKey=key;
  sizeDraft();syncStage();
 }
@@ -101,24 +110,34 @@ function persist(){
  rememberWorkspace(s,{draft:state.draft,inputMode:'write',selectedChoice:null,choicePage:state.page});
  if(!worthKeeping(s)&&!saved.some(x=>x.id===s.id))return;
  const next=upsertRecord(readRecords()??saved,s,state.review);
- try{localStorage.setItem(storageKey,JSON.stringify(next));saved=next;setSaveState('ok');}catch{saved=next;setSaveState('failed');}
+ try{localStorage.setItem(storageKey,JSON.stringify(next));saved=next;setSaveState('ok');if(performance.now()-savePulseAt>1500){savePulseAt=performance.now();requestAnimationFrame(()=>bump($('.save-state .icon'),1.4));}}catch{saved=next;setSaveState('failed');}
 }
 function persistSoon(){clearTimeout(saveTimer);saveTimer=setTimeout(persist,450);}
 function setSaveState(v){if(v===saveState)return;saveState=v;const el=$('.save-state');if(el){el.classList.toggle('failed',v==='failed');el.textContent=v==='failed'?'저장 공간을 쓸 수 없어요':'자동 저장';}if(v==='failed')notify('이 브라우저에 저장할 수 없어요. 회고에서 내려받기를 이용해 주세요.');}
 function writeRecords(next){try{localStorage.setItem(storageKey,JSON.stringify(next));saved=next;return true;}catch{notify('기록을 바꾸지 못했어요. 브라우저 저장소를 확인해 주세요.');return false;}}
 
 // ── 이동 ───────────────────────────────────────────────
+// 화면 순서: 사례 < 기록 < 도움말 < 연습실·회고 — 앞으로 가면 왼쪽으로, 돌아가면 오른쪽으로 미끄러집니다
+const ORDER={home:0,history:1,help:2,room:3};
 function go(view){
- if(state.busy)return;persist();stopSpeech();endReplay();state.view=view;state.error='';state.notesOpen=false;render();$('#main')?.focus({preventScroll:true});
+ if(state.busy)return;
+ const from=document.documentElement.dataset.view,dir=(ORDER[view]??0)>=(ORDER[from==='review'?'room':from]??0)?'forward':'back';
+ navigate(dir,()=>{persist();stopSpeech();endReplay();state.view=view;state.error='';state.notesOpen=false;render();$('#main')?.focus({preventScroll:true});});
 }
 function start(id,variant='cooperative'){
  const c=scenarios.find(x=>x.id===id);if(!c||state.busy)return;
+ navigate('forward',()=>startNow(c,variant));
+}
+function startNow(c,variant){
  persist();stopSpeech();endReplay();
  state.session=startSession(c,variant);state.draft='';state.page=0;state.error='';speechInfo='';state.review=null;state.notesOpen=false;state.view='room';
  greetTarget();render();$('#main')?.focus({preventScroll:true});
 }
 function open(record){
- if(!record||state.busy)return;persist();stopSpeech();endReplay();
+ if(!record||state.busy)return;navigate('forward',()=>openNow(record));
+}
+function openNow(record){
+ persist();stopSpeech();endReplay();
  state.session=JSON.parse(JSON.stringify(record));state.review=state.session.savedReview||null;
  const w=restoreWorkspace(state.session,scenario());state.draft=w.draft;state.page=w.choicePage;state.error='';speechInfo='';state.notesOpen=false;state.view='room';
  if(state.session.phase==='intake'){state.session.phase='pre';state.session.application={...state.session.application,readAt:state.session.application?.readAt||new Date().toISOString()};greetTarget();}
@@ -159,7 +178,10 @@ async function sendMessage(raw,method){
  if(state.tts)primeVoice();sounds.play('send');state.error='';speechInfo='';
  const preStep=s.phase==='pre'?preStepFor(s):undefined;if(preStep)s.preSteps={...s.preSteps,[s.target]:preStep};
  const turn={preStep,kind:'teacher',phase:s.phase,target:s.target,text,inputMethod:method};
- s.messages.push(turn);if(method==='write')state.draft='';state.busy=true;render();stage?.teacherSaid(text);stage?.think();
+ flySource=(method==='choice'?pressedSuggestion:$('#draft'))?.getBoundingClientRect()||null;pressedSuggestion=null;
+ s.messages.push(turn);if(method==='write')state.draft='';state.busy=true;if(!tipSeen){tipSeen=true;try{localStorage.setItem('dasi.tip.room','1');}catch{}}render();stage?.teacherSaid(text);stage?.think();
+ // 답이 늦으면(6초) 기다리는 말풍선에 한 줄을 더합니다
+ const slow=setTimeout(()=>{const el=$('.thinking .who-thinks');if(el&&!el.dataset.slow){el.dataset.slow='1';el.textContent+=' · 조금 더 걸리고 있어요';}},6000);
  try{
   const result=state.mode==='demo'?demoReply(s,scenario(),text):await api('reply',{provider:state.provider,model:state.model,apiKey:state.apiKey,session:sessionForAI(s)});
   for(const m of result.messages)s.messages.push({kind:'participant',phase:s.phase,target:s.target,...m,risk:result.risk,source:state.mode==='ai'?'ai':'scenario'});
@@ -168,17 +190,20 @@ async function sendMessage(raw,method){
   stage?.speak(result.messages,{tts:state.tts,risk:result.risk});
  }catch(err){stage?.reset();s.messages.splice(s.messages.indexOf(turn),1);if(preStep)s.preSteps={...s.preSteps,[s.target]:preStep};if(method==='write'||!state.draft.trim())state.draft=text;state.error=err.message;}
  finally{
-  state.busy=false;persist();render();
+  clearTimeout(slow);state.busy=false;persist();render();
   // 직접 쓴 말이나 오류 뒤에는 입력칸으로, 제안을 누른 뒤에는 제안으로 초점을 둡니다(숫자 키를 이어서 쓰고, 태블릿 자판이 저절로 뜨지 않게).
   if(isPhone())return;
   if(method==='write'||state.error)$('#draft')?.focus({preventScroll:true});else document.querySelector('.sug-say')?.focus({preventScroll:true});
  }
 }
-function say(id){const q=options().find(q=>q.id===id);if(q){stage?.attend?.();sendMessage(q.text,'choice');}}
+function say(id,el){const q=options().find(q=>q.id===id);if(q){pressedSuggestion=el||null;stage?.attend?.();sendMessage(q.text,'choice');}}
 function undoTurn(){
  const s=state.session;if(!s||state.busy||recording||!canRetry(s))return;
- stopSpeech();stage?.reset();const turn=retryLastTurn(s);if(!turn)return;
+ stopSpeech();stage?.reset();
+ const last=[...document.querySelectorAll('#transcript .msg.teacher .bubble')].at(-1),lastRect=last?.getBoundingClientRect(),lastHtml=last?.outerHTML;
+ const turn=retryLastTurn(s);if(!turn)return;
  const keep=!!state.draft.trim();s.coach=null;state.page=0;state.error='';if(!keep)state.draft=turn.text;persist();render();
+ ghostTo(lastRect,lastHtml,$('#draft'));
  notify(keep?'방금 말과 답을 지웠어요. 쓰던 글은 그대로 두었어요.':'방금 말과 답을 지웠어요. 고쳐서 다시 보내 보세요.');$('#draft')?.focus({preventScroll:true});
 }
 function advance(){
@@ -187,10 +212,13 @@ function advance(){
  try{state.session=transition(s);}catch(err){notify(err.message);return;}
  const n=state.session;sounds.play('phase');n.messages.push({kind:'system',phase:n.phase,text:n.phase==='main'?'본모임이에요. 목적과 참여 선택을 다시 확인하고 대화를 시작해 주세요.':scenario().followup});
  state.draft='';state.page=0;state.error='';state.notesOpen=false;persist();render();
- const at=['pre','main','post'].indexOf(n.phase)+1;requestAnimationFrame(()=>requestAnimationFrame(()=>chapter(at)));
+ const at=['pre','main','post'].indexOf(n.phase)+1;requestAnimationFrame(()=>requestAnimationFrame(()=>chapter(at)));bump($('.phase-steps li.now'),1.08);
 }
 function finish(){
  const s=state.session;if(!s||state.busy)return;
+ navigate('forward',()=>finishNow(s));
+}
+function finishNow(s){
  stopSpeech();rememberWorkspace(s,{draft:state.draft,inputMode:'write',selectedChoice:null,choicePage:state.page});
  s.finished=true;s.outcome=defaultOutcome(s);state.review=null;state.notesOpen=false;state.error='';persist();render();$('#main')?.focus({preventScroll:true});
  notify('연습을 마치고 회고로 왔어요.',{undo:'unfinish'});
@@ -198,6 +226,9 @@ function finish(){
 // 마치기 되돌리기: 확인 창 대신, 마친 연습을 그 자리에서 다시 이어 갑니다.
 function reopen(){
  const s=state.session;if(!s||!s.finished||state.busy)return;
+ navigate('back',()=>reopenNow(s));
+}
+function reopenNow(s){
  stopSpeech();endReplay();s.finished=false;s.outcome='';state.review=null;state.error='';state.view='room';$('#toast').classList.remove('show');
  persist();render();$('#main')?.focus({preventScroll:true});
 }
@@ -254,14 +285,16 @@ addEventListener('beforeprint',preparePrint);
 const actions={
  go:b=>go(b.dataset.view),
  quick:()=>start(scenarios[0].id,'cooperative'),
- start:b=>start(b.dataset.id,b.dataset.variant),
+ // 사례 카드의 제목이 연습실 제목으로 이어지게(공유 요소 전환)
+ start:b=>{const title=b.closest('.case')?.querySelector('.case-title');if(title)title.style.viewTransitionName='case-hero';start(b.dataset.id,b.dataset.variant);},
  resume:b=>{if(state.session?.id===b.dataset.id&&!state.session.finished){go('room');}else open(saved.find(x=>x.id===b.dataset.id));},
  'open-record':b=>open(saved.find(x=>x.id===b.dataset.id)),
  'delete-record':b=>{saved=readRecords()??saved;const i=saved.findIndex(x=>x.id===b.dataset.id);if(i<0)return;const record=saved[i];if(writeRecords(saved.filter(x=>x.id!==record.id))){lastDeleted={record,i};if(state.session?.id===record.id&&!state.busy)state.session=null;render();notify('기록을 삭제했어요.',{undo:'undo-delete'});}},
  'undo-delete':()=>{if(!lastDeleted)return;const next=[...(readRecords()??saved)];next.splice(Math.min(lastDeleted.i,next.length),0,lastDeleted.record);if(writeRecords(next.slice(0,20))){lastDeleted=null;$('#toast').classList.remove('show');render();}},
  filter:b=>{state[b.dataset.key]=b.dataset.value;render();},
  'clear-filters':()=>{state.query='';state.grade=state.category=state.difficulty='전체';render();$('#search')?.focus({preventScroll:true});},
- say:b=>say(b.dataset.id),
+ say:b=>say(b.dataset.id,b),
+ 'dismiss-tip':()=>{tipSeen=true;try{localStorage.setItem('dasi.tip.room','1');}catch{}$('#transcript .first-tip')?.remove();},
  'edit-suggestion':b=>{const q=options().find(q=>q.id===b.dataset.id);if(!q)return;state.draft=q.text;render();const d=$('#draft');d?.focus();d?.setSelectionRange(d.value.length,d.value.length);persistSoon();},
  more:()=>{const n=Math.ceil(options().length/4);state.page=(state.page+1)%Math.max(1,n);render();},
  undo:undoTurn,
@@ -314,7 +347,8 @@ document.addEventListener('input',event=>{
 document.addEventListener('change',event=>{
  const t=event.target;
  if(t.name==='target'){chooseTarget(t.value);return;}
- if(t.dataset.check){state.session.checks[t.dataset.check]=t.checked;persist();render();return;}
+ if(t.dataset.check){const was=canAdvance(state.session);state.session.checks[t.dataset.check]=t.checked;persist();render();
+  if(t.checked)bump($('#check-'+t.dataset.check)?.closest('.check'));if(!was&&canAdvance(state.session))glow($('#notes [data-action="advance"]'));return;}
  if(t.name==='mode'){state.mode=t.value;$('#modal .ai-fields')?.classList.toggle('muted',t.value!=='ai');render();return;}
  if(t.id==='provider'){state.provider=t.value;state.model=defaults[t.value];state.apiKey='';$('#model').value=state.model;$('#api-key').value='';$('#connection-status').textContent='';render();return;}
  if(t.name==='stage-pref'){writeStagePreference(t.value);render();}
@@ -331,7 +365,9 @@ function refreshChecks(){
 const writing=t=>t?.closest?.('input,textarea,select,[contenteditable]:not([contenteditable="false"]),dialog');
 document.addEventListener('keydown',event=>{
  if(event.key==='Escape'&&state.notesOpen&&!$('#modal').open){state.notesOpen=false;render();$('.notes-toggle')?.focus({preventScroll:true});return;}
- if(event.target.id==='draft'&&event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();sendMessage(state.draft,'write');return;}
+ // 입력칸 Enter: Shift·Ctrl·Alt·Meta와 함께면 줄바꿈 등 브라우저에 맡기고, 그 밖에는 기본 동작을 막은 뒤
+ // 한글(IME) 조합 중이면 글자 확정만 하고 보내지 않습니다(isComposing·keyCode 229). 누르고 있는 반복도 보내지 않습니다.
+ if(event.target.id==='draft'&&event.key==='Enter'){if(event.shiftKey||event.ctrlKey||event.metaKey||event.altKey)return;event.preventDefault();if(event.isComposing||event.keyCode===229||event.repeat)return;sendMessage(state.draft,'write');return;}
  if(event.defaultPrevented||event.isComposing||event.ctrlKey||event.metaKey||event.altKey||event.repeat)return;
  if(!inRoom()||state.busy||recording||$('#modal').open||writing(event.target))return;
  if(/^[1-4]$/.test(event.key)){const b=document.querySelectorAll('.sug-say')[Number(event.key)-1];if(b&&!b.disabled){event.preventDefault();say(b.dataset.id);}}

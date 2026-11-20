@@ -26,6 +26,8 @@ async function open({width=1440,height=900,stage='off',reduced=false,init,mobile
  return {page,context,problems};
 }
 const act=(page,name,extra='')=>page.locator(`[data-action="${name}"]${extra}:visible`).first();
+// 메뉴로 화면 옮기기: 누른 뒤 새 화면이 들어올 때까지 기다립니다(화면 전환 효과는 다음 그림에서 바꿈).
+async function nav(page,view){await page.locator(`[data-action="go"][data-view="${view}"]:visible`).first().click();await page.waitForFunction(v=>document.documentElement.dataset.view===v,view);}
 const fitsScreen=page=>page.evaluate(()=>{const d=document.documentElement;return d.scrollHeight<=innerHeight+1&&d.scrollWidth<=innerWidth;});
 const noSideScroll=page=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth);
 const teacherCount=page=>page.locator('#transcript .msg.teacher').count();
@@ -53,9 +55,9 @@ try{
   assert.equal(await page.locator('.case').count(),30);assert.ok(await fitsScreen(page),'home fits one screen');
   // 손그림 아이콘: 사례 카드마다 갈등 주제 그림, 주제 칩, 연습 순서, 빈 화면
   assert.equal(await page.locator('.case .doodle').count(),30);assert.equal(await page.locator('.topics .chip .doodle').count(),7);assert.equal(await page.locator('.how .doodle').count(),3);
-  await act(page,'go','[data-view="history"]').click();assert.ok(await page.locator('.history .empty .doodle').isVisible(),'empty records show a drawing');
-  await act(page,'go','[data-view="help"]').click();assert.ok(await page.locator('.help .doodle').count()>=7,'help steps and phases have drawings');
-  await act(page,'go','[data-view="home"]').click();
+  await nav(page,'history');assert.ok(await page.locator('.history .empty .doodle').isVisible(),'empty records show a drawing');
+  await nav(page,'help');assert.ok(await page.locator('.help .doodle').count()>=7,'help steps and phases have drawings');
+  await nav(page,'home');
   for(const v of ['home','history','help'])assert.ok(await page.locator(`.appbar nav [data-action="go"][data-view="${v}"]`).isVisible(),v);
   assert.ok(await page.locator('.appbar [data-action="settings"]').isVisible());
   assert.deepEqual(await page.evaluate(()=>performance.getEntriesByType('resource').map(r=>r.name).filter(n=>/render3d|three-stage/.test(n))),[],'no 3D on the first screen');
@@ -73,10 +75,10 @@ try{
   assert.equal(await page.locator('#transcript .msg.participant').count(),1,'the student greets first');
   // 신청서: 대화 맨 위 문서 카드에서 전문을 읽음(읽기 창은 남김)
   await page.locator('#transcript .doc-card [data-action="view-application"]').click();await page.locator('#modal .application-paper').waitFor();await page.keyboard.press('Escape');await noDialog(page);
-  await act(page,'go','[data-view="home"]').click();await page.locator('.case').first().waitFor();
+  await nav(page,'home');await page.locator('.case').first().waitFor();
   await page.locator(`.case[data-id="${c.id}"] [data-action="start"][data-variant="resistant"]`).click();await page.locator('.room').waitFor();await noDialog(page);
   assert.match(await page.locator('.room-bar').innerText(),/교착/);
-  await act(page,'go','[data-view="home"]').click();await quick(page);assert.match(await page.locator('.room-bar').innerText(),new RegExp(scenarios[0].title));
+  await nav(page,'home');await quick(page);assert.match(await page.locator('.room-bar').innerText(),new RegExp(scenarios[0].title));
   await done('home',t);
  }
 
@@ -156,7 +158,7 @@ try{
 
  // 4. 자동 저장·이어 하기·기록(삭제는 되돌리기 알림)
  if(want('save')){const t=await open(),{page}=t;
-  await quick(page);await act(page,'go','[data-view="home"]').click();assert.equal((await stored(page)).length,0,'an untouched practice is not kept');
+  await quick(page);await nav(page,'home');assert.equal((await stored(page)).length,0,'an untouched practice is not kept');
   await quick(page);const sent=await say(page,0);
   const list=await stored(page);assert.equal(list.length,1);assert.ok(list[0].messages.some(m=>m.kind==='teacher'&&m.text===sent),'saved without a save button');
   assert.match(await page.locator('.room-bar .save-state').innerText(),/저장/);
@@ -165,8 +167,8 @@ try{
   await act(page,'resume').click();await page.locator('.room').waitFor();
   assert.equal(await lastTeacher(page),sent);assert.equal(await page.locator('#draft').inputValue(),'이어서 쓸 문장');
   // 다른 사례를 바로 시작해도 확인 창 없이 앞 연습은 기록에 남음
-  await act(page,'go','[data-view="home"]').click();await page.locator(`.case[data-id="${scenarios[1].id}"] .case-main`).click();await page.locator('.room').waitFor();await noDialog(page);await say(page,0);
-  await act(page,'go','[data-view="home"]').click();await act(page,'go','[data-view="history"]').click();assert.equal(await page.locator('.record').count(),2);
+  await nav(page,'home');await page.locator(`.case[data-id="${scenarios[1].id}"] .case-main`).click();await page.locator('.room').waitFor();await noDialog(page);await say(page,0);
+  await nav(page,'home');await nav(page,'history');assert.equal(await page.locator('.record').count(),2);
   await page.locator('.record [data-action="delete-record"]').first().click();assert.equal(await page.locator('.record').count(),1);await noDialog(page);
   await page.locator('#toast [data-action="undo-delete"]').click();assert.equal(await page.locator('.record').count(),2);assert.equal((await stored(page)).length,2);
   await page.locator(`.record[data-id="${(await stored(page)).find(s=>s.scenarioId===scenarios[0].id).id}"] [data-action="open-record"]`).click();await page.locator('.room').waitFor();assert.equal(await lastTeacher(page),sent);
@@ -288,7 +290,7 @@ try{
   assert.equal(await lastTeacher(page),first,'a finished practice can be continued from the review');
   let n=await teacherCount(page);await page.locator('.sug .sug-say').first().dblclick();await settled(page);await page.waitForTimeout(300);
   assert.equal(await teacherCount(page),n+1,'a double-click sends one line');
-  await act(page,'go','[data-view="home"]').click();await page.locator(`.case[data-id="${scenarios[2].id}"] .case-main`).dblclick();await page.locator('.room').waitFor();await page.waitForTimeout(300);
+  await nav(page,'home');await page.locator(`.case[data-id="${scenarios[2].id}"] .case-main`).dblclick();await page.locator('.room').waitFor();await page.waitForTimeout(300);
   assert.equal(await teacherCount(page),0,'a double-click on a case only starts it');
   await say(page,0);n=await teacherCount(page);await page.keyboard.press('2');await page.waitForFunction(n=>document.querySelectorAll('#transcript .msg.teacher').length===n+1,n);await settled(page);
   assert.notEqual(await page.evaluate(()=>document.activeElement?.id),'draft','tapping a suggestion does not move focus into the input');
@@ -314,6 +316,38 @@ try{
   await page.setViewportSize({width:768,height:1024});assert.ok((await page.locator('.room-title h1').boundingBox()).width>=120,'the title stays readable at 768');
   for(const [w,h] of [[844,390],[740,360],[932,430]]){await page.setViewportSize({width:w,height:h});assert.ok(await fitsScreen(page),`phone landscape ${w}x${h} fits`);const sb=await page.locator('#send').boundingBox(),tb=await page.locator('#transcript').boundingBox();assert.ok(sb.y+sb.height<=h&&tb.height>=70,`landscape ${w}x${h}: send ${sb.y+sb.height}, transcript ${tb.height}`);}
   await done('fixes',t);
+ }
+
+ // 8-3. 다듬기(v1.2): 첫 안내, 한글 조합 중 Enter, 생각하는 사람 이름, 되돌리기 알림의 남은 시간, 화면 전환이 누르기를 막지 않음, 다음 확인 항목 표시
+ if(want('polish')){const t=await open(),{page}=t;
+  await quick(page);
+  assert.ok(await page.locator('#transcript .first-tip').isVisible(),'a short first-time tip inside the conversation');
+  assert.equal(await page.locator('#notes .check.next').count(),1,'the next item to confirm is marked');
+  assert.equal(await page.locator('#notes .check.next input').getAttribute('data-check'),'v');
+  await page.locator('#notes input[data-check="v"]').check();assert.equal(await page.locator('#notes .check.next input').getAttribute('data-check'),'a','the mark moves on');
+  // 한글을 조합하는 중의 Enter는 글자를 확정할 뿐 보내지 않습니다(isComposing·keyCode 229)
+  await page.locator('#draft').fill('한글 조합');
+  await page.evaluate(()=>{const d=document.querySelector('#draft');const a=new KeyboardEvent('keydown',{key:'Enter',isComposing:true,bubbles:true,cancelable:true});d.dispatchEvent(a);const b=new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true});Object.defineProperty(b,'keyCode',{get:()=>229});d.dispatchEvent(b);window.__imeDefault=[a.defaultPrevented,b.defaultPrevented];});
+  assert.equal(await teacherCount(page),0,'Enter while composing Hangul does not send');
+  assert.deepEqual(await page.evaluate(()=>window.__imeDefault),[true,true],'and does not insert a line break');
+  await page.locator('#draft').press('Enter');await settled(page);assert.equal(await teacherCount(page),1);
+  assert.equal(await page.locator('#transcript .first-tip').count(),0,'the tip goes away after the first message');
+  await page.reload();await page.locator('.appbar').waitFor();await act(page,'resume').click();await page.locator('.room').waitFor();
+  assert.equal(await page.locator('#transcript .first-tip').count(),0,'and does not come back');
+  // 답을 기다리는 동안: 누가 생각하는지 이름이 보이는 말풍선
+  await act(page,'settings').click();await page.locator('#modal input[name="mode"][value="ai"]').check();await page.locator('#api-key').fill('dummy-key-for-browser-test');await page.keyboard.press('Escape');
+  await page.route('**/api/reply',async route=>{await new Promise(r=>setTimeout(r,1500));await route.fulfill({json:{messages:[{speaker:'v',text:'천천히 말해 볼게요.',mood:'open'}],observation:'',risk:'none',coaching:{strength:'',nextQuestion:''}}});});
+  await page.locator('.sug .sug-say').first().click();await page.locator('.thinking').waitFor();
+  assert.match(await page.locator('.thinking').innerText(),/민서/,'the waiting bubble names who is thinking');
+  await settled(page);
+  // 되돌리기 알림에는 남은 시간을 보여 주는 막대
+  await nav(page,'home');await nav(page,'history');
+  await page.locator('.record [data-action="delete-record"]').first().click();assert.ok(await page.locator('#toast .toast-timer').isVisible(),'undo notices show the time left');
+  await page.locator('#toast [data-action="undo-delete"]').click();
+  // 화면 전환 효과가 도는 동안에도 누른 것이 사라지지 않음
+  await nav(page,'home');await page.locator(`.case[data-id="${scenarios[5].id}"] .case-main`).click();await page.locator('.room').waitFor();
+  assert.match(await page.locator('.room-bar').innerText(),new RegExp(scenarios[5].title));
+  await done('polish',t);
  }
 
  // 9. 휴대전화: 첫 화면·연습실 한 화면, 가로로 미는 제안 카드(전체 글, 누르면 보냄), 노트 판(남은 확인 수), 누르기 크기
@@ -352,7 +386,7 @@ try{
   await act(page,'settings').click();await page.locator('#modal [data-action="sound-toggle"]').click();assert.equal(await page.locator('#modal [data-action="sound-toggle"]').getAttribute('aria-pressed'),'false');await page.keyboard.press('Escape');
   const count=await page.evaluate(()=>audioEvidence.starts.length);await say(page,0);assert.equal(await page.evaluate(()=>audioEvidence.starts.length),count);
   await page.reload();await page.locator('.appbar').waitFor();await act(page,'settings').click();assert.equal(await page.locator('#modal [data-action="sound-toggle"]').getAttribute('aria-pressed'),'false');await page.keyboard.press('Escape');
-  await act(page,'go','[data-view="help"]').click();await page.locator('.help').waitFor();assert.equal(await page.evaluate(()=>document.getAnimations().length),0);assert.ok(await fitsScreen(page)||true);
+  await nav(page,'help');await page.locator('.help').waitFor();assert.equal(await page.evaluate(()=>document.getAnimations().length),0);assert.ok(await fitsScreen(page)||true);
   await done('sound',t);
  }
  console.log(JSON.stringify({passed:true,sections:passed},null,1));

@@ -193,7 +193,7 @@ try{
   assert.equal(await page.evaluate(()=>speechSynthesis.speaking),false,'voice stops when switching target');
   assert.notEqual(await page.locator('.stage-caption-text').innerText(),lastBubble,'new cast does not inherit the old line');
   // 다른 화면으로 가면 무대를 떼어 내고(그리기 멈춤) 목소리도 멈춤
-  await page.locator('.room-bar [data-action="go"][data-view="home"]').click();
+  await page.locator('.room-bar [data-action="go"][data-view="home"]').click();await page.waitForFunction(()=>document.documentElement.dataset.view==='home');
   assert.equal(await page.evaluate(()=>speechSynthesis.speaking),false);
   assert.equal(await page.locator('.stage-host').count(),0,'stage is detached off the room');
   await page.waitForTimeout(300);
@@ -215,7 +215,7 @@ try{
   // F1: 같은 사례로 새 연습을 시작하면 이전 자막·감정을 이어받지 않음
   {const {ctx,page,errors}=await roomCtx('off');await enter(page);await sendFirst(page);
    await page.waitForFunction(()=>document.querySelector('.stage-host').dataset.stageState==='speaking',null,{timeout:30000});
-   await page.locator('.room-bar [data-action="go"][data-view="home"]').click();await page.locator('[data-action="quick"]').click();
+   await page.locator('.room-bar [data-action="go"][data-view="home"]').click();await page.waitForFunction(()=>document.documentElement.dataset.view==='home');await page.locator('[data-action="quick"]').click();
    await page.locator('#stage-slot .stage-host').waitFor();
    assert.equal(await page.locator('.stage-caption').isHidden(),true,'a new session starts without the old caption');
    assert.equal(await page.locator('.flat-seat').first().getAttribute('data-mood'),'calm','a new session starts with fresh moods');

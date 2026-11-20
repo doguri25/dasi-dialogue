@@ -513,3 +513,118 @@ dialog.sheet{margin:0 0 0 auto;width:min(430px,100vw);height:100dvh;max-height:1
 /* 손가락으로 누른 뒤 마우스 올림 모양이 남지 않게 합니다. */
 @media (hover:none){.nav:hover{background:none;color:var(--ink-2)}.nav.on:hover{background:var(--accent-soft);color:var(--accent-strong)}.case:hover{transform:none;box-shadow:none}.chip:hover{border-color:var(--line)}.sug-say:hover:not(:disabled){border-color:var(--line);box-shadow:none}}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* ======================================================================================
+   v1.2 점토(클레이) 디자인 — 3D 대화실의 점토 인형과 같은 재료로 만든 화면.
+   말랑한 둥근 면, 위는 밝고 아래는 살짝 눌린 두 겹 그림자, 누르면 쏙 들어가는 단추.
+   색은 차분한 청록(행동)과 드문 노랑(지금). 움직임은 motion.js와 같은 시간·곡선.
+   ====================================================================================== */
+:root{
+ --paper:#f2eee6;--surface:#fffdf8;--surface-2:#f8f4ec;--line:#e9e2d4;--line-2:#d8cebb;
+ --ink:#1f2633;--ink-2:#485062;--ink-3:#626a7c;
+ --accent:#127566;--accent-strong:#0c5a4e;--accent-soft:#dcefe8;
+ --now:#f4bf45;--now-soft:#fdf0cf;
+ --r:22px;--r-s:14px;
+ --clay:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -2px 0 rgba(90,68,40,.05),0 12px 26px -16px rgba(90,68,40,.34),0 2px 5px -3px rgba(90,68,40,.16);
+ --clay-sm:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1.5px 0 rgba(90,68,40,.06),0 5px 12px -8px rgba(90,68,40,.3);
+ --clay-in:inset 0 2px 4px rgba(90,68,40,.14),inset 0 -1px 0 rgba(255,255,255,.7);
+ --ease-out:cubic-bezier(.22,1,.36,1);--ease-in:cubic-bezier(.45,0,.9,.4);
+ --spring:cubic-bezier(.3,1.35,.5,1);
+ --d-press:140ms;--d-state:220ms;--d-enter:420ms;--d-exit:260ms;
+}
+@supports (transition-timing-function:linear(0,1)){:root{--spring:linear(0,.009,.035 2.1%,.141,.281 6.7%,.723 12.9%,.938 16.7%,1.017,1.077,1.121,1.149 24.3%,1.159,1.163,1.161,1.154 29.9%,1.129 32.8%,1.051 39.6%,1.017 43.1%,.991,.977 51%,.974 53.8%,.975 57.1%,.997 69.8%,1.003 76.9%,1)}}
+html,body{background:var(--paper)}
+body{background:radial-gradient(1100px 620px at 4% -8%,#fbf8f2 0%,transparent 62%),radial-gradient(900px 520px at 104% 6%,#e5f1ec 0%,transparent 58%),var(--paper)}
+h1,h2{letter-spacing:-.025em}
+/* 점토 면 */
+.case,.resume-card,.record,.review-col,.help-steps li,.sug-say,.compose,.doc-card,.first-tip,.mini-stage,dialog,.check,.radio-cards label,.toggle,.search{box-shadow:var(--clay-sm);border-color:rgba(216,206,187,.65)}
+.case,.resume-card,.review-col,dialog{box-shadow:var(--clay);border-radius:var(--r)}
+.case{background:linear-gradient(180deg,#fffefb,#fdf9f1)}
+.case:hover{box-shadow:inset 0 1px 0 #fff,0 18px 30px -18px rgba(90,68,40,.42),0 3px 8px -4px rgba(90,68,40,.18);transform:translateY(-2px)}
+.appbar,.room-bar{background:rgba(255,253,248,.82);-webkit-backdrop-filter:blur(14px) saturate(1.2);backdrop-filter:blur(14px) saturate(1.2);border-bottom-color:rgba(216,206,187,.6);box-shadow:0 8px 20px -18px rgba(90,68,40,.5)}
+.notes{background:linear-gradient(180deg,rgba(255,253,248,.9),rgba(248,244,236,.95));border-left-color:rgba(216,206,187,.6)}
+.note{border-bottom-color:rgba(216,206,187,.55)}
+.stage-frame{border-radius:24px;box-shadow:var(--clay),inset 0 0 0 1px rgba(216,206,187,.7)}
+/* 단추: 말랑하게 솟아 있다가 누르면 쏙(크기·그림자만 바뀌어 자리가 흔들리지 않음) */
+.btn,.chip,.vchip,.icon-btn,.face,.sug-say,.sug-edit,.nav,.record-open,.next-q,.toggle,.link,.case-main{transition:transform var(--d-state) var(--spring),box-shadow var(--d-state) var(--ease-out),background-color var(--d-state) var(--ease-out),border-color var(--d-state) var(--ease-out),color var(--d-state) var(--ease-out)}
+.btn:active:not(:disabled),.chip:active,.vchip:active,.icon-btn:active:not(:disabled),.face:active,.sug-say:active:not(:disabled),.next-q:active,.toggle:active,.record-open:active{transform:scale(.97);transition-duration:var(--d-press)}
+.btn.primary{background:linear-gradient(180deg,#178a7a,#0f6d60);box-shadow:inset 0 1px 0 rgba(255,255,255,.32),inset 0 -2px 0 rgba(0,0,0,.14),0 8px 16px -10px rgba(12,90,78,.75)}
+.btn.primary:hover:not(:disabled){background:linear-gradient(180deg,#14806f,#0c5a4e)}
+.btn.primary:active:not(:disabled){box-shadow:inset 0 2px 5px rgba(0,0,0,.22)}
+.btn.outline,.icon-btn,.chip,.vchip{background:linear-gradient(180deg,#fffefb,#f7f2e9);box-shadow:var(--clay-sm);border-color:rgba(216,206,187,.8)}
+.btn.outline:active,.icon-btn:active,.chip:active,.vchip:active{box-shadow:var(--clay-in)}
+.chip.on{background:linear-gradient(180deg,#2c3545,#1b2230);border-color:#1b2230;box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 6px 12px -8px rgba(20,26,38,.7)}
+.outcomes .chip.on{background:linear-gradient(180deg,#178a7a,#0f6d60);border-color:#0f6d60}
+.vchip:hover{background:linear-gradient(180deg,#eaf6f2,#dcefe8)}
+.nav.on{background:linear-gradient(180deg,#e6f3ef,#d7ece5);box-shadow:var(--clay-in)}
+.face{box-shadow:0 4px 10px -6px rgba(29,36,51,.35),inset 0 1px 0 rgba(255,255,255,.9)}
+.face.on{background:linear-gradient(180deg,#2c3545,#1b2230)}
+.quick{border-radius:var(--r)}
+/* 제안 카드: 점토 타일. 번호 동그라미, 누르면 쏙 */
+.sug-say{border-radius:16px;background:linear-gradient(180deg,#fffefb,#fbf6ed)}
+.sug-say:hover:not(:disabled){border-color:var(--accent);box-shadow:var(--clay-sm),0 0 0 3px var(--accent-soft)}
+.sug-label kbd{border-radius:50%;width:1.5em;height:1.5em;border:0;background:var(--accent-soft);color:var(--accent-strong)}
+.compose{border-radius:20px;background:#fffefb}
+.compose textarea{border-radius:14px;box-shadow:var(--clay-in);background:#fbf8f2;margin:2px}
+/* 말풍선 */
+.bubble{border-radius:20px}
+.msg.teacher .bubble{background:linear-gradient(180deg,#178a7a,#0f6d60);border-radius:20px 20px 6px 20px;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 8px 16px -12px rgba(12,90,78,.8)}
+.msg.participant .bubble{background:linear-gradient(180deg,#fffefb,#fcf8f0);border-radius:20px 20px 20px 6px;box-shadow:var(--clay-sm);transform-origin:0 100%}
+.msg.system{background:linear-gradient(180deg,#fff5da,#fcebc0);box-shadow:var(--clay-sm)}
+.avatar{box-shadow:0 3px 8px -4px rgba(29,36,51,.4),inset 0 1px 0 rgba(255,255,255,.6)}
+/* 생각하는 중: 그 사람 얼굴 옆의 말풍선에 점 세 개가 통통 */
+.thinking{display:flex;align-items:flex-end;gap:9px;padding-left:0;color:var(--ink-2);animation:think-in var(--d-enter) var(--spring) both}
+.think-bubble{display:inline-flex;align-items:center;gap:9px;padding:10px 14px;border-radius:20px 20px 20px 6px;background:linear-gradient(180deg,#fffefb,#fcf8f0);box-shadow:var(--clay-sm);font-size:.84rem}
+.thinking .dots{display:inline-flex;gap:4px}
+.thinking .dots i{width:7px;height:7px;border-radius:50%;background:var(--accent);opacity:.35;animation:think 1.1s infinite ease-in-out}
+.thinking .dots i:nth-child(2){animation-delay:.15s}.thinking .dots i:nth-child(3){animation-delay:.3s}
+@keyframes think{0%,80%,100%{opacity:.3;transform:none}40%{opacity:1;transform:translateY(-4px)}}
+@keyframes think-in{from{opacity:0;transform:translateY(8px) scale(.9)}}
+/* 처음 안내(대화 안, 아무것도 가리지 않음) */
+.first-tip{display:flex;align-items:center;gap:10px;padding:10px 10px 10px 14px;border-radius:var(--r-s);background:linear-gradient(180deg,#fff8e3,#fdf0cf);border:1px solid rgba(244,191,69,.45);font-size:.84rem;color:var(--ink-2);animation:think-in var(--d-enter) var(--spring) both}
+.first-tip>.icon{color:#b8860b;flex:none}
+.first-tip p{flex:1}
+.first-tip b{color:var(--ink)}
+/* 노트: 체크한 줄은 쏙 눌린 점토, 다음에 확인할 줄은 살짝 표시 */
+.check{border-radius:14px;background:linear-gradient(180deg,#fffefb,#faf6ee)}
+.check:has(input:checked){box-shadow:var(--clay-in);background:linear-gradient(180deg,#d5ebe4,#e2f1ec)}
+.check.next{border-color:rgba(244,191,69,.9);box-shadow:var(--clay-sm),0 0 0 3px rgba(244,191,69,.22)}
+.next-tag{margin-left:auto;padding:1px 8px;border-radius:999px;background:var(--now-soft);color:#7a5a07;font-size:.72rem;font-weight:800}
+.note.checks-note,.note.coach,.note.agreement-note,.note.app-note{padding:12px;border:0;border-radius:var(--r-s);background:rgba(255,253,248,.7);box-shadow:var(--clay-sm)}
+.save-state .icon{display:inline-block}
+/* 알림: 아래에서 통 올라오고(용수철), 빨리 사라짐. 되돌릴 수 있는 알림은 남은 시간 막대 */
+#toast{border-radius:18px;background:linear-gradient(180deg,#2c3545,#1b2230);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 18px 40px -18px rgba(0,0,0,.6);transition:opacity var(--d-exit) var(--ease-in),transform var(--d-exit) var(--ease-in);overflow:hidden}
+#toast.show{transition:opacity var(--d-state) var(--ease-out),transform var(--d-enter) var(--spring)}
+.toast-timer{position:absolute;left:14px;right:14px;bottom:4px;height:3px;border-radius:2px;background:var(--now);transform-origin:0 50%;animation:toast-time 7s linear forwards}
+@keyframes toast-time{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+/* 되돌린 말이 입력칸으로 돌아가는 복사본 */
+.motion-ghost{position:fixed;z-index:90;pointer-events:none;margin:0}
+.motion-ghost .bubble{height:100%;padding:9px 13px;border-radius:20px 20px 6px 20px;background:linear-gradient(180deg,#178a7a,#0f6d60);color:#fff;overflow:hidden}
+/* 창: 설정 판은 오른쪽에서, 읽기 창은 살짝 커지며 */
+dialog[open]{animation:dlg-in var(--d-enter) var(--spring)}
+dialog.sheet[open]{animation:sheet-in var(--d-enter) var(--ease-out)}
+dialog::backdrop{background:rgba(31,38,51,.38);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+@keyframes dlg-in{from{opacity:0;transform:translateY(10px) scale(.97)}}
+@keyframes sheet-in{from{transform:translateX(40px);opacity:.4}}
+@media (max-width:719px){@keyframes sheet-in{from{transform:translateY(50px);opacity:.4}}}
+.notes.open.enter{animation-timing-function:var(--spring)!important}
+/* 화면 전환(View Transitions): 앞으로 가면 왼쪽으로, 돌아가면 오른쪽으로. 사례 제목 → 연습실 제목 → 회고 제목은 이어서. 효과 중에도 누르기를 막지 않음 */
+::view-transition{pointer-events:none}
+::view-transition-old(root){animation:vt-out var(--d-exit) var(--ease-in) both}
+::view-transition-new(root){animation:vt-in var(--d-enter) var(--ease-out) both}
+:root[data-nav=back]::view-transition-old(root){animation-name:vt-out-back}
+:root[data-nav=back]::view-transition-new(root){animation-name:vt-in-back}
+@keyframes vt-out{to{opacity:0;transform:translateX(-28px) scale(.99)}}
+@keyframes vt-in{from{opacity:0;transform:translateX(36px)}}
+@keyframes vt-out-back{to{opacity:0;transform:translateX(28px) scale(.99)}}
+@keyframes vt-in-back{from{opacity:0;transform:translateX(-36px)}}
+.room-title h1,.review-title h1{view-transition-name:case-hero}
+::view-transition-group(case-hero){animation-duration:var(--d-enter);animation-timing-function:var(--spring)}
+/* 손가락으로 쓰는 화면: 누르는 곳은 44px 이상 */
+@media (pointer:coarse){
+ .btn,.icon-btn,.link,.chip,.vchip,.face,.sug-edit,.nav,.toggle{min-height:44px}
+ .icon-btn,.sug-edit,.link{min-width:44px}
+ .sug-edit{width:44px;height:44px}
+ .face .avatar{width:34px;height:34px}
+}
+@media (prefers-reduced-motion: reduce){::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}}
