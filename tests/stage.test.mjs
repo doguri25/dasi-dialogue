@@ -183,3 +183,27 @@ test('arms grow out of the shoulders and move with the body',async()=>{
  assert.ok(rest<lean/2,'and stays upright with hands at rest');
  [b,g,r].forEach(c=>c.dispose());
 });
+
+// 머리 위가 파여 보이지 않게: 머리카락 층(가닥 층)의 윗가장자리는 정수리 덮개 안쪽에서 시작해야 합니다.
+// 덮개 바로 바깥에서 시작하면 둘레에 턱이 생겨 위에서 볼 때 정수리가 움푹 파인 것처럼 보입니다(사용자가 하린에서 짚음).
+test('hair layers start under the crown cover, so the top of the head is not sunken',async()=>{
+ const T=await import('../public/vendor/three-stage.js');const {createCharacter}=await import('../public/stage/character.js');
+ for(const [key,look] of Object.entries(LOOKS)){
+  const c=createCharacter(T,look,{seed:5,still:true}),R=c.headRadius;c.hair.updateMatrixWorld(true);
+  const inv=c.hair.parent.matrixWorld.clone().invert(),rel=o=>inv.clone().multiply(o.matrixWorld);
+  const cap=c.hair.children.find(o=>o.isMesh&&o.geometry.type==='SphereGeometry'&&o.geometry.parameters.thetaLength<Math.PI);assert.ok(cap,`${key}: crown cover`);
+  const capInv=rel(cap).invert(),Rc=cap.geometry.parameters.radius,v=new T.Vector3(),d=new T.Vector3();
+  // 덮개(늘이고 기울인 구)의 표면까지 거리: 방향 d에서 |M⁻¹·(t·d)| = Rc
+  const capRadius=dir=>{d.copy(dir).normalize();const o=new T.Vector3(0,0,0).applyMatrix4(capInv),p=d.clone().applyMatrix4(capInv).sub(o);return Rc/p.length();};
+  let layers=0;
+  for(const o of c.hair.children){
+   if(!o.isMesh||o.geometry.type!=='BufferGeometry')continue;
+   const m=rel(o),pos=o.geometry.attributes.position,pts=[];
+   for(let i=0;i<pos.count;i++){v.fromBufferAttribute(pos,i).applyMatrix4(m);pts.push({p:v.clone(),lat:Math.asin(v.y/v.length())*180/Math.PI});}
+   const top=Math.max(...pts.map(q=>q.lat));if(top<20)continue;   // 아래로 늘어진 반묶음 머리는 덮개와 만나지 않습니다
+   layers++;
+   for(const q of pts.filter(q=>q.lat>top-1.5)){const over=(q.p.length()-capRadius(q.p))/R;assert.ok(over<=.004,`${key}: a hair layer's top edge stands ${over.toFixed(3)}R outside the crown cover at ${q.lat.toFixed(0)}°`);}
+  }
+  assert.ok(layers>=3,`${key}: hair layers checked (${layers})`);
+ }
+});

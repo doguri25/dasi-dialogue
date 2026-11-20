@@ -84,12 +84,17 @@ export function buildRoom(T,{anisotropy=1,still=false}={}) {
  // ---- 책장: 나뭇결, 책등 무늬, 위에는 따뜻한 스탠드 ----
  const shelf=new T.Group();shelf.position.set(-1.55,0,-2.45);group.add(shelf);
  const wood=clay('#e2c49f',{map:grainTex,roughness:.6});
- mesh(shelf,BOX,wood,{p:[0,.8,0],s:[1.1,1.6,.34]});
- const inner=clay('#d6b48c',{map:grainTex});for(let i=0;i<3;i++)mesh(shelf,BOX,inner,{p:[0,.32+i*.46,.03],s:[1.0,.4,.3]});
+ // 속이 빈 틀(옆판·바닥·선반 둘·윗판·뒤판)로 짜고 책은 안쪽에 들입니다. 예전처럼 통나무 상자 앞에 판과 책을 같은 깊이로 붙이면
+ // 두 면이 번갈아 그려져 책장이 깜박입니다. 어느 두 면도 같은 깊이에서 겹치지 않게 둡니다(판끼리는 맞닿는 면이 서로 가려짐).
+ for(const x of [-.53,.53])mesh(shelf,BOX,wood,{p:[x,.8,0],s:[.04,1.6,.34]});
+ for(const [y,h] of [[.06,.12],[.55,.06],[1.01,.06],[1.52,.16]])mesh(shelf,BOX,wood,{p:[0,y,0],s:[1.02,h,.34]});
+ // 뒤판 앞면은 벽의 허리 띠(앞면 z −2.545)보다 1.5cm 앞(−2.53)에 둡니다. 더 뒤에 두면 띠가 책장 칸 안으로 비쳐 보입니다.
+ const inner=clay('#d6b48c',{map:grainTex});mesh(shelf,BOX,inner,{p:[0,.8,-.1],s:[1.02,1.6,.04]});
  const bookColors=['#9db697','#b7a8d8','#f2c6a5','#d6a14f','#8fa7c9','#e8a6a0','#c9d6bf','#f3e3b5'];
  const bookMats=bookColors.map(c=>clay(c,{map:spineTex,roughness:.7}));
- for(let row=0;row<3;row++){let x=-.46;for(let i=0;x<.42;i++){const w=.05+((row*7+i*3)%4)*.012,h=.24+((row*5+i*7)%5)*.025;mesh(shelf,BOX,bookMats[(row*3+i)%bookMats.length],{p:[x+w/2,.14+row*.46+h/2,.075],r:[0,0,i%7===3?.18:0],s:[w,h,.21]});   /* 앞면이 칸막이 앞면(z .18)보다 조금 나와 깜빡이지 않습니다 */x+=w+.006;}}
- mesh(shelf,BOX,bookMats[4],{p:[.28,1.075,.1],s:[.26,.035,.18]});mesh(shelf,BOX,bookMats[1],{p:[.29,1.105,.1],r:[0,.12,0],s:[.22,.03,.16]});
+ // 칸마다 선반 위(.12·.58·1.04)에 세우고, 맨 위 칸 오른쪽은 비워 눕힌 책 두 권을 둡니다. 책 앞면은 틀 앞면보다 7.5cm 안쪽, 책 뒤는 뒤판 속.
+ for(let row=0;row<3;row++){let x=-.46;const end=row===2?.1:.42;for(let i=0;x<end;i++){const w=.05+((row*7+i*3)%4)*.012,h=.24+((row*5+i*7)%5)*.025,tilt=i%7===3?.18:0;mesh(shelf,BOX,bookMats[(row*3+i)%bookMats.length],{p:[x+w/2,.122+row*.46+h/2+Math.abs(Math.sin(tilt))*w/2,0],r:[0,0,tilt],s:[w,h,.19]});x+=w+.006;}}
+ mesh(shelf,BOX,bookMats[4],{p:[.28,1.059,.005],s:[.26,.035,.18]});mesh(shelf,BOX,bookMats[1],{p:[.29,1.094,.01],r:[0,.12,0],s:[.22,.03,.16]});
  mesh(shelf,geo(new T.CylinderGeometry(.08,.065,.12,20)),glaze('#e7d3b7'),{p:[.3,1.66,0]});
  for(let i=0;i<5;i++)mesh(shelf,SPH,clay('#7fa36f'),{p:[.3+(i-2)*.03,1.78+(i%2)*.04,0],r:[0,0,(i-2)*.4],s:[.03,.08,.03]});
  const lamp=new T.Group();lamp.position.set(-.3,1.6,0);shelf.add(lamp);

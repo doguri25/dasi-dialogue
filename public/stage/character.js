@@ -131,7 +131,9 @@ export function createCharacter(T,look,{seed=1,still=false}={}) {
    const u=a/cols,ph=u*teeth+phase,f=ph-Math.floor(ph),tooth=Math.pow(Math.sin(Math.PI*f),2.2),jr=jitter*(H01(Math.floor(ph))-.5)*2;
    const bottom=latBase-depth*tooth*Math.max(.35,1+jr);
    for(let b=0;b<=rows;b++){const v=b/rows,lat=latTop+(bottom-latTop)*v,lon=lonA+(lonB-lonA)*u+sweep*v*v;
-    const r=R*rs*(1+bulge*Math.sin(Math.PI*Math.min(1,v*1.1))+flare*v*v),q=onHead(lat,lon,r);pos.push(q.x,q.y*.97,q.z*.98);uv.push(u*teeth,v);}
+    // 층의 윗가장자리는 정수리 덮개 안쪽(반지름 1.03)에서 시작해 부드럽게 부풀어 나옵니다. 바로 바깥에서 시작하면 둘레에 턱이 생겨 정수리가 파여 보입니다.
+    const swell=Math.min(1,Math.max(26,300*(rs*(1+bulge)-1.03))/Math.max(1,Math.abs(latTop-latBase))),tuck=v<swell?(t=>t*t*(3-2*t))(v/swell):1,lift=1.03+(rs-1.03)*tuck;
+    const r=R*lift*(1+bulge*Math.sin(Math.PI*Math.min(1,v*1.1))+flare*v*v),q=onHead(lat,lon,r);pos.push(q.x,q.y*.97,q.z*.98);uv.push(u*teeth,v);}
   }
   hairTips+=Math.round(teeth);
   return mesh(hairGroup,sheet(pos,uv,cols,rows),hairMat(1));
@@ -220,7 +222,7 @@ export function createCharacter(T,look,{seed=1,still=false}={}) {
  }
 
  return {
-  group:root,head,
+  group:root,head,hair:hairGroup,headRadius:R,
   get state(){return state;},
   setPose(p,st=state){target=p;state=st;if(!pose)pose={...p};},
   setMouth(shape,open=0){const m=MOUTH[shape]||MOUTH.REST;mouthTarget={h:m.h?open:0,w:m.w};},

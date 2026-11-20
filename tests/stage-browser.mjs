@@ -396,6 +396,20 @@ try{
   assert.deepEqual(errors,[]);await page.close();
   results.push('dialog: 3D rests under other dialogs, keeps drawing inside its own');
  }
+ // 15. 책장이 깜박이지 않음: 0.1초 간격 10장에서 한 장→다음 장 밝기가 크게(40/255 넘게) 튀는 점이 책장에서 0.04% 미만(벽은 약 0.01%).
+ // (책 앞면과 칸 안쪽 판이 같은 깊이에 있으면 두 면이 번갈아 그려져 깜박입니다. 사용자가 짚음.)
+ if(run('shelf')){
+  for(const quality of [0,2]){
+   const {page,errors}=await labPage(`cast=pre&quality=${quality}&preserve&noslow`,{width:960,height:600,scale:1});await page.waitForTimeout(1500);
+   const jumps=await page.evaluate(async()=>{const src=document.querySelector('#stage canvas'),W=src.width,H=src.height,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d',{willReadFrequently:true});
+    const area=(x0,y0,x1,y1)=>[Math.round(x0*W),Math.round(y0*H),Math.round((x1-x0)*W),Math.round((y1-y0)*H)],shelf=area(0,0,.21,.72),wall=area(.62,.2,.95,.6),frames=[];
+    for(let i=0;i<10;i++){await new Promise(r=>setTimeout(r,110));g.drawImage(src,0,0);frames.push([shelf,wall].map(a=>{const d=g.getImageData(...a).data,l=new Float32Array(d.length/4);for(let k=0;k<l.length;k++)l[k]=.2126*d[k*4]+.7152*d[k*4+1]+.0722*d[k*4+2];return l;}));}
+    return [0,1].map(j=>{let n=0;for(let i=1;i<frames.length;i++)for(let k=0;k<frames[i][j].length;k++)if(Math.abs(frames[i][j][k]-frames[i-1][j][k])>40)n++;return n/(frames[0][j].length*(frames.length-1));});});
+   assert.ok(jumps[0]<.0004,`bookshelf flickers at quality ${quality}: ${(jumps[0]*100).toFixed(3)}% of pixels jump per frame (wall ${(jumps[1]*100).toFixed(3)}%)`);
+   assert.deepEqual(errors,[]);await page.close();
+  }
+  results.push('shelf: no flicker on the bookshelf');
+ }
  // 14. 대화실 그래픽(폭주 구구단 방식): 직접 그린 질감, 접지 그림자, 창의 빛줄기와 먼지, 방에서 구운 반사광. 다 쓰면 모두 돌려줌.
  if(run('craft')){
   const {page,errors}=await labPage('cast=main&mood=calm&noslow=1',{width:960,height:600,scale:1});
