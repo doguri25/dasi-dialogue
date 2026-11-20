@@ -56,9 +56,10 @@ export function createCharacter(T,look,{seed=1,still=false}={}) {
   for(let i=0;i<2;i++)mesh(torso,SPH_S,clay('#efe5d0'),{p:[W*.3,.02+H*(.4+i*.2),W*depth*.98],s:[.011,.011,.007]});
  }
  if(look.topKind==='jacket'){
-  mesh(torso,SPH,cloth(under),{p:[0,.02+H*.82,W*depth*.84],r:[.15,0,0],s:[W*.32,H*.22,.035]});
+  // 셔츠 앞판과 옷깃은 가슴께에만: 위로 올리면 턱 앞에 하얀 덩어리가 붙어 보입니다.
+  mesh(torso,SPH,cloth(under),{p:[0,.02+H*.63,W*depth*.86],r:[.12,0,0],s:[W*.27,H*.19,.03]});
   const lapel=clay(new T.Color(topColor).multiplyScalar(.82).getStyle());
-  for(const s of [-1,1])mesh(torso,SPH,lapel,{p:[s*W*.24,.02+H*.74,W*depth*.88],r:[.12,0,s*.45],s:[W*.11,H*.26,.026]});
+  for(const s of [-1,1])mesh(torso,SPH,lapel,{p:[s*W*.22,.02+H*.6,W*depth*.9],r:[.1,0,s*.42],s:[W*.1,H*.22,.024]});
  }
  if(look.topKind==='hoodie'){
   mesh(torso,geo(new T.TorusGeometry(W*.58,W*.26,16,32,Math.PI*1.25)),cloth(topColor),{p:[0,.02+H*.98,-W*.1],r:[Math.PI/2-.2,0,-Math.PI*.125],s:[1,1,.9]});

@@ -15,7 +15,8 @@ export function followupOptions(session,scenario) {
  if(reply?.kind!=='participant'||!turn)return [];
  const anchor=messages.indexOf(reply),guardian=target==='g';
  let rows=reply.target===target?normalizeChoices(reply.nextQuestions):[];
- let source=rows.length?'ai':'context';
+ // 체험(시나리오) 답에 딸린 제안은 대본이 이어 주는 질문이므로 'AI 제안'이 아니라 '방금 말에 이어서'로 보입니다.
+ let source=rows.length&&reply.source!=='scenario'?'ai':'context';
  if(!rows.length){
   // 되짚기는 네 개 중 첫째 하나만, 인용은 첫 문장을 짧게(30자). 나머지는 바로 묻는 질문입니다(모두 "~라고 말해 주었구나"로 시작하면 되짚기만 하는 말투가 됩니다).
   const raw=reply.text.trim(),first=(raw.match(/^[^.?!。？！]*[.?!。？！]?/)?.[0]||raw).trim(),excerpt=first.length>30?first.slice(0,30).trimEnd()+'…':first;

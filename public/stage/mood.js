@@ -42,7 +42,10 @@ export function normalizeMood(value,{risk,speaker}={}) {
 }
 
 // 체험(시나리오) 모드 전용 표. engine.js의 classify 의도와 연습 조건으로 고릅니다.
-export function demoMood({intent='open',variant='cooperative',phase='pre',preStep,role='v',turn=0}={}) {
+// 새로 나눈 의도(일상의 변화·확인·회복 행동 등)는 가까운 기존 의도로 읽습니다. guarded: 방어·교착에서 아직 마음을 열지 않은 답.
+const MOOD_INTENT={impact:'feeling',more:'story',ready:'story',check:'feeling',heard:'feeling',repair:'responsibility',agree:'plan',ground:'safety',consent:'safety',about:'open',hard:'feeling'};
+export function demoMood({intent='open',variant='cooperative',phase='pre',preStep,role='v',turn=0,guarded}={}) {
+ intent=MOOD_INTENT[intent]||intent;
  if(intent==='pressure')return role==='v'?'upset':role==='a'?'defensive':'anxious';
  if(variant==='unsafe'){
   if(role==='v')return intent==='safety'?'anxious':'withdrawn';
@@ -53,7 +56,7 @@ export function demoMood({intent='open',variant='cooperative',phase='pre',preSte
   if(variant==='relapse')return 'hesitant';
   return intent==='safety'||role!=='a'?'relieved':'open';
  }
- if(variant==='resistant'&&turn<4&&intent!=='safety'&&role!=='g')return role==='a'?'defensive':'hesitant';
+ if(variant==='resistant'&&(guarded??turn<4)&&intent!=='safety'&&role!=='g')return role==='a'?'defensive':'hesitant';
  if(role==='g')return intent==='safety'?'relieved':intent==='plan'?'calm':'hesitant';
  if(['feeling','need','plan'].includes(intent))return 'open';
  if(intent==='safety')return 'relieved';

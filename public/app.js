@@ -185,7 +185,7 @@ async function sendMessage(raw,method){
  try{
   const result=state.mode==='demo'?demoReply(s,scenario(),text):await api('reply',{provider:state.provider,model:state.model,apiKey:state.apiKey,session:sessionForAI(s)});
   for(const m of result.messages)s.messages.push({kind:'participant',phase:s.phase,target:s.target,...m,risk:result.risk,source:state.mode==='ai'?'ai':'scenario'});
-  if(state.mode==='ai')s.messages.at(-1).nextQuestions=result.teacherChoices;
+  if(result.teacherChoices)s.messages.at(-1).nextQuestions=result.teacherChoices;
   if(!state.tts)sounds.play('reply');s.coach=result;state.page=0;if(preStep==='intro')markIntroductionSent(s);
   stage?.speak(result.messages,{tts:state.tts,risk:result.risk});
  }catch(err){stage?.reset();s.messages.splice(s.messages.indexOf(turn),1);if(preStep)s.preSteps={...s.preSteps,[s.target]:preStep};if(method==='write'||!state.draft.trim())state.draft=text;state.error=err.message;}

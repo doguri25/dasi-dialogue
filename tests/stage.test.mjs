@@ -207,3 +207,20 @@ test('hair is one piece from the crown to the hairline, with no layer edge on th
   assert.ok(c.measure().hairTips>=6,`${key}: strand tips`);
  }
 });
+
+// 옷이 턱에 붙어 보이지 않게: 앞가슴의 옷 조각(셔츠 앞판·옷깃·끈)이 턱 아래 높이에서 얼굴 앞으로 튀어나오면 안 됩니다(남고생 재킷에서 짚음).
+test('no clothing piece sticks out in front of the chin',async()=>{
+ const T=await import('../public/vendor/three-stage.js');const {createCharacter}=await import('../public/stage/character.js');
+ for(const [key,look] of Object.entries(LOOKS)){
+  const c=createCharacter(T,look,{seed:6,still:true}),R=c.headRadius,torso=c.head.parent;torso.updateMatrixWorld(true);
+  const inv=torso.matrixWorld.clone().invert(),hp=c.head.position,v=new T.Vector3();let worst=0;
+  for(const o of torso.children){
+   if(!o.isMesh||o.geometry.type==='LatheGeometry')continue;   // 몸통 자체는 빼고 그 위에 붙인 조각만
+   const m=inv.clone().multiply(o.matrixWorld),pos=o.geometry.attributes.position;
+   for(let i=0;i<pos.count;i++){v.fromBufferAttribute(pos,i).applyMatrix4(m);
+    const dx=v.x-hp.x,dy=v.y-hp.y,dz=v.z-hp.z,inHead=(dx/(1.04*R))**2+(dy/(.97*R))**2+(dz/(.98*R))**2;
+    if(dz>.3*R&&Math.abs(dx)<.5*R&&dy>-.97*R*.9&&inHead>1)worst=Math.max(worst,dy/R+.97*.9);}
+  }
+  assert.equal(worst,0,`${key}: clothing sticks out in front of the chin (${worst.toFixed(3)}R above the chin line)`);
+ }
+});
