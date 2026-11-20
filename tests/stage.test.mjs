@@ -184,26 +184,26 @@ test('arms grow out of the shoulders and move with the body',async()=>{
  [b,g,r].forEach(c=>c.dispose());
 });
 
-// 머리 위가 파여 보이지 않게: 머리카락 층(가닥 층)의 윗가장자리는 정수리 덮개 안쪽에서 시작해야 합니다.
-// 덮개 바로 바깥에서 시작하면 둘레에 턱이 생겨 위에서 볼 때 정수리가 움푹 파인 것처럼 보입니다(사용자가 하린에서 짚음).
-test('hair layers start under the crown cover, so the top of the head is not sunken',async()=>{
+// 머리카락은 한 덩어리: 정수리 가마에서 머리선까지 하나의 면이라, 머리 위쪽 어디에도 층의 가장자리(선·턱)가 없습니다.
+// 예전에는 덮개 위에 가닥 층을 겹쳐 층이 시작되는 위도(60~88°)마다 선이 보였습니다(사용자가 "머리 중앙에 층"으로 짚음).
+test('hair is one piece from the crown to the hairline, with no layer edge on the upper head',async()=>{
  const T=await import('../public/vendor/three-stage.js');const {createCharacter}=await import('../public/stage/character.js');
  for(const [key,look] of Object.entries(LOOKS)){
   const c=createCharacter(T,look,{seed:5,still:true}),R=c.headRadius;c.hair.updateMatrixWorld(true);
-  const inv=c.hair.parent.matrixWorld.clone().invert(),rel=o=>inv.clone().multiply(o.matrixWorld);
-  const cap=c.hair.children.find(o=>o.isMesh&&o.geometry.type==='SphereGeometry'&&o.geometry.parameters.thetaLength<Math.PI);assert.ok(cap,`${key}: crown cover`);
-  const capInv=rel(cap).invert(),Rc=cap.geometry.parameters.radius,v=new T.Vector3(),d=new T.Vector3();
-  // 덮개(늘이고 기울인 구)의 표면까지 거리: 방향 d에서 |M⁻¹·(t·d)| = Rc
-  const capRadius=dir=>{d.copy(dir).normalize();const o=new T.Vector3(0,0,0).applyMatrix4(capInv),p=d.clone().applyMatrix4(capInv).sub(o);return Rc/p.length();};
-  let layers=0;
+  const inv=c.hair.parent.matrixWorld.clone().invert(),v=new T.Vector3();
+  let covers=0,edgeTop=-90;
   for(const o of c.hair.children){
-   if(!o.isMesh||o.geometry.type!=='BufferGeometry')continue;
-   const m=rel(o),pos=o.geometry.attributes.position,pts=[];
-   for(let i=0;i<pos.count;i++){v.fromBufferAttribute(pos,i).applyMatrix4(m);pts.push({p:v.clone(),lat:Math.asin(v.y/v.length())*180/Math.PI});}
-   const top=Math.max(...pts.map(q=>q.lat));if(top<20)continue;   // 아래로 늘어진 반묶음 머리는 덮개와 만나지 않습니다
-   layers++;
-   for(const q of pts.filter(q=>q.lat>top-1.5)){const over=(q.p.length()-capRadius(q.p))/R;assert.ok(over<=.004,`${key}: a hair layer's top edge stands ${over.toFixed(3)}R outside the crown cover at ${q.lat.toFixed(0)}°`);}
+   if(!o.isMesh)continue;
+   const m=inv.clone().multiply(o.matrixWorld),pos=o.geometry.attributes.position,idx=o.geometry.index?.array;if(!idx)continue;
+   // 같은 자리의 꼭짓점은 하나로 보고(이음매) 한 면에만 쓰인 모서리 = 열린 가장자리
+   const keyOf=i=>{v.fromBufferAttribute(pos,i);return v.toArray().map(n=>Math.round(n*1e4)).join(',');},ids=new Map(),id=i=>{const k=keyOf(i);if(!ids.has(k))ids.set(k,{n:ids.size,i});return ids.get(k).n;};
+   const edges=new Map();for(let t=0;t<idx.length;t+=3)for(let e=0;e<3;e++){const a=id(idx[t+e]),b=id(idx[t+(e+1)%3]);if(a===b)continue;const k=a<b?a+'_'+b:b+'_'+a;edges.set(k,(edges.get(k)||0)+1);}
+   const byId=[...ids.values()];
+   for(const [k,n] of edges){if(n!==1)continue;for(const j of k.split('_')){v.fromBufferAttribute(pos,byId[+j].i).applyMatrix4(m);edgeTop=Math.max(edgeTop,Math.asin(v.y/v.length())*180/Math.PI);}}
+   for(let i=0;i<pos.count;i++){v.fromBufferAttribute(pos,i).applyMatrix4(m);if(Math.asin(v.y/v.length())*180/Math.PI>80)covers++;}
   }
-  assert.ok(layers>=3,`${key}: hair layers checked (${layers})`);
+  assert.ok(edgeTop<=40,`${key}: a hair edge sits at ${edgeTop.toFixed(0)}° latitude (a visible layer on the upper head)`);
+  assert.ok(covers>0,`${key}: hair covers the crown`);
+  assert.ok(c.measure().hairTips>=6,`${key}: strand tips`);
  }
 });

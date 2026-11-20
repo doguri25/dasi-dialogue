@@ -123,20 +123,50 @@ export function createCharacter(T,look,{seed=1,still=false}={}) {
  const H01=n=>{const x=Math.sin(n*127.1+seed*311.7)*43758.5453;return x-Math.floor(x);};
  const sheet=(pos,uv,cols,rows)=>{const idx=[];for(let a=0;a<cols;a++)for(let b=0;b<rows;b++){const p0=a*(rows+1)+b,p1=p0+rows+1;idx.push(p0,p1,p0+1,p1,p1+1,p0+1);}
   const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();return geo(g);};
- // 머리를 감싸는 층: 위도 latTop에서 시작해 latBase 근처에서 뾰족한 끝(teeth개)으로 끝납니다. sweep은 가닥을 옆으로 쓸어 넘깁니다.
- function shell({latTop,latBase,lonA,lonB,teeth,depth,rs=1.07,cols=96,rows=12,sweep=0,bulge=.025,flare=0,jitter=.45,phase=0}){
-  const pos=[],uv=[];
-  for(let a=0;a<=cols;a++){
-   // 가닥 끝: 거의 곧은 선 아래로 가늘게 내려오는 끝(sin^2), 가닥마다 길이를 조금씩 다르게
-   const u=a/cols,ph=u*teeth+phase,f=ph-Math.floor(ph),tooth=Math.pow(Math.sin(Math.PI*f),2.2),jr=jitter*(H01(Math.floor(ph))-.5)*2;
-   const bottom=latBase-depth*tooth*Math.max(.35,1+jr);
-   for(let b=0;b<=rows;b++){const v=b/rows,lat=latTop+(bottom-latTop)*v,lon=lonA+(lonB-lonA)*u+sweep*v*v;
-    // 층의 윗가장자리는 정수리 덮개 안쪽(반지름 1.03)에서 시작해 부드럽게 부풀어 나옵니다. 바로 바깥에서 시작하면 둘레에 턱이 생겨 정수리가 파여 보입니다.
-    const swell=Math.min(1,Math.max(26,300*(rs*(1+bulge)-1.03))/Math.max(1,Math.abs(latTop-latBase))),tuck=v<swell?(t=>t*t*(3-2*t))(v/swell):1,lift=1.03+(rs-1.03)*tuck;
-    const r=R*lift*(1+bulge*Math.sin(Math.PI*Math.min(1,v*1.1))+flare*v*v),q=onHead(lat,lon,r);pos.push(q.x,q.y*.97,q.z*.98);uv.push(u*teeth,v);}
+ // 한 덩어리 머리카락: 실제 머리처럼 정수리 가마(whorl)에서 모든 가닥이 뻗어 나와 머리선에서 끝나는 하나의 면입니다.
+ // 예전에는 정수리 덮개 위에 가닥 층을 여러 장 겹쳐서, 층이 시작되는 곳마다 머리 위·가운데에 선(층)이 보였습니다.
+ // 가마 위치(위도·경도), 머리선(앞머리 끝·옆·뒤), 귀 앞 가닥, 가닥 끝 톱니(앞/뒤 개수·깊이), 부피, 아래 퍼짐, 결 홈, 뭉친 가닥, 가르마 쪽으로 쓸어 넘김
+ const HAIR={
+  bob:     {whorl:[58,180],bang:24,side:-40,back:-44,front:62,lock:6, teeth:[13,30],depth:[7,4], jitter:.45,gap:.085,bulge:.03, flare:.05,groove:.010,ear:.05},
+  chinbob: {whorl:[66,150],bang:23,side:-50,back:-54,front:64,lock:8, teeth:[11,32],depth:[9,5], jitter:.5, gap:.085,bulge:.03, flare:.06,groove:.010,ear:.05,sweep:14},
+  halfup:  {whorl:[60,180],bang:25,side:-58,back:-66,front:60,lock:10,teeth:[11,26],depth:[8,4], jitter:.5, gap:.085,bulge:.03, flare:.04,groove:.010,ear:.05,sweep:10},
+  tousled: {whorl:[62,175],bang:27,side:-4, back:-8, front:66,lock:3, teeth:[12,22],depth:[10,8],jitter:.85,gap:.09, bulge:.05, flare:0,  groove:.016,clump:.022},
+  cropped: {whorl:[62,180],bang:33,side:3,  back:0,  front:60,lock:3, teeth:[15,28],depth:[4,4], jitter:.4, gap:.065,bulge:.02, flare:0,  groove:.008},
+  sidepart:{whorl:[70,140],bang:31,side:1,  back:-2, front:72,lock:3, teeth:[10,26],depth:[7,4], jitter:.45,gap:.075,bulge:.04, flare:0,  groove:.009,sweep:26},
+  short:   {whorl:[62,180],bang:31,side:-1, back:-3, front:64,lock:3, teeth:[11,26],depth:[5,4], jitter:.4, gap:.07, bulge:.025,flare:0,  groove:.008,sweep:10}
+ };
+ function wholeHair(st){
+  const cols=216,rows=28,sm=(a,b,x)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);},fold=lon=>Math.abs((((lon+180)%360)+360)%360-180);
+  const W=onHead(st.whorl[0],st.whorl[1],1).normalize(),up=Math.abs(W.y)<.99?new T.Vector3(0,1,0):new T.Vector3(1,0,0);
+  const A=new T.Vector3().crossVectors(up,W).normalize(),B=new T.Vector3().crossVectors(W,A),d=new T.Vector3(),u=new T.Vector3(),wd=new T.Vector3(),dd=new T.Vector3();
+  const latlon=q=>[Math.asin(Math.max(-1,Math.min(1,q.y)))/deg,Math.atan2(q.x,q.z)/deg];
+  // 머리선: 앞머리 → 옆 → 뒤로 이어지고, 귀 앞에서 가닥이 조금 더 내려옵니다
+  const line=lon=>{const a=fold(lon),t=sm(st.front-14,st.front+18,a),bk=sm(110,170,a);return (st.bang*(1-t)+st.side*t)*(1-bk)+st.back*bk-st.lock*Math.exp(-(((a-80)/12)**2));};
+  const tooth=lon=>{const a=fold(lon),fr=1-sm(st.front-10,st.front+22,a),n=fr>.5?st.teeth[0]:st.teeth[1],span=fr>.5?2*st.front:360-2*st.front,ph=(lon+180)/span*n,f=ph-Math.floor(ph);
+   return Math.pow(Math.sin(Math.PI*f),2.2)*(st.depth[0]*fr+st.depth[1]*(1-fr))*Math.max(.35,1+st.jitter*(H01(Math.floor(ph)+(fr>.5?0:50))-.5)*2);};
+  const pos=[],uv=[],sweep=(st.sweep||0)*deg;
+  for(let c=0;c<=cols;c++){
+   const phi=2*Math.PI*(c%cols)/cols;d.copy(A).multiplyScalar(Math.cos(phi)).addScaledVector(B,Math.sin(phi));wd.crossVectors(W,d);
+   // 가마에서 머리선까지 걸어가며 이 가닥이 끝나는 곳(톱니 모양 끝)을 찾습니다
+   let end=Math.PI*.98;for(let th=.6*deg;th<Math.PI*.98;th+=.6*deg){u.copy(W).multiplyScalar(Math.cos(th)).addScaledVector(d,Math.sin(th));const [lat,lon]=latlon(u);if(lat<line(lon)-tooth(lon)){end=th;break;}}
+   for(let r=0;r<=rows;r++){
+    const v=r/rows,tw=sweep*v*v;dd.copy(d).multiplyScalar(Math.cos(tw)).addScaledVector(wd,Math.sin(tw));u.copy(W).multiplyScalar(Math.cos(end*v)).addScaledVector(dd,Math.sin(end*v));
+    const [lat,lon]=latlon(u),a=fold(lon);
+    // 부피(머리에서 띄움·가운데 불룩·아래 퍼짐) − 가마에서 뻗는 결 홈 + 뭉친 가닥 + 귀 위로 살짝 덮기
+    // 결 홈은 굵기가 다른 두 결을 섞어 고르지 않게(주름처럼 반듯하지 않게)
+    const groove=st.groove*(.36*(.5-.5*Math.cos(2*Math.PI*c*54/cols))+.34*(.5-.5*Math.cos(2*Math.PI*c*23/cols+H01(c%cols+7)*1.4)))*sm(.06,.3,v),clump=(st.clump||.012)*(.5+.5*Math.sin(2*Math.PI*c*13/cols+H01(c%cols)*.8))*sm(.1,.5,v);
+    const ear=st.side<-10?(st.ear||0)*Math.exp(-(((a-90)/24)**2))*Math.exp(-(((lat+6)/20)**2)):0;
+    const s=R*(1+st.gap+st.bulge*Math.sin(Math.PI*Math.min(1,v*1.05))+st.flare*v*v-groove+clump+ear);
+    // 가마 가까이에서는 둘레가 짧으므로 결 무늬도 촘촘해지지 않게 줄입니다(한 점에 모이면 검은 점처럼 보임)
+    pos.push(u.x*1.04*s,u.y*.97*s,u.z*.98*s);uv.push(c/cols*18*Math.min(1,Math.sin(end*v)*1.6),v);
+   }
   }
-  hairTips+=Math.round(teeth);
-  return mesh(hairGroup,sheet(pos,uv,cols,rows),hairMat(1));
+  const g=sheet(pos,uv,cols,rows),n=g.attributes.normal;
+  // 첫 열과 끝 열이 만나는 이음매, 가마 한 점의 법선을 맞춰 빛이 끊겨 보이지 않게 합니다
+  for(let r=0;r<=rows;r++){const i0=r,i1=cols*(rows+1)+r,x=n.getX(i0)+n.getX(i1),y=n.getY(i0)+n.getY(i1),z=n.getZ(i0)+n.getZ(i1),l=Math.hypot(x,y,z)||1;n.setXYZ(i0,x/l,y/l,z/l);n.setXYZ(i1,x/l,y/l,z/l);}
+  const wn=new T.Vector3(W.x/1.04,W.y/.97,W.z/.98).normalize();for(let c=0;c<=cols;c++)n.setXYZ(c*(rows+1),wn.x,wn.y,wn.z);
+  n.needsUpdate=true;hairTips+=st.teeth[0]+st.teeth[1];
+  return mesh(hairGroup,g,hairMat(1));
  }
  // 머리 아래로 늘어지는 긴 머리(반묶음): 원통 둘레의 층, 아래 끝이 가닥으로 갈라집니다.
  function curtain({y0,y1,lonA,lonB,teeth,depth,radius,cols=60,rows=10}){
@@ -145,34 +175,11 @@ export function createCharacter(T,look,{seed=1,still=false}={}) {
    for(let b=0;b<=rows;b++){const v=b/rows,y=y0+(bottom-y0)*v,lon=(lonA+(lonB-lonA)*u)*deg,r=radius*(1-.18*v);pos.push(Math.sin(lon)*r*1.04,y,Math.cos(lon)*r);uv.push(u*teeth,v);}}
   hairTips+=teeth;return mesh(hairGroup,sheet(pos,uv,cols,rows),hairMat(1));
  }
- const cap=(scale=1.06,cover=.56,tilt=.7)=>mesh(hairGroup,geo(new T.SphereGeometry(R*scale,56,32,0,Math.PI*2,0,Math.PI*cover)),hairMat(14),{r:[-tilt,0,0],s:[1.04,.97,.98]});
- const sideLocks=(latBase,depth=8,teeth=2)=>{for(const s of [-1,1])shell({latTop:48,latBase,lonA:s>0?60:-96,lonB:s>0?96:-60,teeth,depth,rs:1.085,cols:24,sweep:s*-4});};
- switch(look.hair){
-  case 'bob':   // 턱선까지 오는 단정한 단발, 앞머리는 가는 가닥
-   cap();shell({latTop:62,latBase:-40,lonA:58,lonB:302,teeth:18,depth:4,rs:1.1,flare:.06,cols:120});
-   sideLocks(-38,7,2);shell({latTop:64,latBase:25,lonA:-64,lonB:64,teeth:13,depth:7,rs:1.09});shell({latTop:60,latBase:27,lonA:-58,lonB:58,teeth:11,depth:6,rs:1.075,phase:.5});break;
-  case 'chinbob':   // 옆가르마 턱선 단발
-   cap(1.06,.57,.66);shell({latTop:62,latBase:-52,lonA:56,lonB:304,teeth:20,depth:5,rs:1.1,flare:.07,cols:120});
-   sideLocks(-50,8,3);shell({latTop:66,latBase:23,lonA:-70,lonB:60,teeth:10,depth:9,rs:1.09,sweep:16});shell({latTop:62,latBase:26,lonA:-60,lonB:55,teeth:9,depth:8,rs:1.075,sweep:12,phase:.5});break;
-  case 'halfup':   // 어깨까지 오는 반묶음
-   cap(1.06,.56,.66);shell({latTop:62,latBase:-70,lonA:62,lonB:298,teeth:16,depth:4,rs:1.1,flare:.05,cols:110});
-   curtain({y0:-R*.62,y1:-R*1.55,lonA:95,lonB:265,teeth:12,depth:R*.16,radius:R*.98});
-   sideLocks(-58,10,3);shell({latTop:66,latBase:23,lonA:-68,lonB:58,teeth:10,depth:9,rs:1.09,sweep:14});shell({latTop:62,latBase:27,lonA:-58,lonB:52,teeth:9,depth:7,rs:1.075,sweep:10,phase:.5});
-   mesh(hairGroup,geo(new T.SphereGeometry(1,24,16)),hairMat(4),{p:[0,R*.42,-R*1.0],s:[.04*k,.034*k,.032*k]});
-   mesh(hairGroup,geo(new T.TorusGeometry(.022*k,.007*k,10,20)),clay('#e8a6a0'),{p:[0,R*.44,-R*.98],r:[.35,0,0]});hairTips+=0;break;
-  case 'tousled':   // 짧고 살짝 헝클어진 머리: 정수리부터 겹겹이 뻗친 가닥
-   cap(1.06,.58,.62);shell({latTop:88,latBase:46,lonA:0,lonB:360,teeth:11,depth:9,rs:1.11,jitter:.8,cols:110,bulge:.05});
-   shell({latTop:70,latBase:-6,lonA:60,lonB:300,teeth:13,depth:7,rs:1.095,jitter:.6,cols:100});
-   shell({latTop:66,latBase:25,lonA:-66,lonB:66,teeth:11,depth:9,rs:1.09,jitter:.8,sweep:-6});sideLocks(-4,6,2);break;
-  case 'cropped':   // 짧게 다듬은 머리
-   cap(1.05,.57,.62);shell({latTop:66,latBase:2,lonA:62,lonB:298,teeth:16,depth:4,rs:1.075,cols:100});
-   shell({latTop:62,latBase:32,lonA:-60,lonB:60,teeth:14,depth:4,rs:1.08});sideLocks(4,4,2);break;
-  case 'sidepart':   // 짧은 옆가르마: 앞머리를 한쪽으로 쓸어 넘김
-   cap(1.055,.57,.6);shell({latTop:66,latBase:0,lonA:62,lonB:298,teeth:15,depth:4,rs:1.08,cols:100});
-   shell({latTop:74,latBase:30,lonA:-76,lonB:52,teeth:9,depth:8,rs:1.095,sweep:28,bulge:.05});shell({latTop:68,latBase:34,lonA:-60,lonB:56,teeth:10,depth:5,rs:1.08,sweep:20,phase:.5});sideLocks(6,5,2);break;
-  default:   // 어른의 짧은 머리
-   cap(1.05,.57,.62);shell({latTop:66,latBase:-2,lonA:62,lonB:298,teeth:15,depth:4,rs:1.075,cols:100});
-   shell({latTop:68,latBase:30,lonA:-66,lonB:60,teeth:10,depth:6,rs:1.085,sweep:14});sideLocks(4,5,2);
+ wholeHair(HAIR[look.hair]||HAIR.short);
+ if(look.hair==='halfup'){   // 반묶음: 등 뒤로 내려오는 머리(머리 아래에서 시작), 뒤통수 위의 묶음과 머리끈
+  curtain({y0:-R*.62,y1:-R*1.55,lonA:95,lonB:265,teeth:12,depth:R*.16,radius:R*.98});
+  mesh(hairGroup,geo(new T.SphereGeometry(1,24,16)),hairMat(4),{p:[0,R*.42,-R*1.0],s:[.04*k,.034*k,.032*k]});
+  mesh(hairGroup,geo(new T.TorusGeometry(.022*k,.007*k,10,20)),clay('#e8a6a0'),{p:[0,R*.44,-R*.98],r:[.35,0,0]});
  }
 
  // ---- 짧고 부드러운 팔: 어깨에서 한 덩어리로 돌아갑니다(팔꿈치 마디 없음) ----
