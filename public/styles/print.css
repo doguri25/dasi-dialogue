@@ -4,7 +4,7 @@
 html,body{background:#fff!important;color:#141b2b;height:auto!important;min-height:0!important}
 body{font-size:10.5pt;line-height:1.65}
 .frame{display:block!important;height:auto!important;min-height:0!important}
-.appbar,.skip,#toast,dialog,.review-actions,.outcomes,.mini-stage,.replay-status,.replay-lines,.replay-btn,.scenes-col>h2,#reflection,.reflection small,.review>.error{display:none!important}
+.doodle,.appbar,.skip,#toast,dialog,.review-actions,.outcomes,.mini-stage,.replay-status,.replay-lines,.replay-btn,.scenes-col>h2,#reflection,.reflection small,.review>.error{display:none!important}
 .review{display:block!important;overflow:visible!important;padding:0!important}
 .print-head{display:flex!important;align-items:center;gap:8pt;padding:0 0 8pt;margin:0 0 12pt;border-bottom:1.2pt solid #141b2b;font-size:9.5pt}
 .print-head img{width:20pt;height:20pt}

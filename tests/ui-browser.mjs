@@ -51,6 +51,11 @@ try{
  if(want('home')){const t=await open(),{page}=t;
   assert.equal(await page.evaluate(()=>document.documentElement.dataset.textSize),'large','PC starts with large text');
   assert.equal(await page.locator('.case').count(),30);assert.ok(await fitsScreen(page),'home fits one screen');
+  // 손그림 아이콘: 사례 카드마다 갈등 주제 그림, 주제 칩, 연습 순서, 빈 화면
+  assert.equal(await page.locator('.case .doodle').count(),30);assert.equal(await page.locator('.topics .chip .doodle').count(),7);assert.equal(await page.locator('.how .doodle').count(),3);
+  await act(page,'go','[data-view="history"]').click();assert.ok(await page.locator('.history .empty .doodle').isVisible(),'empty records show a drawing');
+  await act(page,'go','[data-view="help"]').click();assert.ok(await page.locator('.help .doodle').count()>=7,'help steps and phases have drawings');
+  await act(page,'go','[data-view="home"]').click();
   for(const v of ['home','history','help'])assert.ok(await page.locator(`.appbar nav [data-action="go"][data-view="${v}"]`).isVisible(),v);
   assert.ok(await page.locator('.appbar [data-action="settings"]').isVisible());
   assert.deepEqual(await page.evaluate(()=>performance.getEntriesByType('resource').map(r=>r.name).filter(n=>/render3d|three-stage/.test(n))),[],'no 3D on the first screen');
@@ -58,7 +63,7 @@ try{
   await filter('grade','고등');assert.equal(await page.locator('.case').count(),4);await filter('grade','전체');
   await filter('category','디지털');assert.equal(await page.locator('.case').count(),5);await filter('category','전체');
   await filter('difficulty','입문');assert.equal(await page.locator('.case').count(),5);
-  await page.locator('#search').fill('없는검색어987');assert.equal(await page.locator('.case').count(),0);
+  await page.locator('#search').fill('없는검색어987');assert.equal(await page.locator('.case').count(),0);assert.ok(await page.locator('.empty .doodle').isVisible(),'no results shows a drawing');
   await act(page,'clear-filters').click();assert.equal(await page.locator('.case').count(),30);assert.equal(await page.locator('#search').inputValue(),'');
   await shot(page,'.test-artifacts/v1-home-desktop.png');
   const c=scenarios[3];

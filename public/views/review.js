@@ -6,6 +6,7 @@ import {sceneFor} from '../artwork.js';
 import {applicationRecord} from '../application.js';
 import {OUTCOMES} from '../flow.js';
 import {e,icon,btn,dateText} from './ui.js';
+import {doodle} from './doodles.js';
 
 function evidence(s,local){
  if(!local.evidence?.length)return '';
@@ -33,7 +34,7 @@ export function reviewView(s,c,state,{replayScene}){
    <section class="review-col reflect-col" data-keep-scroll id="col-reflect" aria-label="돌아보기">
     <h2>${e(r.title)}</h2><p>${e(r.summary)}</p>
     <div class="pair"><div><h3>${icon('leaf')}이어갈 점</h3><ul>${(r.strengths?.length?r.strengths:['기록을 읽으며 학생의 말을 기다렸던 순간을 찾아보세요.']).map(x=>`<li>${e(x)}</li>`).join('')}</ul></div><div><h3>${icon('spark')}다시 살펴볼 점</h3><ul>${(r.improvements||[]).map(x=>`<li>${e(x)}</li>`).join('')}</ul></div></div>
-    <p class="next-practice"><strong>다음 연습</strong>${e(r.nextPractice)}</p>
+    <div class="next-practice">${doodle('post')}<p><strong>다음 연습</strong>${e(r.nextPractice)}</p></div>
     <p class="fine">결말과 배움은 달라요. 안전한 중단도 좋은 진행일 수 있고, 합의했더라도 강요가 없었는지 다시 살펴보세요.</p>
     <p class="fine record-line">${e(applicationRecord(s).split('\n')[0])}</p>
    </section>
