@@ -224,3 +224,17 @@ test('no clothing piece sticks out in front of the chin',async()=>{
   assert.equal(worst,0,`${key}: clothing sticks out in front of the chin (${worst.toFixed(3)}R above the chin line)`);
  }
 });
+
+// 미리 받을 3D 파일 목록은 render3d.js가 실제로 불러오는 파일과 같아야 합니다(빠지면 연습실에서 다시 받음).
+test('the 3D preload list matches what render3d.js imports',async()=>{
+ const {readFile}=await import('node:fs/promises');const path=await import('node:path');
+ const {STAGE_3D_FILES}=await import('../public/stage/index.js');
+ const root=path.resolve('public/stage'),seen=new Set(),walk=async file=>{
+  if(seen.has(file))return;seen.add(file);
+  const src=await readFile(file,'utf8');
+  for(const m of src.matchAll(/^import\s[^'"]*['"](\.[^'"]+)['"]/gm))await walk(path.resolve(path.dirname(file),m[1]));
+ };
+ await walk(path.join(root,'render3d.js'));
+ const want=[...seen].map(f=>path.relative(root,f).split(path.sep).join('/')).map(f=>f.startsWith('.')?f:'./'+f).sort();
+ assert.deepEqual([...STAGE_3D_FILES].sort(),want);
+});

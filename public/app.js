@@ -8,7 +8,7 @@ import {canRetry,retryLastTurn} from './retry.js';
 import {sceneAt} from './replay.js';
 import {createSounds} from './sounds.js';
 import {startSession,defaultOutcome,worthKeeping,upsertRecord,remainingChecks} from './flow.js';
-import {getStage,readStagePreference,writeStagePreference,stageMode,onStageNotice} from './stage/index.js';
+import {getStage,readStagePreference,writeStagePreference,stageMode,onStageNotice,preloadStage,preloadStageWhenIdle} from './stage/index.js';
 import {VERSION} from './version.js';
 import {navigate,flyFrom,popIn,fadeUp,ghostTo,bump,glow,stagger} from './motion.js';
 import {e} from './views/ui.js';
@@ -126,6 +126,7 @@ function go(view){
 }
 function start(id,variant='cooperative'){
  const c=scenarios.find(x=>x.id===id);if(!c||state.busy)return;
+ preloadStage();   // 화면이 바뀌는 동안 3D 파일을 받기 시작
  navigate('forward',()=>startNow(c,variant));
 }
 function startNow(c,variant){
@@ -134,7 +135,7 @@ function startNow(c,variant){
  greetTarget();render();$('#main')?.focus({preventScroll:true});
 }
 function open(record){
- if(!record||state.busy)return;navigate('forward',()=>openNow(record));
+ if(!record||state.busy)return;preloadStage();navigate('forward',()=>openNow(record));
 }
 function openNow(record){
  persist();stopSpeech();endReplay();
@@ -382,3 +383,4 @@ matchMedia('(max-width: 719px)').addEventListener('change',()=>{if(inRoom())rend
 addEventListener('storage',event=>{if(event.key!==storageKey)return;const fresh=readRecords();if(!fresh)return;saved=fresh;if(['home','history'].includes(state.view))render();});
 addEventListener('pagehide',()=>{persist();sounds.stop();stopSpeech();state.apiKey='';abortController?.abort();});
 render();
+preloadStageWhenIdle();

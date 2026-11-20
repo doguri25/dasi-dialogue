@@ -66,13 +66,15 @@ export function createDirector({mode='3d',reducedMotion=false,load3D,createFlat,
   const container=document.createElement('div');container.className='stage-render';
   let next;
   if(kind==='3d'){
-   try{const create=await load3D();if(gen!==generation)return renderer;next=await create(container,{reducedMotion,bestLevel,onSlow:()=>{if(slowFallback)fallback('slow');}});}
+   try{const create=await load3D();if(gen!==generation)return renderer;next=await create(container,{reducedMotion,bestLevel,onSlow:()=>{if(slowFallback)fallback('slow');},onFirstFrame:()=>{if(gen===generation)element.dataset.stageReady='1';}});}
    catch{next=null;}
    if(gen!==generation){next?.dispose();return renderer;}
    if(!next){onNotice?.('이 기기에서는 3D 장면을 열 수 없어 그림 무대로 보여 드려요.');kind='2d';}
   }
   if(kind==='2d')next=createFlat(container);
   const old=renderer;renderer=guard(next);
+  // 3D는 첫 프레임을 그린 뒤에 보입니다(그 전까지 불러오는 표시). 그림 무대는 바로 보입니다.
+  if(kind==='2d'||next.frames)element.dataset.stageReady='1';else delete element.dataset.stageReady;
   view.replaceChildren(container);element.dataset.stageMode=kind;
   old?.dispose();hoverRole=null;delete element.dataset.hover;element.removeAttribute('title');
   if(next.onLost)next.onLost(why=>fallback('lost',why));

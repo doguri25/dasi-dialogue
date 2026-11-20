@@ -103,17 +103,30 @@ try{
   const page=await browser.newPage({viewport:{width:1366,height:820},locale:'ko-KR'});
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(()=>{const get=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...rest){if(/webgl/i.test(type)&&window.__firstGL==null)window.__firstGL=performance.now();return get.call(this,type,...rest);};});
-  await page.goto(base);await page.locator('.case').first().waitFor();await page.waitForTimeout(3000);
+  await page.goto(base);await page.locator('.case').first().waitFor();await page.waitForTimeout(300);
+  const threeLoads=()=>page.evaluate(()=>performance.getEntriesByType('resource').filter(r=>/three-stage|render3d/.test(r.name)).length);
   const home=await page.evaluate(()=>({gl:window.__firstGL??null,three:performance.getEntriesByType('resource').some(r=>/three-stage|render3d/.test(r.name))}));
-  assert.deepEqual(home,{gl:null,three:false},'the first screen loads no 3D and makes no WebGL context');
+  assert.deepEqual(home,{gl:null,three:false},'the first screen draws without 3D files and makes no WebGL context');
+  // 첫 화면을 다 그리고 한가해지면 3D 파일만 미리 받아 둡니다(WebGL은 만들지 않음). 연습실에 들어가면 다시 받지 않습니다.
+  await page.waitForFunction(()=>performance.getEntriesByType('resource').some(r=>/three-stage/.test(r.name)),null,{timeout:15000});
+  assert.equal(await page.evaluate(()=>window.__firstGL??null),null,'preloading 3D files makes no WebGL context');
+  const preloaded=await threeLoads();assert.ok(preloaded>=2,'render3d and three are preloaded');
   await page.locator('[data-action="quick"]').click();await page.locator('#stage-slot .stage-host[data-stage-mode="3d"]').waitFor({timeout:60000});
+  await page.waitForFunction(()=>document.querySelector('#stage-slot canvas'),null,{timeout:60000});
+  assert.equal(await threeLoads(),preloaded,'entering the room reuses the preloaded 3D files');
   await page.waitForFunction(()=>document.querySelector('#stage-slot canvas'),null,{timeout:60000});
   await page.locator('.room-bar [data-action="settings"]').click();await page.locator('input[name="stage-pref"][value="off"]').check();
   assert.equal(await page.evaluate(()=>localStorage.getItem('dasi.stage')),'off');
   await page.keyboard.press('Escape');
   await page.waitForFunction(()=>document.querySelector('.stage-host')?.dataset.stageMode==='2d',null,{timeout:5000});
   await page.evaluate(()=>localStorage.removeItem('dasi.stage'));
-  assert.deepEqual(errors,[]);await page.close();results.push('library: no 3D or WebGL on the first screen, 3D in the room, preference off applies at once');
+  assert.deepEqual(errors,[]);await page.close();
+  const off=await browser.newPage({viewport:{width:1366,height:820},locale:'ko-KR'});
+  await off.addInitScript(()=>{try{localStorage.setItem('dasi.stage','off');}catch{}});
+  await off.goto(base);await off.locator('.case').first().waitFor();await off.waitForTimeout(6000);
+  assert.equal(await off.evaluate(()=>performance.getEntriesByType('resource').some(r=>/three-stage|render3d/.test(r.name))),false,'no 3D preloading when 3D is turned off');
+  await off.close();
+  results.push('library: no 3D or WebGL while the first screen draws, 3D files preloaded when idle (not when off), 3D in the room, preference off applies at once');
   // 3D를 불러오는 중에 화면을 떠나도 크기 0인 화면에 그리지 않음(그래픽 오류 폭주 → 탐색 멈춤 회귀 방지)
   const quick=await browser.newPage({viewport:{width:1440,height:900},locale:'ko-KR'});
   const gl=[];quick.on('console',m=>{if(/GL_INVALID|incomplete/i.test(m.text()))gl.push(m.text());});
@@ -398,6 +411,29 @@ try{
  }
  // 15. 책장이 깜박이지 않음: 0.1초 간격 10장에서 한 장→다음 장 밝기가 크게(40/255 넘게) 튀는 점이 책장에서 0.04% 미만(벽은 약 0.01%).
  // (책 앞면과 칸 안쪽 판이 같은 깊이에 있으면 두 면이 번갈아 그려져 깜박입니다. 사용자가 짚음.)
+ // 첫 3D가 늦게 뜨던 것(v1.3.2): 셰이더를 화면용으로 미리 컴파일해 두고 실제로는 후처리 렌더 타깃에 그려,
+ // 첫 프레임에 장면 셰이더를 모두 다시 컴파일했습니다(32개). 이제 첫 프레임에는 후처리·그림자 것만 컴파일합니다.
+ if(run('warm')){
+  const {page,errors}=await labPage('cast=main&mood=calm',{width:1280,height:720,scale:1});
+  const p=await page.evaluate(()=>window.__lab.renderer.debug.programs);
+  assert.ok(p&&p.beforeFirst>=15,`scene shaders are prepared before the first frame (${JSON.stringify(p)})`);
+  assert.ok(p.afterFirst-p.beforeFirst<=12,`the first frame compiles only post-processing and shadow shaders (${p.afterFirst-p.beforeFirst} new)`);
+  assert.deepEqual(errors,[]);await page.close();
+  // 불러오는 표시: 첫 프레임을 그리기 전에는 무대 위에 반짝이는 표시가 남고(빈 회색 판이 아님), 그린 뒤에 3D가 나타납니다.
+  const lab=await labPage('director=1&mode=3d&noslow=1',{width:1280,height:720,scale:1});
+  await lab.page.waitForFunction(()=>document.querySelector('.stage-host').dataset.stageReady==='1',null,{timeout:30000});
+  const cue=await lab.page.evaluate(async()=>{
+   const host=document.querySelector('.stage-host'),view=host.querySelector('.stage-view'),canvas=view.querySelector('canvas');
+   const look=()=>({shimmer:getComputedStyle(view,'::after').animationName,canvas:getComputedStyle(canvas).opacity});
+   const ready=look();delete host.dataset.stageReady;const waiting=look();host.dataset.stageReady='1';
+   return {ready,waiting};
+  });
+  assert.equal(cue.waiting.shimmer,'stage-shimmer','the loading shimmer stays until the first 3D frame');
+  assert.equal(cue.waiting.canvas,'0','the canvas stays hidden until it has drawn');
+  assert.equal(cue.ready.shimmer,'none','the shimmer stops once 3D is drawn');
+  assert.deepEqual(lab.errors,[]);await lab.page.close();
+  results.push('warm: shaders prepared for the post-processing target, loading shimmer until the first 3D frame');
+ }
  if(run('shelf')){
   for(const quality of [0,2]){
    const {page,errors}=await labPage(`cast=pre&quality=${quality}&preserve&noslow`,{width:960,height:600,scale:1});await page.waitForTimeout(1500);

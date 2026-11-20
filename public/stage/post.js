@@ -43,6 +43,7 @@ export function createPost(T,renderer,scene,camera) {
  let mood=0,moodTarget=0;
  return {
   get active(){return !!composer;},
+  get target(){return composer?rt:null;},   // 장면이 실제로 그려지는 렌더 타깃(셰이더 미리 컴파일에 씀)
   setSize(w,h){if(!composer)return;composer.setPixelRatio(renderer.getPixelRatio());composer.setSize(w,h);grade.uniforms.uAspect.value=w/Math.max(1,h);},
   setBloom(on){if(bloom)bloom.enabled=on;},
   setMood(v){moodTarget=Math.max(-1,Math.min(1,v));},

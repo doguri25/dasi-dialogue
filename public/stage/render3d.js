@@ -11,7 +11,7 @@ const TENSION={calm:0,open:-.2,hesitant:.25,anxious:.6,defensive:.55,upset:.5,wi
 // 앉은 2등신 캐릭터의 머리 가운데 높이(바닥 기준)
 const HEAD_Y={elementary:.68,middle:.7,high:.72,adult:.74,undefined:.7};
 
-export async function createRenderer3D(container,{reducedMotion=false,preserveDrawingBuffer=false,onSlow,bestLevel=0,fixedLevel}={}) {
+export async function createRenderer3D(container,{reducedMotion=false,preserveDrawingBuffer=false,onSlow,onFirstFrame,bestLevel=0,fixedLevel}={}) {
  const canvas=document.createElement('canvas');canvas.className='stage-canvas-3d';container.appendChild(canvas);
  let renderer;
  try{renderer=new T.WebGLRenderer({canvas,antialias:false,alpha:false,powerPreference:'high-performance',preserveDrawingBuffer});}
@@ -84,7 +84,19 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
   if(focus&&!cast.has(focus))focus=null;
   shot();if(reducedMotion||!started){camPos.copy(wantPos);camLook.copy(wantLook);hFov=wantFov;}
   updateTension();
-  try{renderer.compile(scene,camera);}catch{}
+  prepare();
+ }
+ // 셰이더 미리 컴파일: 장면은 화면이 아니라 후처리의 렌더 타깃에 그려지므로 그 타깃에 맞춘 셰이더를 준비합니다.
+ // 화면용으로 준비하면 쓰이지 않고, 첫 프레임에 장면 셰이더를 모두 다시 컴파일해 무대가 늦게 뜹니다.
+ // 첫 프레임 전에는 병렬 컴파일(compileAsync)을 기다려 그리는 동안 화면이 멈추지 않게 합니다(최대 3초).
+ let warming=null;
+ function prepare(){
+  const prev=renderer.getRenderTarget();
+  try{
+   renderer.setRenderTarget(post.target||null);
+   if(!started&&renderer.compileAsync){const w=Promise.race([renderer.compileAsync(scene,camera),new Promise(r=>setTimeout(r,3000))]).catch(()=>{});warming=w;w.then(()=>{if(warming===w)warming=null;});}
+   else renderer.compile(scene,camera);
+  }catch{}finally{renderer.setRenderTarget(prev);}
  }
  function updateTension(){let t=0,n=0;for(const c of cast.values()){t+=(TENSION[c.mood]??0)*c.intensity;n++;}post.setMood(n?t/n:0);}
  function setState(role,state,{mood,intensity}={}){
@@ -126,6 +138,7 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
   if(!visible){raf&&cancelAnimationFrame(raf);raf=0;lastDraw=0;return;}
   const open=document.querySelector('dialog[open]');
   if(!hasSize()||(open&&!open.contains(container))){lastDraw=0;return;}   /* 대화창이 열려 있으면 그리지 않습니다(무대가 그 창 안에 있을 때는 그립니다) */
+  if(warming){lastDraw=0;return;}   /* 첫 프레임 전 셰이더 준비 중 */
   if(sized!==container.clientWidth+'x'+container.clientHeight)resize();
   const speaking=[...cast.values()].some(c=>c.state==='speaking'),target=speaking?1000/60:1000/30;
   if(lastDraw&&now-lastDraw<target-4)return;
@@ -157,7 +170,9 @@ export async function createRenderer3D(container,{reducedMotion=false,preserveDr
   }
   room.update(dt,time);
   sunPoint.copy(room.windowCenter).project(camera);post.setSun((sunPoint.x+1)/2,(sunPoint.y+1)/2,sunPoint.z<1?1:0);
+  const first=!started;if(first)debug.programs={beforeFirst:renderer.info.programs?.length??0};
   post.render(dt,time);started=true;debug.draws++;
+  if(first){debug.programs.afterFirst=renderer.info.programs?.length??0;try{onFirstFrame?.();}catch{}}
   return true;
  }
  if(best>0)applyQuality();else resize();
