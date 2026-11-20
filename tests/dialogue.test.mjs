@@ -169,3 +169,54 @@ test('the AI gets the same case story, only for the people who are speaking',()=
  const post={...s,phase:'post',variant:'relapse'};p=rolePrompt(prepareContext(post));
  assert.ok(p.input.includes(book.v.still));assert.ok(!p.input.includes(book.v.after));
 });
+
+// 학년에 맞는 말투: 초등 사례에서는 학생도 교사도 쉬운 말을 씁니다. 중등·고등은 원래 문장을 씁니다.
+const KID_SAYS=/(부담|허탈|과장|영향|인정받|책임|휩쓸|거리를 두|변명|의도|정정|명예|해명|사생활|무심|판단|증명|공정|기준|권한|협의|확산|완성도|껄끄|조정|통제|위축|악의|무례|당사자)/;
+const KID_HEARS=/(강요|회복|실천|동의|점검|영향|존중|대면|보류|접촉|책임|구체적|방식)/;
+test('elementary students speak like elementary students',()=>{
+ for(const c of scenarios.filter(c=>c.grade==='초등')){
+  const b=CASEBOOK[c.id];
+  for(const [role,lines] of [['v',{opening:c.victim.opening,...b.v}],['a',{opening:c.actor.opening,...b.a}]])
+   for(const [k,t] of Object.entries(lines))assert.doesNotMatch(t,KID_SAYS,`${c.id} ${role}.${k}: ${t}`);
+ }
+});
+test('teachers talk to elementary students in plain words, older students keep the full wording',()=>{
+ const offered=c=>{
+  const seen=[],replies=[];
+  for(const variant of Object.keys(variants)){
+   let s=start(c,variant);
+   const look=()=>{if(s.target!=='g')seen.push(...questionOptions(s,c).map(q=>q.text));};
+   const turn=i=>{look();const o=questionOptions(s,c);replies.push(...say(s,c,o[i%o.length].text).messages.filter(m=>m.speaker!=='g').map(m=>m.text));};
+   for(const t of ['v','a']){s.target=t;for(const i of [0,0,1,2,3,4,5,6,7,0])turn(i);s.checks[t]=true;}s.checks.g=true;
+   if(variant!=='unsafe'){s.checks.safe=true;s=transition(s);for(const t of ['all','v','a'])for(const i of [0,1,2,3,4,5,6,7,0,0,0]){s.target=t;turn(i);}
+    s.checks.main=true;s.agreement.action='x';s.agreement.review='y';s=transition(s);for(const t of ['all','v','a'])for(const i of [0,1,2,3,4,5,6,7,0]){s.target=t;turn(i);}}
+  }
+  return {seen,replies};
+ };
+ for(const c of scenarios.filter(c=>c.grade==='초등')){
+  const {seen,replies}=offered(c);
+  for(const t of seen)assert.doesNotMatch(t,KID_HEARS,`${c.id} teacher: ${t}`);
+  for(const t of replies)assert.doesNotMatch(t,KID_SAYS,`${c.id} student: ${t}`);
+ }
+ const older=offered(byId('case-20')).seen.join('\n');assert.match(older,/회복을 돕/);assert.match(older,/동의하지 않/);
+});
+test('plain-word questions are read the same way as the full ones',()=>{
+ const c=byId('case-03'),V=c.victim.name,A=c.actor.name;
+ const table={'모임에 대해 더 궁금한 게 있니?':'about','그 일 때문에 학교에서 지내는 게 어떻게 달라졌는지 말해 줄래?':'impact',
+  [`${A}, 친구 마음이 조금이라도 나아지도록 네가 할 수 있는 건 뭘까?`]:'repair',[`${V}, 방금 나온 방법 중에 괜찮은 것과 싫은 것을 말해 줄래?`]:'repair',
+  '이 약속에서 싫거나 바꾸고 싶은 게 있니? 싫다고 해도 괜찮아.':'agree','정한 일을 누가 언제부터 어떻게 할지 정해 볼까?':'plan',
+  '네가 한 일 때문에 친구는 학교에서 어떤 점이 힘들었을까?':'responsibility','약속 중에 지켜진 건 뭐니? 어떤 일이 있었는지 말해 줄래?':'followup',
+  '다시 그런 일이 있었다면, 지금 선생님이 어떻게 도와주면 좋겠니?':'need','약속을 못 지킨 게 있다면, 이제 네가 할 수 있는 건 뭘까?':'repair',
+  '상대가 싫어하는 행동을 멈추려면 어떻게 하면 될까?':'safety','상대가 만나기를 원하지 않으면 너는 어떻게 하면 좋을까?':'safety',
+  '속상한 마음이 들 때 누구한테 도움을 받으면 좋을까?':'need','아직 바뀌지 않아서 힘든 점은 뭐니? 네가 혼자 지켜보지 않아도 돼.':'hard'};
+ for(const [q,want] of Object.entries(table))assert.equal(classify(q),want,q);
+});
+test('the AI is told the school level and how students of that age talk',()=>{
+ const s=start(byId('case-01'));s.preSteps={v:'story',a:'story',g:'story'};
+ const p=rolePrompt(prepareContext(s));assert.match(p.input,/"학교급":"초등"/);assert.match(p.system,/초등.*쉬운 낱말/);assert.match(p.system,/고등/);
+});
+test('a reassurance that nobody will be forced to apologise is not pressure',()=>{
+ assert.equal(classify('누구를 혼내거나 억지로 사과하게 하는 자리가 아니야. 먼저 궁금한 게 있니?'),'about');
+ assert.equal(classify('억지로 화해하게 하지 않아. 괜찮다면 궁금한 것부터 말해 줄래?'),'about');
+ assert.equal(classify('싫어도 사과해.'),'pressure');assert.equal(classify('억지로라도 사과해야 해.'),'pressure');
+});

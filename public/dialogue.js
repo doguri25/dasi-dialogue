@@ -19,11 +19,11 @@ const RULES=[
  ['ground',/(대화 약속|이야기를 듣는 동안|이야기하는 동안|말하는 동안|대화 규칙)/],
  ['heard',/(새롭게 알게|더 이해하게|듣고 (알게|이해하게))/],
  ['hard',/(어려웠던|어렵거나|힘든 점|어려운 점|어려움)/],
- ['repair',/(회복을 돕|피해를 줄이|회복 방법|회복 방식|받아들일 수 있|책임질 행동|실천할 수 있는 (행동|일))/],
+ ['repair',/(회복을 돕|피해를 줄이|회복 방법|회복 방식|받아들일 수 있|책임질 행동|실천할 수 있는 (행동|일)|(네가|스스로) 할 수 있는 (건|게|일|행동)|괜찮은 것과 싫은 것)/],
  ['followup',/(지켜진|지켰|지킨|지켜졌|실천 결과|이행|실제로 달라진|지켜지지 않은 부분)/],
- ['agree',/(동의하지 않|바꾸고 싶은 부분|자유롭게 동의|동의했는지)/],
+ ['agree',/(동의하지 않|바꾸고 싶은 (부분|게)|자유롭게 동의|동의했는지)/],
  ['plan',/(누가 언제|누가.{0,10}(할|맡|확인|도울)|언제부터|언제 다시|기한|다음.{0,4}(주|날)|구체적인? 계획|어떻게 실천|어떻게 확인)/],
- ['safety',/(강요하지|강요 안|사과.{0,8}(않아|안 해)|용서.{0,8}(않아|안 해)|원하지 않|멈춰도|멈출 수|멈추고|그만해도|중단|보류|쉬어|쉴래|쉬자|쉬고|통과|건너뛰|넘어가도|괜찮니|천천히 해|안전|보복|두려|무서)/],
+ ['safety',/(강요하지|강요 안|사과.{0,8}(않아|안 해)|용서.{0,8}(않아|안 해)|원하지 않|멈춰도|멈출 수|멈추고|멈추려면|그만해도|중단|보류|쉬어|쉴래|쉬자|쉬고|통과|건너뛰|넘어가도|괜찮니|천천히 해|안전|보복|두려|무서)/],
  ['need',/(필요|바라|원하|달라지|도움|도와|도울|지원|어떤 어른|어른과|어떻게 하고 싶)/],
  ['responsibility',/(네가 한|너의 행동|네 행동|그 행동|책임|바꿔|왜 그랬|잘못|상대.{0,14}(어땠|마음|느꼈|생활))/],
  ['impact',/(영향|일상|생활|달라졌|달라진|차이|나아졌|어떻게 지냈|잘 지냈|요즘 어때)/],
@@ -37,7 +37,8 @@ function match(text){for(const [k,re,not] of RULES)if(re.test(text)&&!(not&&not.
 // 되짚은 학생의 말은 맥락일 뿐 교사의 새 질문이 아니므로 떼고, 물음표로 끝나는 문장(묻는 말)을 먼저 읽습니다.
 export function classify(text) {
  text=String(text||'').replace(ECHO,'');
- if(PRESSURE.test(text))return 'pressure';
+ // "억지로 사과하게 하는 자리가 아니야"처럼 뒤에 부정이 오면 압박이 아니라 안심시키는 말입니다.
+ const m=text.match(PRESSURE);if(m&&!/^[^.?!]{0,16}(않|아니|안 해|안 시|말아|필요 없)/.test(text.slice(m.index+m[0].length)))return 'pressure';
  for(const q of text.split(/(?<=[?？.!。])\s+/).filter(x=>/[?？]$/.test(x.trim()))){const k=match(q);if(k!=='open')return k;}
  return match(text);
 }
@@ -94,6 +95,13 @@ const GUARD={
  main:{v:[['이렇게 다 같이 있으니까 말하기 어려워요.','listen'],['제가 말해도 또 장난이었다고 할 거잖아요.','listen']],a:[['제 얘기는 안 듣고 저만 나쁘다고 하잖아요.','fair'],['저도 할 말 있는데 아무도 안 물어봐요.','fair']]}
 };
 const PRESS={v:['제가 싫어도 사과를 받아야 하나요? 지금은 더 이야기하고 싶지 않아요.','그렇게 말씀하시면 아무 말도 못 하겠어요.','지금은 더 말하고 싶지 않아요. 잠깐 쉬고 싶어요.'],a:['선생님이 시켜서 말하는 거라면, 뭐라고 해야 끝나나요?','사과하면 끝나는 거예요? 그럼 그냥 할게요.','알겠어요. 그냥 제가 잘못했다고 할게요. 그럼 된 거죠?'],g:['아이에게 억지로 사과하거나 화해하게 하는 건 원하지 않아요.','그렇게 서두르시면 아이가 더 힘들어할 거예요.','이런 식이면 오늘은 여기서 멈추고 싶습니다.']};
+// 초등 학생은 같은 뜻을 쉬운 말로(공통 문장 가운데 어른스러운 것만 바꿉니다)
+const PLAIN={
+ '다시 그런 일은 없었어요. 아직 바로 친해지고 싶은 건 아니고, 거리를 두고 지내면 좋겠어요.':'다시 그런 일은 없었어요. 아직 바로 친해지고 싶지는 않고, 조금 떨어져서 지내고 싶어요.',
+ '친구들이 있을 때 분위기에 휩쓸려요. 그때 멈추는 방법이 필요해요.':'친구들이랑 같이 있으면 저도 모르게 또 하게 돼요. 멈추는 방법을 알려 주세요.',
+ '네, 제가 또 그랬어요. 변명하지 않을게요.':'네, 제가 또 그랬어요. 핑계 대지 않을게요.',
+ '말한 대로면 괜찮아요. 억지로 친하게 지내자는 건 빼 주셨으면 해요.':'말한 대로면 괜찮아요. 억지로 친하게 지내라는 건 안 했으면 좋겠어요.'
+};
 // 학생·보호자가 되물은 것에 대한 교사의 답(다음 제안의 첫 줄)
 const ANSWER={
  pause:'그럼. 쉬고 싶으면 언제든 "잠깐만요"라고 말해 줘.',share:'네가 괜찮다고 하지 않은 이야기는 다른 사람에게 전하지 않을게. 다만 위험한 일이라면 어른이 알아야 할 수 있어.',shareOther:'다른 사람이 따로 한 이야기는 전하지 않아. 네 이야기도 마찬가지야.',
@@ -190,7 +198,8 @@ export function demoReply(s,c,raw) {
  const name=role=>role==='v'?c.victim.name:role==='a'?c.actor.name:'보호자';
  // 말 하나: 사례 이야기면 사례 문장, 아니면 위 표의 문장
  const from=(table,role,key)=>book[role]?.[key]&&!table?.[role]?.[key]?book[role][key]:(table?.[role]?.[key]??line(role,key));
- const out=(role,beat,text,extra={})=>({speaker:role,beat,text,...extra});
+ const kid=c.grade==='초등';
+ const out=(role,beat,text,extra={})=>({speaker:role,beat,text:kid&&role!=='g'&&PLAIN[text]||text,...extra});
  // 이미 한 말이면 다음 것을, 다 했으면 마무리 말을 차례로(같은 말 되풀이 없음)
  const first=(role,keys,table)=>{for(const k of keys)if(!told(role,k)){const t=from(table,role,k);if(t)return out(role,k,t);}return null;};
  const doneLine=(role,lines=DONE[role])=>{for(let i=0;i<lines.length;i++){const k='done'+i;if(!told(role,k))return out(role,k,lines[i]);}
@@ -459,7 +468,17 @@ export function demoReply(s,c,raw) {
    'm-repair':[['책임 행동',`${A}, 피해를 줄이고 회복을 돕기 위해 네가 할 수 있는 행동은 무엇일까?`]],
    'm-accept':[['회복 방식',`${V}, 방금 나온 제안 중 받아들일 수 있는 것과 원하지 않는 것을 말해 줄래?`]]
   };
-  const q=key=>{const list=(target==='all'&&named[key])||QQ[key]||Q.student[key]||[];return list.map(([label,text])=>({label,text})).find(x=>!asked.has(x.text));};
+  const plain=kid&&who==='student'?{ // 초등: 회복·실천·동의·영향·존중 같은 말 대신 쉬운 말
+   about:[['더 궁금한 점','모임에 대해 더 궁금한 게 있니?']],
+   'm-impact':[['영향 살피기',`${target==='all'?V+', ':''}그 일 때문에 학교에서 지내는 게 어떻게 달라졌는지 말해 줄래?`]],
+   'm-repair':[['책임 행동',`${target==='all'?A+', ':''}친구 마음이 조금이라도 나아지도록 네가 할 수 있는 건 뭘까?`]],
+   'm-accept':[['회복 방식',`${target==='all'?V+', ':''}방금 나온 방법 중에 괜찮은 것과 싫은 것을 말해 줄래?`]],
+   agree:[['동의 다시 확인','이 약속에서 싫거나 바꾸고 싶은 게 있니? 싫다고 해도 괜찮아.']],
+   'u-refuse':[['거절 존중','만나고 싶지 않다는 네 마음 알겠어. 오늘은 같이 만나지 않고 선생님이랑만 이야기해도 괜찮니?']],
+   'u-respect':[['거절 존중','상대가 만나기를 원하지 않으면 너는 어떻게 하면 좋을까?']],
+   'ua-support':[['필요한 도움','속상한 마음이 들 때 누구한테 도움을 받으면 좋을까?']]
+  }:{};
+  const q=key=>{const list=plain[key]||(target==='all'&&named[key])||QQ[key]||Q.student[key]||[];return list.map(([label,text])=>({label,text})).find(x=>!asked.has(x.text));};
   const any=(...keys)=>keys.some(([r,k])=>told(r,k));
   let order,done,gate;
   if(phase==='pre'){

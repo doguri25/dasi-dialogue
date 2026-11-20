@@ -88,7 +88,7 @@ try{
   const notes=await page.locator('#notes').boundingBox();assert.ok(notes&&Math.abs(notes.width-340)<=2,'notes panel is open beside the conversation');
   assert.equal(await page.locator('[data-action="notes"]:visible').count(),0,'no notes toggle on wide screens');
   assert.equal(await page.locator('.sug').count(),4);
-  assert.equal((await page.locator('.sug-text').first().innerText()).trim(),introductionOptions('v')[0][1],'full suggestion text');
+  assert.equal((await page.locator('.sug-text').first().innerText()).trim(),introductionOptions('v',scenarios[0].grade)[0][1],'full suggestion text');
   assert.ok(await page.evaluate(()=>[...document.querySelectorAll('.sug-text')].every(el=>el.scrollHeight<=el.clientHeight+1&&el.scrollWidth<=el.clientWidth+1)),'suggestions are not cut');
   await shot(page,'.test-artifacts/v1-room-desktop.png');
   const first=await say(page,0);assert.equal(await lastTeacher(page),first);await noDialog(page);
@@ -97,7 +97,7 @@ try{
   assert.equal(await page.locator('#transcript [data-action="undo"]').count(),1,'undo only on the last line');
   await page.locator('#transcript .msg.teacher').last().locator('[data-action="undo"]').click();
   assert.equal(await teacherCount(page),0);assert.equal(await page.locator('#draft').inputValue(),first,'the sentence comes back to the input');
-  assert.equal((await page.locator('.sug-text').first().innerText()).trim(),introductionOptions('v')[0][1],'back to the introduction step');
+  assert.equal((await page.locator('.sug-text').first().innerText()).trim(),introductionOptions('v',scenarios[0].grade)[0][1],'back to the introduction step');
   await page.locator('#draft').fill('');
   const second=(await page.locator('.sug-text').nth(1).innerText()).trim();await page.locator('.sug [data-action="edit-suggestion"]').nth(1).click();
   assert.equal(await page.locator('#draft').inputValue(),second);assert.equal(await teacherCount(page),0,'pencil does not send');
@@ -114,7 +114,7 @@ try{
   await page.locator('#draft').fill('민서에게 쓰던 글');
   await page.locator('label[for="target-a"]').click();await page.waitForFunction(()=>document.querySelector('#target-a')?.checked);
   assert.equal(await teacherCount(page),0,'the other student does not see these lines');assert.equal(await page.locator('#draft').inputValue(),'');
-  assert.equal((await page.locator('.sug-text').first().innerText()).trim(),introductionOptions('a')[0][1]);
+  assert.equal((await page.locator('.sug-text').first().innerText()).trim(),introductionOptions('a',scenarios[0].grade)[0][1]);
   await page.locator('label[for="target-v"]').click();await page.waitForFunction(()=>document.querySelector('#target-v')?.checked);
   assert.equal(await page.locator('#draft').inputValue(),'민서에게 쓰던 글');assert.ok(await teacherCount(page)>=2);
   await page.locator('#notes [data-action="view-transcript"]').click();await page.locator('#modal.reader[open]').waitFor();
